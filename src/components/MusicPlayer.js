@@ -22,7 +22,7 @@ export default function MusicPlayer() {
   const [activeTab, setActiveTab] = useState('playlists');
   const [activeIdx, setActiveIdx] = useState(0);
   const [currentSrc, setCurrentSrc] = useState('');
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [mounted, setMounted] = useState(false);
   
   // Request state
@@ -32,9 +32,7 @@ export default function MusicPlayer() {
   useEffect(() => {
     const rand = Math.floor(Math.random() * VIBES.length);
     setActiveIdx(rand);
-    setCurrentSrc(`https://open.spotify.com/embed/playlist/${VIBES[rand].playlistId}?utm_source=generator&theme=0`);
     setMounted(true);
-    setTimeout(() => setIsOpen(true), 3000);
   }, []);
 
   const handleSendRequest = async (e) => {

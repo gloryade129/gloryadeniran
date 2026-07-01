@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
-import ThemeToggle from '@/components/ThemeToggle';
 import settingsData from '@/data/settings.json';
 import styles from './Navigation.module.css';
 
@@ -151,7 +150,6 @@ export default function Navigation() {
           <Link href="/contact" className={`shiny-cta shiny-cta--compact ${styles.cta}`}>
             <span>Start a Project &nbsp;→</span>
           </Link>
-          <ThemeToggle />
         </div>
       </div>
 

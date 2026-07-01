@@ -7,22 +7,16 @@ const ThemeContext = createContext({
   setTheme: () => {}
 });
 
-export function ThemeProvider({ children, defaultTheme = 'dark' }) {
-  const [theme, setThemeState] = useState(defaultTheme);
+export function ThemeProvider({ children }) {
+  const [theme] = useState('dark');
 
   useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    const activeTheme = stored || defaultTheme;
-    setThemeState(activeTheme);
     document.documentElement.classList.remove('dark', 'light');
-    document.documentElement.classList.add(activeTheme);
-  }, [defaultTheme]);
+    document.documentElement.classList.add('dark');
+  }, []);
 
-  const setTheme = (newTheme) => {
-    setThemeState(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.remove('dark', 'light');
-    document.documentElement.classList.add(newTheme);
+  const setTheme = () => {
+    // No-op: locked to dark mode
   };
 
   return (
