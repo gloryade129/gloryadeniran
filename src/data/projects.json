@@ -2,65 +2,81 @@
   "graphic_design": [
     {
       "id": "g1",
-      "title": "Aether Brand Identity",
-      "subcategory": "Logo & Branding",
-      "description": "Minimalist brand identity for a modern tech startup. Deep gold accents on matte navy.",
-      "image": "/images/brand.png",
-      "link": "/work"
+      "title": "CISSA Dean's Cup Campaign",
+      "subcategory": "Sports Graphics",
+      "description": "Tournament branding, custom match scores, and real-time social media announcement cards for the University of Ilorin CISSA tournament.",
+      "image": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800&auto=format&fit=crop",
+      "link": "https://globalgraphics.crevado.com/church-flyer-design"
     },
     {
       "id": "g2",
-      "title": "Global Graphics Promo",
-      "subcategory": "Social Media Flyers",
-      "description": "Highly engaging social media visuals designed to drive audience interaction.",
-      "image": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000&auto=format&fit=crop",
-      "link": "/work"
+      "title": "FYB '26 Event Branding",
+      "subcategory": "Ceremony Design",
+      "description": "Complete design system including graduation flyer campaigns, countdown graphics, ticket pricing reveals, and social banners.",
+      "image": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop",
+      "link": "https://globalgraphics.crevado.com/birthday-celebration-graphics"
     },
     {
       "id": "g3",
-      "title": "Corporate Event Materials",
-      "subcategory": "Jotter Designs & Print",
-      "description": "Premium jotter and print material designs for high-end corporate events.",
-      "image": "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=1000&auto=format&fit=crop",
-      "link": "/work"
+      "title": "Faculty Awards Ceremony",
+      "subcategory": "Digital Collateral",
+      "description": "Elegant visual style with gold accents for institutional award listings, presentation graphics, and invitation covers.",
+      "image": "https://images.unsplash.com/photo-1496171367470-9ed9a9179d14?q=80&w=800&auto=format&fit=crop",
+      "link": "https://globalgraphics.crevado.com/business-flyer-graphics"
+    },
+    {
+      "id": "g4",
+      "title": "CISSA Owambe Celebration",
+      "subcategory": "Creative Flyers",
+      "description": "Social media flyer campaign capturing traditional Yoruba outfits, colors, and event details in high-impact typography.",
+      "image": "https://images.unsplash.com/photo-1534126511673-b6899657816a?q=80&w=800&auto=format&fit=crop",
+      "link": "https://globalgraphics.crevado.com/my-work"
     }
   ],
   "website_design": [
     {
       "id": "w1",
-      "title": "Lumina E-Commerce",
-      "subcategory": "Shopify",
-      "description": "A premium e-commerce platform focusing on seamless checkout flows.",
-      "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop",
-      "link": "/work"
+      "title": "Global Graphics Crevado",
+      "subcategory": "Portfolio Hub",
+      "description": "Curated portfolio showcase categorizing social media designs, logos, and custom flyers for corporate and individual brands.",
+      "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop",
+      "link": "https://globalgraphics.crevado.com/"
     },
     {
       "id": "w2",
-      "title": "Nexus Analytics Landing",
-      "subcategory": "WordPress",
-      "description": "Sophisticated data visualization marketing page.",
-      "image": "/images/dashboard.png",
-      "link": "/work"
+      "title": "GGraphics Strikingly Portal",
+      "subcategory": "Creative Agency",
+      "description": "Modern landing page for brand strategies, visual consulting, and custom graphic services.",
+      "image": "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=800&auto=format&fit=crop",
+      "link": "https://ggraphics.mystrikingly.com/"
     }
   ],
   "apps": [
     {
       "id": "a1",
-      "title": "Aura Banking App",
+      "title": "ExamSync Study Suite",
       "subcategory": "Mobile UI/UX",
-      "description": "A high-end mobile banking experience focusing on clarity and elegant typography.",
-      "image": "/images/banking_app.png",
-      "link": "/work"
+      "description": "A collaborative study and prep app for University of Ilorin students featuring active sync and user statistics.",
+      "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop",
+      "link": "https://github.com/globalgraphics129-rgb"
+    },
+    {
+      "id": "a2",
+      "title": "Flowse Workspace Client",
+      "subcategory": "App Interface",
+      "description": "A task flow and workspace management mobile client built with high-fidelity components and minimal styling.",
+      "image": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop",
+      "link": "https://github.com/globalgraphics129-rgb"
     }
   ],
   "vibe_coding": [
     {
       "id": "v1",
-      "title": "Interactive Portfolio",
-      "subcategory": "Front-End Development",
-      "description": "Smooth scrolling, dark/light mode interactive portfolio built with Next.js and Framer Motion.",
-      "image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop",
-      "link": "/work"
+      "title": "University of Ilorin CISSA Logo",
+      "subcategory": "Brand Identity",
+      "description": "Official logo redesign for the CISSA community, optimizing brand assets for digital and print formats.",
+      "image": "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=800&auto=format&fit=crop",
+      "link": "https://globalgraphics.crevado.com/logo"
     }
   ]
 }

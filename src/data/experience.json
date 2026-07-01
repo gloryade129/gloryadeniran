@@ -1,9 +1,23 @@
 [
   {
     "id": "e1",
-    "role": "Designer",
-    "company": "Freelance & Growth",
-    "period": "2020 - Present",
-    "description": "Working on Graphics, Products, Websites, and UI/UX."
+    "role": "Lead Designer & Creative Director",
+    "company": "Global Graphics",
+    "period": "2023 - Present",
+    "description": "Conceptualizing and delivering high-impact social media flyer campaigns, tournament branding, logos, and digital graphics. Directing institutional marketing materials for the University of Ilorin CISSA."
+  },
+  {
+    "id": "e2",
+    "role": "Mobile App UI/UX Designer",
+    "company": "ExamSync & Flowse Projects",
+    "period": "2024 - 2026",
+    "description": "Designed user interfaces, wireframes, and interactive components for study platforms and task workspace mobile applications."
+  },
+  {
+    "id": "e3",
+    "role": "Freelance Vibe Coder",
+    "company": "Web Design & Development",
+    "period": "2022 - Present",
+    "description": "Crafting customized responsive portfolio interfaces, graphic landing hubs, and interactive Next.js apps optimized for speed and speed."
   }
 ]
