@@ -1,0 +1,288 @@
+.section {
+  padding-top: 140px;
+  padding-bottom: 96px;
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding-top: 100px;
+    padding-bottom: 64px;
+  }
+}
+
+.backNav {
+  margin-bottom: 32px;
+}
+
+.backBtn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--gray-2);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.3s ease;
+}
+
+.backBtn:hover {
+  color: var(--lime);
+}
+
+.backArrow {
+  transition: transform 0.3s ease;
+}
+
+.backBtn:hover .backArrow {
+  transform: translateX(-4px);
+}
+
+.header {
+  margin-bottom: 48px;
+}
+
+.title {
+  font-size: 40px;
+  font-weight: 600;
+  margin-top: 12px;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 32px;
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+}
+
+.mainImageWrap {
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.imageInner {
+  position: relative;
+  width: 100%;
+  height: 480px;
+}
+
+@media (max-width: 768px) {
+  .imageInner {
+    height: 300px;
+  }
+}
+
+.mainImg {
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mainImageWrap:hover .mainImg {
+  transform: scale(1.02);
+}
+
+.zoomOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mainImageWrap:hover .zoomOverlay {
+  opacity: 1;
+}
+
+.zoomIcon {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0,0,0,0.6);
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Sub Gallery */
+.subGallery {
+  margin-top: 32px;
+}
+
+.subGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.subImageWrap {
+  position: relative;
+  height: 100px;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: border-color 0.3s ease;
+}
+
+.subImageWrap:hover {
+  border-color: var(--lime);
+}
+
+.subImg {
+  object-fit: cover;
+}
+
+/* Right Info Column */
+.infoCol {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.infoCard {
+  padding: 24px;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.metaRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.metaRow span:first-child {
+  color: var(--gray-2);
+  font-size: 11px;
+}
+
+.storyWrap {
+  padding: 12px 0;
+}
+
+.description {
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--foreground);
+  margin-bottom: 16px;
+}
+
+.detailsText {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--gray-2);
+}
+
+.linksSection {
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+}
+
+.linksGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.attachmentCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.3s ease;
+}
+
+.attachmentCard:hover {
+  border-color: var(--lime);
+}
+
+.attachInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.attachIcon {
+  font-size: 18px;
+}
+
+.attachLabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.attachArrow {
+  font-size: 16px;
+  color: var(--gray-2);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.attachmentCard:hover .attachArrow {
+  transform: translate(2px, -2px);
+  color: var(--lime);
+}
+
+/* Lightbox Overlay */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 7, 6, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  cursor: pointer;
+}
+
+.lightboxClose {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10000;
+  transition: color 0.3s ease;
+}
+
+.lightboxClose:hover {
+  color: var(--lime);
+}
+
+.lightboxImgContainer {
+  position: relative;
+  width: 90vw;
+  height: 80vh;
+  max-width: 1200px;
+}
+
+.lightboxImg {
+  object-fit: contain;
+}

@@ -6,7 +6,12 @@
       "subcategory": "Sports Graphics",
       "description": "Tournament branding, custom match scores, and real-time social media announcement cards for the University of Ilorin CISSA tournament.",
       "image": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800&auto=format&fit=crop",
-      "link": "https://globalgraphics.crevado.com/church-flyer-design"
+      "link": "https://globalgraphics.crevado.com/church-flyer-design",
+      "images": [],
+      "links": [
+        { "label": "Crevado Gallery", "url": "https://globalgraphics.crevado.com/church-flyer-design" }
+      ],
+      "details": "A complete branding and visual asset system developed for the University of Ilorin CISSA Dean's Cup. This project included social media fixtures, match day announcements, post-game scorecards, and MVP badges."
     },
     {
       "id": "g2",
@@ -14,7 +19,12 @@
       "subcategory": "Ceremony Design",
       "description": "Complete design system including graduation flyer campaigns, countdown graphics, ticket pricing reveals, and social banners.",
       "image": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop",
-      "link": "https://globalgraphics.crevado.com/birthday-celebration-graphics"
+      "link": "https://globalgraphics.crevado.com/birthday-celebration-graphics",
+      "images": [],
+      "links": [
+        { "label": "Strikingly Landing", "url": "https://ggraphics.mystrikingly.com/" }
+      ],
+      "details": "Graduation and final year celebration designs for class of 2026. Includes date reveal templates, ceremony flyer suites, ticket price graphics, and backdrop photo zones."
     },
     {
       "id": "g3",
@@ -22,7 +32,10 @@
       "subcategory": "Digital Collateral",
       "description": "Elegant visual style with gold accents for institutional award listings, presentation graphics, and invitation covers.",
       "image": "https://images.unsplash.com/photo-1496171367470-9ed9a9179d14?q=80&w=800&auto=format&fit=crop",
-      "link": "https://globalgraphics.crevado.com/business-flyer-graphics"
+      "link": "https://globalgraphics.crevado.com/business-flyer-graphics",
+      "images": [],
+      "links": [],
+      "details": "Visual design collateral and slides for the Faculty Awards 2026. Focuses on premium gold accents, clean spacing, and formal grid typography for category announcements."
     },
     {
       "id": "g4",
@@ -30,7 +43,10 @@
       "subcategory": "Creative Flyers",
       "description": "Social media flyer campaign capturing traditional Yoruba outfits, colors, and event details in high-impact typography.",
       "image": "https://images.unsplash.com/photo-1534126511673-b6899657816a?q=80&w=800&auto=format&fit=crop",
-      "link": "https://globalgraphics.crevado.com/my-work"
+      "link": "https://globalgraphics.crevado.com/my-work",
+      "images": [],
+      "links": [],
+      "details": "A social media flyer campaign celebrating cultural heritage and Yoruba fashion outfits. Includes invitation designs, banner announcements, and guest ticket passes."
     }
   ],
   "website_design": [
@@ -40,7 +56,12 @@
       "subcategory": "Portfolio Hub",
       "description": "Curated portfolio showcase categorizing social media designs, logos, and custom flyers for corporate and individual brands.",
       "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop",
-      "link": "https://globalgraphics.crevado.com/"
+      "link": "https://globalgraphics.crevado.com/",
+      "images": [],
+      "links": [
+        { "label": "Crevado Website", "url": "https://globalgraphics.crevado.com/" }
+      ],
+      "details": "Official design portfolio featuring social media graphics, corporate flyer templates, and custom vector logos."
     },
     {
       "id": "w2",
@@ -48,7 +69,12 @@
       "subcategory": "Creative Agency",
       "description": "Modern landing page for brand strategies, visual consulting, and custom graphic services.",
       "image": "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=800&auto=format&fit=crop",
-      "link": "https://ggraphics.mystrikingly.com/"
+      "link": "https://ggraphics.mystrikingly.com/",
+      "images": [],
+      "links": [
+        { "label": "Strikingly Live Portal", "url": "https://ggraphics.mystrikingly.com/" }
+      ],
+      "details": "Studio website and landing page promoting graphic design consultation, brand strategies, and creative assets."
     }
   ],
   "apps": [
@@ -58,7 +84,10 @@
       "subcategory": "Mobile UI/UX",
       "description": "A collaborative study and prep app for University of Ilorin students featuring active sync and user statistics.",
       "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop",
-      "link": "https://github.com/globalgraphics129-rgb"
+      "link": "https://github.com/globalgraphics129-rgb",
+      "images": [],
+      "links": [],
+      "details": "Mobile study synchronization and quiz application UI. Designed for University of Ilorin student cohorts to align schedules, take sample tests, and track progress."
     },
     {
       "id": "a2",
@@ -66,7 +95,10 @@
       "subcategory": "App Interface",
       "description": "A task flow and workspace management mobile client built with high-fidelity components and minimal styling.",
       "image": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop",
-      "link": "https://github.com/globalgraphics129-rgb"
+      "link": "https://github.com/globalgraphics129-rgb",
+      "images": [],
+      "links": [],
+      "details": "UI/UX design of a mobile task flow workspace manager. Focuses on swipe gestures, sub-projects navigation, and offline syncing."
     }
   ],
   "vibe_coding": [
@@ -76,7 +108,10 @@
       "subcategory": "Brand Identity",
       "description": "Official logo redesign for the CISSA community, optimizing brand assets for digital and print formats.",
       "image": "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=800&auto=format&fit=crop",
-      "link": "https://globalgraphics.crevado.com/logo"
+      "link": "https://globalgraphics.crevado.com/logo",
+      "images": [],
+      "links": [],
+      "details": "Redesigning the logo mark of the CISSA student community. Developed custom geometric typography and scalable emblem styles."
     }
   ]
 }

@@ -45,24 +45,27 @@ function CategorySection({ cat, tag, label, sub, data, index }) {
             variants={fadeUp}
             style={{ '--i': i }}
           >
-            <div className={styles.shotImg}>
-              <Image
-                src={project.image}
-                alt={project.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className={styles.img}
-              />
-            </div>
-            <figcaption className={styles.shotCaption}>
-              <div>
-                <span className="mono" style={{ color: 'var(--gray-2)', fontSize: '10px' }}>
-                  {String(i + 1).padStart(2, '0')} / {project.subcategory}
-                </span>
-                <p className={styles.shotTitle}>{project.title}</p>
+            <Link href={`/work/${project.id}`} className={styles.shotLink}>
+              <div className={styles.shotImg}>
+                <Image
+                  src={project.image}
+                  alt={project.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className={styles.img}
+                  unoptimized={project.image.startsWith('https://images.unsplash.com')}
+                />
               </div>
-              <span className={styles.arrow}>↗</span>
-            </figcaption>
+              <figcaption className={styles.shotCaption}>
+                <div>
+                  <span className="mono" style={{ color: 'var(--gray-2)', fontSize: '10px' }}>
+                    {String(i + 1).padStart(2, '0')} / {project.subcategory}
+                  </span>
+                  <p className={styles.shotTitle}>{project.title}</p>
+                </div>
+                <span className={styles.arrow}>↗</span>
+              </figcaption>
+            </Link>
           </motion.figure>
         ))}
       </div>

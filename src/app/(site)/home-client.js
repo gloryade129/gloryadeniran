@@ -191,7 +191,7 @@ export default function HomeClient() {
                 className={`${styles.shot} card`}
                 variants={fadeUp}
               >
-                <Link href={p.link} className={styles.shotLink}>
+                <Link href={`/work/${p.id}`} className={styles.shotLink}>
                   <div className={styles.shotImg}>
                     <Image src={p.image} alt={p.title} fill sizes="(max-width: 768px) 100vw, 50vw" className={styles.img} />
                     <div className={styles.shotGradient} />

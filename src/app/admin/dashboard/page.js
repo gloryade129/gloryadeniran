@@ -22,6 +22,8 @@ export default function Dashboard() {
   const [editingExp, setEditingExp] = useState(null);
   const fileInputRef = useRef(null);
   const profileInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+  const docInputRef = useRef(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem('ga_admin')) {
@@ -158,11 +160,15 @@ export default function Dashboard() {
                     <input className={styles.settingInput} value={editingProject.project.subcategory} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, subcategory: e.target.value}})} required />
                   </div>
                   <div className={`${styles.settingField} ${styles.fullWidth}`}>
-                    <label className="mono">DESCRIPTION</label>
-                    <textarea className={styles.settingInput} style={{ height: '80px' }} value={editingProject.project.description} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, description: e.target.value}})} required />
+                    <label className="mono">SHORT DESCRIPTION</label>
+                    <textarea className={styles.settingInput} style={{ height: '60px' }} value={editingProject.project.description} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, description: e.target.value}})} required />
+                  </div>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">DETAILED STORY</label>
+                    <textarea className={styles.settingInput} style={{ height: '100px' }} value={editingProject.project.details || ''} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, details: e.target.value}})} placeholder="Describe the project story, timeline, disciplines, etc." />
                   </div>
                   <div className={styles.settingField}>
-                    <label className="mono">IMAGE</label>
+                    <label className="mono">COVER IMAGE</label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input className={styles.settingInput} value={editingProject.project.image} readOnly />
                       <button type="button" onClick={() => fileInputRef.current.click()} className="btn-secondary">UPLOAD</button>
@@ -170,8 +176,78 @@ export default function Dashboard() {
                     <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, (path) => setEditingProject({...editingProject, project: {...editingProject.project, image: path}}))} />
                   </div>
                   <div className={styles.settingField}>
-                    <label className="mono">LINK</label>
-                    <input className={styles.settingInput} value={editingProject.project.link} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, link: e.target.value}})} />
+                    <label className="mono">MAIN ACTION LINK</label>
+                    <input className={styles.settingInput} value={editingProject.project.link || ''} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, link: e.target.value}})} placeholder="e.g. https://globalgraphics.crevado.com/" />
+                  </div>
+
+                  {/* ADDITIONAL GALLERY IMAGES */}
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>ADDITIONAL GALLERY IMAGES</span>
+                      <button type="button" onClick={() => galleryInputRef.current.click()} className="btn-secondary" style={{ fontSize: '10px', padding: '4px 8px' }}>+ UPLOAD IMAGE</button>
+                    </label>
+                    <input type="file" ref={galleryInputRef} style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, (path) => {
+                      const currentImages = editingProject.project.images || [];
+                      setEditingProject({...editingProject, project: {...editingProject.project, images: [...currentImages, path]}});
+                    })} />
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', marginTop: '10px' }}>
+                      {(editingProject.project.images || []).map((imgUrl, idx) => (
+                        <div key={idx} style={{ position: 'relative', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', height: '80px' }}>
+                          <Image src={imgUrl} alt="" fill style={{ objectFit: 'cover' }} unoptimized />
+                          <button type="button" onClick={() => {
+                            const filtered = editingProject.project.images.filter((_, i) => i !== idx);
+                            setEditingProject({...editingProject, project: {...editingProject.project, images: filtered}});
+                          }} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(249, 66, 61, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* DOCUMENTS & LINKS */}
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span>DOCUMENTS & LINKS</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="button" onClick={() => docInputRef.current.click()} className="btn-secondary" style={{ fontSize: '10px', padding: '4px 8px' }}>+ UPLOAD FILE</button>
+                        <button type="button" onClick={() => {
+                          const currentLinks = editingProject.project.links || [];
+                          setEditingProject({...editingProject, project: {...editingProject.project, links: [...currentLinks, { label: 'New Link', url: '' }]}});
+                        }} className="btn-secondary" style={{ fontSize: '10px', padding: '4px 8px' }}>+ ADD URL LINK</button>
+                      </div>
+                    </label>
+                    <input type="file" ref={docInputRef} style={{ display: 'none' }} onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      handleImageUpload(e, (path) => {
+                        const currentLinks = editingProject.project.links || [];
+                        setEditingProject({...editingProject, project: {...editingProject.project, links: [...currentLinks, { label: file.name, url: path }]}});
+                      });
+                    }} />
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {(editingProject.project.links || []).map((lnk, idx) => (
+                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '8px', alignItems: 'center' }}>
+                          <input className={styles.settingInput} style={{ fontSize: '12px' }} value={lnk.label} placeholder="Label (e.g. PDF Guide)" onChange={e => {
+                            const updated = [...editingProject.project.links];
+                            updated[idx].label = e.target.value;
+                            setEditingProject({...editingProject, project: {...editingProject.project, links: updated}});
+                          }} required />
+                          <input className={styles.settingInput} style={{ fontSize: '12px' }} value={lnk.url} placeholder="URL or File Path" onChange={e => {
+                            const updated = [...editingProject.project.links];
+                            updated[idx].url = e.target.value;
+                            setEditingProject({...editingProject, project: {...editingProject.project, links: updated}});
+                          }} required />
+                          <button type="button" onClick={() => {
+                            const filtered = editingProject.project.links.filter((_, i) => i !== idx);
+                            setEditingProject({...editingProject, project: {...editingProject.project, links: filtered}});
+                          }} className="btn-secondary" style={{ color: '#F9423D', padding: '10px 12px' }}>✕</button>
+                        </div>
+                      ))}
+                      {(editingProject.project.links || []).length === 0 && (
+                        <p className="mono" style={{ fontSize: '10px', opacity: 0.5 }}>No documents or links added yet.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <button type="submit" className="shiny-cta" style={{ width: '100%', marginTop: '24px' }} disabled={saving}>
@@ -279,16 +355,16 @@ export default function Dashboard() {
                 <div key={cat} className={styles.catSection}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <p className="mono" style={{ color: 'var(--lime)' }}>{cat.toUpperCase()}</p>
-                    <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: true, project: { id: Date.now().toString(), title: '', subcategory: '', description: '', image: '/images/brand.png', link: '/work' } })}>+ ADD</button>
+                    <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: true, project: { id: Date.now().toString(), title: '', subcategory: '', description: '', image: '/images/brand.png', link: '', images: [], links: [], details: '' } })}>+ ADD</button>
                   </div>
                   {projectsData[cat].map(p => (
                     <div key={p.id} className={`${styles.projectRow} card`}>
-                      <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
-                      <div className={styles.projectRowInfo}><p>{p.title}</p><span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory}</span></div>
-                      <div className={styles.projectRowActions}>
-                        <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: {...p} })}>EDIT</button>
+                       <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
+                       <div className={styles.projectRowInfo}><p>{p.title}</p><span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory}</span></div>
+                       <div className={styles.projectRowActions}>
+                        <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: { images: [], links: [], details: '', ...p } })}>EDIT</button>
                         <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = {...projectsData}; d[cat] = d[cat].filter(x => x.id !== p.id); setProjectsData(d); saveToApi('/api/admin/projects', d, 'Deleted'); } }}>DEL</button>
-                      </div>
+                       </div>
                     </div>
                   ))}
                 </div>
