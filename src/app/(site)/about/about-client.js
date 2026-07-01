@@ -51,11 +51,10 @@ export default function AboutClient() {
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 40vw"
-                quality={100}
-                unoptimized={true}
+                quality={90}
                 style={{ 
-                  objectFit: 'contain', 
-                  objectPosition: 'bottom center',
+                  objectFit: 'cover', 
+                  objectPosition: 'top center',
                   filter: 'contrast(1.05) saturate(1.1) drop-shadow(0px 10px 30px rgba(201, 226, 101, 0.15))'
                 }}
               />

@@ -134,8 +134,7 @@ export default function HomeClient() {
                 alt={settingsData.profile.name}
                 fill
                 priority
-                quality={100}
-                unoptimized
+                quality={90}
                 style={{
                   objectFit: 'cover',
                   objectPosition: 'top center',

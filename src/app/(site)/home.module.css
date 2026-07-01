@@ -217,8 +217,8 @@
 
 @media (max-width: 1024px) {
   .heroImage {
-    height: 60vw;
-    max-height: 480px;
+    height: 90vw;
+    max-height: 550px;
     width: 100%;
     align-self: auto;
     margin-top: 40px;
@@ -241,15 +241,22 @@
 /* Image frame — styled as a premium card container */
 .imgFrame {
   position: relative;
-  width: 82%;
-  height: 75%;
-  max-height: 520px;
+  width: 85%;
+  height: 85%;
+  max-height: 680px;
   background: #ffffff; /* matches the studio photo background */
   border: 1px solid var(--border);
   border-radius: 32px;
   padding: 12px;
   overflow: hidden;
   box-shadow: 0 12px 32px rgba(0,0,0,0.25), var(--lime-glow) 0 8px 32px -16px;
+}
+
+@media (max-width: 1024px) {
+  .imgFrame {
+    width: 90%;
+    height: 95%;
+  }
 }
 
 .imgFrame img {
