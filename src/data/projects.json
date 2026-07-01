@@ -1,0 +1,66 @@
+{
+  "graphic_design": [
+    {
+      "id": "g1",
+      "title": "Aether Brand Identity",
+      "subcategory": "Logo & Branding",
+      "description": "Minimalist brand identity for a modern tech startup. Deep gold accents on matte navy.",
+      "image": "/images/brand.png",
+      "link": "/work"
+    },
+    {
+      "id": "g2",
+      "title": "Global Graphics Promo",
+      "subcategory": "Social Media Flyers",
+      "description": "Highly engaging social media visuals designed to drive audience interaction.",
+      "image": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1000&auto=format&fit=crop",
+      "link": "/work"
+    },
+    {
+      "id": "g3",
+      "title": "Corporate Event Materials",
+      "subcategory": "Jotter Designs & Print",
+      "description": "Premium jotter and print material designs for high-end corporate events.",
+      "image": "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=1000&auto=format&fit=crop",
+      "link": "/work"
+    }
+  ],
+  "website_design": [
+    {
+      "id": "w1",
+      "title": "Lumina E-Commerce",
+      "subcategory": "Shopify",
+      "description": "A premium e-commerce platform focusing on seamless checkout flows.",
+      "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop",
+      "link": "/work"
+    },
+    {
+      "id": "w2",
+      "title": "Nexus Analytics Landing",
+      "subcategory": "WordPress",
+      "description": "Sophisticated data visualization marketing page.",
+      "image": "/images/dashboard.png",
+      "link": "/work"
+    }
+  ],
+  "apps": [
+    {
+      "id": "a1",
+      "title": "Aura Banking App",
+      "subcategory": "Mobile UI/UX",
+      "description": "A high-end mobile banking experience focusing on clarity and elegant typography.",
+      "image": "/images/banking_app.png",
+      "link": "/work"
+    }
+  ],
+  "vibe_coding": [
+    {
+      "id": "v1",
+      "title": "Interactive Portfolio",
+      "subcategory": "Front-End Development",
+      "description": "Smooth scrolling, dark/light mode interactive portfolio built with Next.js and Framer Motion.",
+      "image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop",
+      "link": "/work"
+    }
+  ]
+}

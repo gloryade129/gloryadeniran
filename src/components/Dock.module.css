@@ -1,0 +1,134 @@
+/* ── macOS DOCK ── */
+
+.dock {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9990;
+  pointer-events: auto;
+}
+
+.dockInner {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba(18, 18, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 0.5px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 rgba(255, 255, 255, 0.1) inset;
+}
+
+/* ── ICON WRAPPER ── */
+.iconWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── TOOLTIP ── */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(28, 28, 28, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 8px;
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(28, 28, 28, 0.95);
+}
+
+/* ── ICON ── */
+.icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  position: relative;
+  /* Push transform-origin to bottom for dock pop */
+  transform-origin: bottom center;
+  will-change: transform;
+}
+
+.icon svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.icon:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Active page icon */
+.iconActive {
+  background: rgba(201, 226, 101, 0.15) !important;
+  border-color: rgba(201, 226, 101, 0.35) !important;
+  color: #C9E265 !important;
+  box-shadow: 0 0 20px rgba(201, 226, 101, 0.15);
+}
+
+/* ── ACTIVE DOT ── */
+.activeDot {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #C9E265;
+  box-shadow: 0 0 6px #C9E265;
+}
+
+/* Mobile: smaller dock */
+@media (max-width: 640px) {
+  .dockInner {
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 20px;
+  }
+  .icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+  .icon svg {
+    width: 17px;
+    height: 17px;
+  }
+}

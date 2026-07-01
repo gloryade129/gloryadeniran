@@ -1,0 +1,430 @@
+'use client';
+
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import styles from './dashboard.module.css';
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [projectsData, setProjectsData] = useState(null);
+  const [settingsData, setSettingsData] = useState(null);
+  const [experienceData, setExperienceData] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  
+  // Editor States
+  const [editingProject, setEditingProject] = useState(null);
+  const [editingExp, setEditingExp] = useState(null);
+  const fileInputRef = useRef(null);
+  const profileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('ga_admin')) {
+      router.replace('/admin');
+    } else {
+      fetchData();
+    }
+  }, [router]);
+
+  const fetchData = async () => {
+    try {
+      const [projRes, setRes, expRes, msgRes] = await Promise.all([
+        fetch('/api/admin/projects'),
+        fetch('/api/admin/settings'),
+        fetch('/api/admin/experience'),
+        fetch('/api/admin/messages')
+      ]);
+      setProjectsData(await projRes.json());
+      setSettingsData(await setRes.json());
+      setExperienceData(await expRes.json());
+      setMessages(await msgRes.json());
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveToApi = async (endpoint, data, successMsg) => {
+    setSaving(true);
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        setMessage(successMsg);
+        setTimeout(() => setMessage(''), 3000);
+        return true;
+      }
+    } catch (error) {
+      console.error(`Error saving to ${endpoint}:`, error);
+    } finally {
+      setSaving(false);
+    }
+    return false;
+  };
+
+  const handleImageUpload = async (e, callback) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      setSaving(true);
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.path) callback(data.path);
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteMessage = async (id) => {
+    if (!confirm('Delete this message?')) return;
+    try {
+      await fetch('/api/admin/messages', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      setMessages(messages.filter(m => m.id !== id));
+    } catch (err) { console.error(err); }
+  };
+
+  const logout = () => {
+    sessionStorage.removeItem('ga_admin');
+    router.push('/admin');
+  };
+
+  if (loading || !projectsData || !settingsData) {
+    return (
+      <div className={styles.page}>
+        <div className="grain" aria-hidden="true" />
+        <div className={styles.main} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <p className="mono">ESTABLISHING_ENCRYPTED_CONNECTION...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const allProjects = Object.values(projectsData).flat();
+
+  return (
+    <div className={styles.page}>
+      <div className="grain" aria-hidden="true" />
+
+      <AnimatePresence>
+        {message && (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className={styles.toast}>
+            <p className="mono">✓ {message.toUpperCase()}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── PROJECT MODAL ── */}
+      <AnimatePresence>
+        {editingProject && (
+          <div className={styles.modalOverlay}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <h2 className="mono">PROJECT_EDITOR</h2>
+                <button onClick={() => setEditingProject(null)} className={styles.closeBtn}>✕</button>
+              </div>
+              <form className={styles.modalContent} onSubmit={(e) => {
+                e.preventDefault();
+                const newData = { ...projectsData };
+                const cat = editingProject.category;
+                const proj = editingProject.project;
+                if (editingProject.isNew) newData[cat] = [proj, ...newData[cat]];
+                else newData[cat] = newData[cat].map(p => p.id === proj.id ? proj : p);
+                saveToApi('/api/admin/projects', newData, 'Project Saved').then(ok => ok && setEditingProject(null));
+              }}>
+                <div className={styles.formGrid}>
+                  <div className={styles.settingField}>
+                    <label className="mono">TITLE</label>
+                    <input className={styles.settingInput} value={editingProject.project.title} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, title: e.target.value}})} required />
+                  </div>
+                  <div className={styles.settingField}>
+                    <label className="mono">SUBCATEGORY</label>
+                    <input className={styles.settingInput} value={editingProject.project.subcategory} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, subcategory: e.target.value}})} required />
+                  </div>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">DESCRIPTION</label>
+                    <textarea className={styles.settingInput} style={{ height: '80px' }} value={editingProject.project.description} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, description: e.target.value}})} required />
+                  </div>
+                  <div className={styles.settingField}>
+                    <label className="mono">IMAGE</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input className={styles.settingInput} value={editingProject.project.image} readOnly />
+                      <button type="button" onClick={() => fileInputRef.current.click()} className="btn-secondary">UPLOAD</button>
+                    </div>
+                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, (path) => setEditingProject({...editingProject, project: {...editingProject.project, image: path}}))} />
+                  </div>
+                  <div className={styles.settingField}>
+                    <label className="mono">LINK</label>
+                    <input className={styles.settingInput} value={editingProject.project.link} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, link: e.target.value}})} />
+                  </div>
+                </div>
+                <button type="submit" className="shiny-cta" style={{ width: '100%', marginTop: '24px' }} disabled={saving}>
+                  {saving ? 'PROCESSING...' : 'SAVE PROJECT'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── EXPERIENCE MODAL ── */}
+      <AnimatePresence>
+        {editingExp && (
+          <div className={styles.modalOverlay}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <h2 className="mono">EXPERIENCE_EDITOR</h2>
+                <button onClick={() => setEditingExp(null)} className={styles.closeBtn}>✕</button>
+              </div>
+              <form className={styles.modalContent} onSubmit={(e) => {
+                e.preventDefault();
+                let newData;
+                if (editingExp.isNew) newData = [editingExp.item, ...experienceData];
+                else newData = experienceData.map(item => item.id === editingExp.item.id ? editingExp.item : item);
+                saveToApi('/api/admin/experience', newData, 'Experience Updated').then(ok => ok && setEditingExp(null));
+                setExperienceData(newData);
+              }}>
+                <div className={styles.formGrid}>
+                  <div className={styles.settingField}><label className="mono">ROLE</label><input className={styles.settingInput} value={editingExp.item.role} onChange={e => setEditingExp({...editingExp, item: {...editingExp.item, role: e.target.value}})} required /></div>
+                  <div className={styles.settingField}><label className="mono">COMPANY</label><input className={styles.settingInput} value={editingExp.item.company} onChange={e => setEditingExp({...editingExp, item: {...editingExp.item, company: e.target.value}})} required /></div>
+                  <div className={styles.settingField}><label className="mono">PERIOD</label><input className={styles.settingInput} value={editingExp.item.period} onChange={e => setEditingExp({...editingExp, item: {...editingExp.item, period: e.target.value}})} required /></div>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}><label className="mono">DESCRIPTION</label><textarea className={styles.settingInput} style={{ height: '80px' }} value={editingExp.item.description} onChange={e => setEditingExp({...editingExp, item: {...editingExp.item, description: e.target.value}})} required /></div>
+                </div>
+                <button type="submit" className="shiny-cta" style={{ width: '100%', marginTop: '24px' }}>SAVE EXPERIENCE</button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarTop}>
+          <div className={styles.sidebarLogo}>GLORY<span style={{ color: 'var(--lime)' }}>.</span></div>
+          <nav className={styles.sidebarNav}>
+            {[
+              { id: 'overview', label: 'OVERVIEW' },
+              { id: 'portfolio', label: 'PORTFOLIO' },
+              { id: 'experience', label: 'EXPERIENCE' },
+              { id: 'home', label: 'HOME_UI' },
+              { id: 'inbox', label: 'INBOX', count: messages.length },
+              { id: 'profile', label: 'PUBLIC_INFO' },
+              { id: 'settings', label: 'ECOSYSTEM' },
+            ].map(t => (
+              <button key={t.id} className={`${styles.navBtn} ${activeTab === t.id ? styles.navBtnActive : ''}`} onClick={() => setActiveTab(t.id)}>
+                <span className="mono">{t.label} {t.count > 0 && `(${t.count})`}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+        <button className={styles.logoutBtn} onClick={logout}><span className="mono">TERMINATE_SESSION →</span></button>
+      </aside>
+
+      <main className={styles.main}>
+        <header className={styles.topbar}>
+          <h1 className={styles.pageTitle}>{activeTab.replace('_', ' ').toUpperCase()}</h1>
+          <div className={styles.liveStatus}><div className="btn-dot" /><span className="mono">V3.0.0_DYNAMIC</span></div>
+        </header>
+
+        <div className={styles.content}>
+          {activeTab === 'overview' && (
+            <>
+              <div className={styles.statsGrid}>
+                {[
+                  { label: 'Projects', value: allProjects.length, tag: 'LIVE' },
+                  { label: 'Inbox', value: messages.length, tag: 'UNREAD' },
+                  { label: 'Exp', value: experienceData.length, tag: 'YEARS' },
+                  { label: 'Status', value: 'OPTIMAL', tag: 'HEALTH' },
+                ].map(s => (
+                  <div key={s.label} className={`${styles.statCard} card`}>
+                    <span className="mono" style={{ color: 'var(--gray-2)', fontSize: '10px' }}>{s.tag}</span>
+                    <div className={styles.statValue}>{s.value}</div>
+                    <div className={styles.statLabel}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className={styles.sectionTitle}><p className="mono">LATEST_MESSAGES</p></div>
+              <div className={styles.projectList}>
+                {messages.slice(0, 3).map(m => (
+                  <div key={m.id} className={`${styles.projectRow} card`}>
+                    <div className={styles.projectRowInfo}>
+                      <p className={styles.projectRowTitle}>{m.content}</p>
+                      <span className="mono" style={{ fontSize: '10px', color: 'var(--lime)' }}>{m.type} — FROM {m.from}</span>
+                    </div>
+                  </div>
+                ))}
+                {messages.length === 0 && <p className="mono" style={{ opacity: 0.5 }}>Inbox is empty.</p>}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'portfolio' && (
+            <>
+              {Object.keys(projectsData).map(cat => (
+                <div key={cat} className={styles.catSection}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <p className="mono" style={{ color: 'var(--lime)' }}>{cat.toUpperCase()}</p>
+                    <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: true, project: { id: Date.now().toString(), title: '', subcategory: '', description: '', image: '/images/brand.png', link: '/work' } })}>+ ADD</button>
+                  </div>
+                  {projectsData[cat].map(p => (
+                    <div key={p.id} className={`${styles.projectRow} card`}>
+                      <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
+                      <div className={styles.projectRowInfo}><p>{p.title}</p><span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory}</span></div>
+                      <div className={styles.projectRowActions}>
+                        <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: {...p} })}>EDIT</button>
+                        <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = {...projectsData}; d[cat] = d[cat].filter(x => x.id !== p.id); setProjectsData(d); saveToApi('/api/admin/projects', d, 'Deleted'); } }}>DEL</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+
+          {activeTab === 'experience' && (
+            <>
+              <button className="shiny-cta" style={{ marginBottom: '24px', width: '100%' }} onClick={() => setEditingExp({ isNew: true, item: { id: Date.now().toString(), role: '', company: '', period: '', description: '' } })}>+ ADD EXPERIENCE ENTRY</button>
+              <div className={styles.projectList}>
+                {experienceData.map(exp => (
+                  <div key={exp.id} className={`${styles.projectRow} card`}>
+                    <div className={styles.projectRowInfo}><p>{exp.role}</p><span className="mono" style={{ color: 'var(--lime)', fontSize: '10px' }}>{exp.company} | {exp.period}</span></div>
+                    <div className={styles.projectRowActions}>
+                      <button className="btn-secondary" onClick={() => setEditingExp({ isNew: false, item: {...exp} })}>EDIT</button>
+                      <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = experienceData.filter(x => x.id !== exp.id); setExperienceData(d); saveToApi('/api/admin/experience', d, 'Deleted'); } }}>DEL</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'home' && (
+            <div className={styles.formGrid}>
+              <div className={`${styles.settingsCard} card`} style={{ gridColumn: 'span 2' }}>
+                <p className="mono" style={{ color: 'var(--lime)', marginBottom: '20px' }}>HERO_HEADLINES</p>
+                <div className={styles.settingField}><label className="mono">HEADLINE_1</label><input className={styles.settingInput} value={settingsData.hero.headline_1} onChange={e => setSettingsData({...settingsData, hero: {...settingsData.hero, headline_1: e.target.value}})} /></div>
+                <div className={styles.settingField}><label className="mono">ROTATING_TEXTS_1 (COMMA_SEPARATED)</label><input className={styles.settingInput} value={settingsData.hero.rotate_1.join(', ')} onChange={e => setSettingsData({...settingsData, hero: {...settingsData.hero, rotate_1: e.target.value.split(',').map(s => s.trim())}})} /></div>
+                <div className={styles.settingField}><label className="mono">HEADLINE_2</label><input className={styles.settingInput} value={settingsData.hero.headline_2} onChange={e => setSettingsData({...settingsData, hero: {...settingsData.hero, headline_2: e.target.value}})} /></div>
+                <div className={styles.settingField}><label className="mono">ROTATING_TEXTS_2 (COMMA_SEPARATED)</label><input className={styles.settingInput} value={settingsData.hero.rotate_2.join(', ')} onChange={e => setSettingsData({...settingsData, hero: {...settingsData.hero, rotate_2: e.target.value.split(',').map(s => s.trim())}})} /></div>
+              </div>
+              <div className={`${styles.settingsCard} card`} style={{ gridColumn: 'span 2' }}>
+                <p className="mono" style={{ color: 'var(--lime)', marginBottom: '20px' }}>QUICK_STATS</p>
+                {settingsData.hero.stats.map((stat, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <input className={styles.settingInput} value={stat.val} onChange={e => {
+                      const newStats = [...settingsData.hero.stats];
+                      newStats[i].val = e.target.value;
+                      setSettingsData({...settingsData, hero: {...settingsData.hero, stats: newStats}});
+                    }} />
+                    <input className={styles.settingInput} value={stat.label} onChange={e => {
+                      const newStats = [...settingsData.hero.stats];
+                      newStats[i].label = e.target.value;
+                      setSettingsData({...settingsData, hero: {...settingsData.hero, stats: newStats}});
+                    }} />
+                  </div>
+                ))}
+              </div>
+              <div className={`${styles.settingsCard} card`} style={{ gridColumn: 'span 2' }}>
+                <p className="mono" style={{ color: 'var(--lime)', marginBottom: '20px' }}>BOTTOM_CTA</p>
+                <div className={styles.settingField}><label className="mono">HEADING</label><input className={styles.settingInput} value={settingsData.cta.heading} onChange={e => setSettingsData({...settingsData, cta: {...settingsData.cta, heading: e.target.value}})} /></div>
+                <div className={styles.settingField}><label className="mono">DESCRIPTION</label><input className={styles.settingInput} value={settingsData.cta.text} onChange={e => setSettingsData({...settingsData, cta: {...settingsData.cta, text: e.target.value}})} /></div>
+              </div>
+              <button className="shiny-cta" style={{ width: '100%', gridColumn: 'span 2' }} onClick={() => saveToApi('/api/admin/settings', settingsData, 'Home UI Updated')}>UPDATE HOME PAGE</button>
+            </div>
+          )}
+
+          {activeTab === 'inbox' && (
+            <div className={styles.projectList}>
+              {messages.map(m => (
+                <div key={m.id} className={`${styles.projectRow} card`} style={{ alignItems: 'flex-start' }}>
+                  <div className={styles.projectRowInfo}>
+                    <p style={{ fontSize: '15px', marginBottom: '8px' }}>{m.content}</p>
+                    <div className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)', display: 'flex', gap: '12px' }}>
+                      <span>TYPE: {m.type}</span>
+                      <span>FROM: {m.from}</span>
+                      <span>DATE: {new Date(m.date).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => deleteMessage(m.id)}>DELETE</button>
+                </div>
+              ))}
+              {messages.length === 0 && <p className="mono" style={{ opacity: 0.5, textAlign: 'center', padding: '40px' }}>No messages or requests yet.</p>}
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className={styles.formGrid}>
+              <div className={`${styles.settingsCard} card`} style={{ gridColumn: 'span 2' }}>
+                <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
+                  <div className={styles.profileImg} style={{ borderRadius: '50%' }}>
+                    <Image src={settingsData.profile.image} alt="" fill style={{ objectFit: 'contain' }} unoptimized />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p className="mono" style={{ color: 'var(--gray-2)', fontSize: '10px' }}>PROFILE_AVATAR</p>
+                    <button className="btn-secondary" style={{ marginTop: '12px' }} onClick={() => profileInputRef.current.click()}>CHANGE PHOTO</button>
+                    <input type="file" ref={profileInputRef} style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, (path) => { 
+                      const newData = {...settingsData, profile: {...settingsData.profile, image: path}};
+                      setSettingsData(newData);
+                      saveToApi('/api/admin/settings', newData, 'Profile Photo Updated');
+                    })} />
+                  </div>
+                </div>
+              </div>
+              <div className={`${styles.settingsCard} card`} style={{ gridColumn: 'span 2' }}>
+                <div className={styles.settingField}><label className="mono">DISPLAY_NAME</label><input className={styles.settingInput} value={settingsData.profile.name} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, name: e.target.value}})} /></div>
+                <div className={styles.settingField}><label className="mono">ROLE_TITLE</label><input className={styles.settingInput} value={settingsData.profile.title} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, title: e.target.value}})} /></div>
+                <div className={styles.settingField}><label className="mono">BIO</label><textarea className={styles.settingInput} style={{ height: '120px' }} value={settingsData.profile.bio} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, bio: e.target.value}})} /></div>
+                <button className="shiny-cta" style={{ width: '100%' }} onClick={() => saveToApi('/api/admin/settings', settingsData, 'Profile Updated')}>SAVE CHANGES</button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className={`${styles.settingsCard} card`}>
+               <div className={styles.settingField}><label className="mono">EMAIL</label><input className={styles.settingInput} value={settingsData.profile.email} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, email: e.target.value}})} /></div>
+               <div className={styles.settingField}><label className="mono">LOCATION</label><input className={styles.settingInput} value={settingsData.profile.location} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, location: e.target.value}})} /></div>
+               <div className={styles.settingField}><label className="mono">INSTAGRAM</label><input className={styles.settingInput} value={settingsData.profile.instagram} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, instagram: e.target.value}})} /></div>
+               <div className={styles.settingField}><label className="mono">FACEBOOK</label><input className={styles.settingInput} value={settingsData.profile.facebook} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, facebook: e.target.value}})} /></div>
+               <div className={styles.settingField}><label className="mono">AVAILABILITY</label><input className={styles.settingInput} value={settingsData.profile.availability} onChange={e => setSettingsData({...settingsData, profile: {...settingsData.profile, availability: e.target.value}})} /></div>
+               <div className={styles.settingField} style={{ marginTop: '12px' }}>
+                 <label className="mono" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                   <input 
+                     type="checkbox" 
+                     checked={settingsData.musicEnabled} 
+                     onChange={e => setSettingsData({...settingsData, musicEnabled: e.target.checked})}
+                     style={{ width: '18px', height: '18px', accentColor: 'var(--lime)' }}
+                   />
+                   ENABLE_SITE_MUSIC (SPOTIFY_PLAYER)
+                 </label>
+               </div>
+               <div className={styles.field} style={{ marginTop: '20px' }}>
+                 <p className="mono" style={{ color: 'var(--lime)', fontSize: '10px', marginBottom: '12px' }}>SERVICES (COMMA_SEPARATED)</p>
+                 <textarea className={styles.settingInput} value={settingsData.services.join(', ')} onChange={e => setSettingsData({...settingsData, services: e.target.value.split(',').map(s => s.trim())})} style={{ height: '60px' }} />
+               </div>
+               <div className={styles.field} style={{ marginTop: '20px' }}>
+                 <p className="mono" style={{ color: 'var(--lime)', fontSize: '10px', marginBottom: '12px' }}>TOOLS_ARSENAL (COMMA_SEPARATED)</p>
+                 <textarea className={styles.settingInput} value={settingsData.tools.join(', ')} onChange={e => setSettingsData({...settingsData, tools: e.target.value.split(',').map(s => s.trim())})} style={{ height: '80px' }} />
+               </div>
+               <button className="shiny-cta" style={{ width: '100%', marginTop: '24px' }} onClick={() => saveToApi('/api/admin/settings', settingsData, 'Ecosystem Updated')}>SAVE ECOSYSTEM SETTINGS</button>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

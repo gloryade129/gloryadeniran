@@ -1,0 +1,112 @@
+{
+  "profile": {
+    "name": "Glory Adeniran",
+    "title": "Product Designer · Vibe Coder",
+    "bio": "I'm Glory Adeniran - a product designer and vibe coder based in Nigeria. I bridge the gap between stunning visuals and technical execution, crafting digital experiences that don't just look good - they perform.",
+    "location": "Nigeria",
+    "email": "adeniranglory129@gmail.com",
+    "availability": "Available for new projects",
+    "instagram": "https://www.instagram.com/gloryadeniran129/",
+    "facebook": "https://www.facebook.com/adeniranglo/",
+    "image": "/images/Put_an_I_watch_to_202606282357.jpeg"
+  },
+  "hero": {
+    "headline_1": "Design that",
+    "rotate_1": [
+      "Speaks.",
+      "Innovates.",
+      "Captivates."
+    ],
+    "headline_2": "Code that",
+    "rotate_2": [
+      "Performs.",
+      "Scales.",
+      "Adapts."
+    ],
+    "stats": [
+      {
+        "val": "50+",
+        "label": "Projects"
+      },
+      {
+        "val": "3+",
+        "label": "Years XP"
+      },
+      {
+        "val": "100%",
+        "label": "Delivered"
+      }
+    ]
+  },
+  "cta": {
+    "heading": "Ready for your own project?",
+    "text": "Taking select projects. Response within 24 hours."
+  },
+  "skills": [
+    {
+      "cat": "GRAPHIC_DESIGN",
+      "items": [
+        "Logo Design",
+        "Brand Identity",
+        "Social Media Flyers",
+        "Jotter Design",
+        "Print Materials",
+        "Mockup Design"
+      ]
+    },
+    {
+      "cat": "WEBSITE_DESIGN",
+      "items": [
+        "Shopify",
+        "WordPress",
+        "Wix",
+        "Landing Pages",
+        "E-Commerce",
+        "Corporate Sites"
+      ]
+    },
+    {
+      "cat": "APPS",
+      "items": [
+        "Mobile UI/UX",
+        "App Prototyping",
+        "User Flows",
+        "Wireframing",
+        "iOS Design",
+        "Android Design"
+      ]
+    },
+    {
+      "cat": "VIBE_CODING",
+      "items": [
+        "Next.js",
+        "React",
+        "Framer Motion",
+        "Three.js",
+        "CSS Animation",
+        "Lenis Scroll"
+      ]
+    }
+  ],
+  "tools": [
+    "Figma",
+    "Adobe Illustrator",
+    "Photoshop",
+    "Canva",
+    "VS Code",
+    "Next.js",
+    "React",
+    "Three.js",
+    "Framer Motion",
+    "Shopify",
+    "WordPress"
+  ],
+  "services": [
+    "Graphic Design",
+    "Website Design",
+    "App Design",
+    "Vibe Coding",
+    "Brand Identity"
+  ],
+  "musicEnabled": true
+}
