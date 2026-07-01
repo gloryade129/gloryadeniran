@@ -2,6 +2,7 @@ import { getProjects } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import ProjectClient from './project-client';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function generateStaticParams() {

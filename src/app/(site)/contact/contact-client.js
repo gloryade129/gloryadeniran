@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import settingsData from '@/data/settings.json';
 import styles from './contact.module.css';
 
-export default function ContactClient() {
-  const { profile } = settingsData;
+export default function ContactClient({ initialSettings = {} }) {
+  const { profile = {}, services = [] } = initialSettings;
   const [form, setForm] = useState({ name: '', email: '', project: '', message: '' });
   const [sent, setSent] = useState(false);
 
@@ -83,7 +82,7 @@ export default function ContactClient() {
 
             <div className={`${styles.infoCard} card`}>
               <p className="mono" style={{ color: 'var(--gray-2)', fontSize: '10px', marginBottom: '20px' }}>SERVICES</p>
-              {settingsData.services.map(s => (
+              {services.map(s => (
                 <div key={s} className={styles.serviceRow}>
                   <span className="btn-dot" style={{ width: '4px', height: '4px' }} />
                   <span style={{ fontSize: '13px', color: 'var(--gray-1)' }}>{s}</span>
