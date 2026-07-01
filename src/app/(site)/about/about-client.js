@@ -61,7 +61,7 @@ export default function AboutClient() {
             </div>
             <figcaption className={styles.portraitTag} aria-hidden="true">
               <span>{profile.name}</span>
-              <span>{profile.location} · 2025</span>
+              <span>{profile.location} · 2026</span>
             </figcaption>
           </motion.figure>
         </div>

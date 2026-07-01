@@ -38,8 +38,8 @@ function RotatingName({ isLight }) {
         >
           GLORY{"\n"}ADENIRAN
           <meshStandardMaterial
-            color={isLight ? "#8BA51E" : "#C9E265"}
-            emissive={isLight ? "#8BA51E" : "#C9E265"}
+            color={isLight ? "#005BC4" : "#0091FF"}
+            emissive={isLight ? "#005BC4" : "#0091FF"}
             emissiveIntensity={isLight ? 0.05 : 0.12}
             roughness={0.2}
             metalness={0.8}
@@ -79,7 +79,7 @@ function FloatingShapes({ isLight }) {
     <group ref={shapesRef}>
       <Float speed={0.4} rotationIntensity={0.2} floatIntensity={0.5}>
         <Torus args={[1, 0.3, 16, 32]} position={[-6, 3, -5]}>
-          <meshStandardMaterial color={isLight ? "#8BA51E" : "#C9E265"} wireframe={true} emissive={isLight ? "#8BA51E" : "#C9E265"} emissiveIntensity={isLight ? 0.04 : 0.08} />
+          <meshStandardMaterial color={isLight ? "#005BC4" : "#0091FF"} wireframe={true} emissive={isLight ? "#005BC4" : "#0091FF"} emissiveIntensity={isLight ? 0.04 : 0.08} />
         </Torus>
       </Float>
 
@@ -97,7 +97,7 @@ function FloatingShapes({ isLight }) {
 
       <Float speed={0.5} rotationIntensity={0.4} floatIntensity={0.5}>
         <TorusKnot args={[0.8, 0.25, 64, 8]} position={[6, -4, -4]}>
-          <meshStandardMaterial color={isLight ? "#8BA51E" : "#C9E265"} wireframe={true} emissive={isLight ? "#8BA51E" : "#C9E265"} emissiveIntensity={isLight ? 0.04 : 0.08} />
+          <meshStandardMaterial color={isLight ? "#005BC4" : "#0091FF"} wireframe={true} emissive={isLight ? "#005BC4" : "#0091FF"} emissiveIntensity={isLight ? 0.04 : 0.08} />
         </TorusKnot>
       </Float>
     </group>
@@ -107,12 +107,23 @@ function FloatingShapes({ isLight }) {
 export default function Scene3D() {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const isLight = mounted && theme === 'light';
+  if (!mounted || isMobile) {
+    return null;
+  }
+
+  const isLight = theme === 'light';
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 0 }}>
@@ -120,7 +131,7 @@ export default function Scene3D() {
         <Suspense fallback={null}>
           <ambientLight intensity={isLight ? 0.85 : 0.6} />
           <spotLight position={[10, 10, 10]} angle={0.2} penumbra={1} intensity={isLight ? 1.8 : 1.5} />
-          <pointLight position={[-10, -10, -10]} color={isLight ? "#8BA51E" : "#C9E265"} intensity={2.5} />
+          <pointLight position={[-10, -10, -10]} color={isLight ? "#005BC4" : "#0091FF"} intensity={2.5} />
           <Stars radius={50} depth={50} count={800} factor={1.5} saturation={0} fade speed={0.3} />
           <RotatingName isLight={isLight} />
           <FloatingShapes isLight={isLight} />

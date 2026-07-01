@@ -45,7 +45,7 @@ export default function Preloader() {
           <svg width="300" height="150" viewBox="0 0 300 150" fill="none" xmlns="http://www.w3.org/2000/svg">
             <motion.path
               d={signaturePath}
-              stroke="#C9E265"
+              stroke="#0091FF"
               strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -92,7 +92,7 @@ export default function Preloader() {
               transition={{ duration: 2.2, ease: "circOut" }}
               style={{
                 height: '100%',
-                background: '#C9E265'
+                background: '#0091FF'
               }}
             />
           </div>

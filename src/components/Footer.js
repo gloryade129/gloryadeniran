@@ -6,7 +6,7 @@ import styles from './Footer.module.css';
 
 export default function Footer() {
   const { profile } = settingsData;
-  const [year, setYear] = useState(2025);
+  const [year, setYear] = useState(2026);
 
   useEffect(() => {
     setYear(new Date().getFullYear());

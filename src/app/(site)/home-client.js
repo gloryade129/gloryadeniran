@@ -52,7 +52,7 @@ export default function HomeClient() {
             <motion.p variants={fadeUp} className="eyebrow">
               <span className="eyebrow-bar" aria-hidden="true" />
               <span className="eyebrow-tag">[01]</span>
-              {settingsData.profile.title} · 2025
+              {settingsData.profile.title} · 2026
             </motion.p>
 
             <h1 className={styles.headline}>
@@ -153,7 +153,7 @@ export default function HomeClient() {
             {[
               { label: 'Designer',  value: settingsData.profile.name },
               { label: 'Specialty', value: settingsData.profile.title },
-              { label: 'Year',      value: '2025' },
+              { label: 'Year',      value: '2026' },
               { label: 'Services',  value: 'Graphic · Web · Apps · Code' },
               { label: 'Location',  value: settingsData.profile.location },
             ].map(({ label, value }) => (

@@ -104,7 +104,7 @@ export default function ContactClient() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className={styles.form}>
-                <div className="card" style={{ marginBottom: '24px', border: '1px solid rgba(201,226,101,0.2)', background: 'rgba(201,226,101,0.02)', padding: '20px' }}>
+                <div className="card" style={{ marginBottom: '24px', border: '1px solid rgba(0,145,255,0.2)', background: 'rgba(0,145,255,0.02)', padding: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
                     <div>
                       <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px', color: 'var(--white)' }}>Prefer Instant Chat?</h3>

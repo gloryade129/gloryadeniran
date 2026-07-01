@@ -4,11 +4,13 @@ import SmoothScroll from "@/components/SmoothScroll";
 import Preloader from "@/components/Preloader";
 import Scene3D from "@/components/Scene3D";
 import MusicPlayer from "@/components/MusicPlayer";
+import AccentColorAnimator from "@/components/AccentColorAnimator";
 import settingsData from "@/data/settings.json";
 
 export default function SiteLayout({ children }) {
   return (
     <>
+      <AccentColorAnimator />
       {/* Apple liquid glass SVG distortion filter — referenced globally */}
       <svg style={{ display: 'none' }} aria-hidden="true">
         <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
