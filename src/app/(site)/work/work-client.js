@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import projectsData from '@/data/projects.json';
 import styles from './work.module.css';
 
 const fadeUp = {
@@ -73,7 +72,8 @@ function CategorySection({ cat, tag, label, sub, data, index }) {
   );
 }
 
-export default function WorkClient() {
+export default function WorkClient({ initialData }) {
+  const projectsData = initialData || {};
   return (
     <>
       <div className="grain" aria-hidden="true" />

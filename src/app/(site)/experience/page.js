@@ -1,19 +1,23 @@
-import experienceData from '@/data/experience.json';
+import { getExperience } from '@/lib/data';
 
-export default function Experience() {
+export const revalidate = 0;
+
+export default async function Experience() {
+  const experienceData = await getExperience();
+
   return (
     <div style={{ paddingTop: '100px', minHeight: '100vh', padding: '100px 2rem 2rem', maxWidth: '800px', margin: '0 auto' }}>
       <h1 className="animate-fade-in" style={{ fontSize: '3rem', marginBottom: '2rem' }}>Experience</h1>
       <div className="animate-fade-in" style={{ animationDelay: '0.2s', borderLeft: '2px solid var(--lime)', paddingLeft: '2rem' }}>
-        {experienceData.map((exp, i) => (
+        {experienceData.map((exp) => (
           <div key={exp.id} style={{ marginBottom: '2.5rem', position: 'relative' }}>
-            <div style={{ 
-              position: 'absolute', 
-              left: '-39px', 
-              top: '8px', 
-              width: '15px', 
-              height: '15px', 
-              borderRadius: '50%', 
+            <div style={{
+              position: 'absolute',
+              left: '-39px',
+              top: '8px',
+              width: '15px',
+              height: '15px',
+              borderRadius: '50%',
               background: 'var(--lime)',
               boxShadow: '0 0 15px var(--lime)'
             }}></div>

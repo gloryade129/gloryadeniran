@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { put } from '@vercel/blob';
 
 export async function POST(request) {
   try {
@@ -11,15 +10,21 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = file.name.replace(/\s+/g, '_');
-    const uploadPath = path.join(process.cwd(), 'public', 'images', fileName);
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json(
+        { error: 'Blob storage not configured. Please add BLOB_READ_WRITE_TOKEN to Vercel environment variables.' },
+        { status: 503 }
+      );
+    }
 
-    fs.writeFileSync(uploadPath, buffer);
+    const blob = await put(file.name, file, {
+      access: 'public',
+      addRandomSuffix: true, // prevents filename collisions
+    });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'File uploaded successfully',
-      path: `/images/${fileName}` 
+      path: blob.url,
     });
   } catch (error) {
     console.error('Upload error:', error);

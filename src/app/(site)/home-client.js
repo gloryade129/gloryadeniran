@@ -4,8 +4,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import dynamic_import from 'next/dynamic';
-import projectsData from '@/data/projects.json';
-import settingsData from '@/data/settings.json';
 import styles from './home.module.css';
 import { TextRotate } from '@/components/TextRotate';
 
@@ -26,14 +24,17 @@ const stagger = {
   show:   { transition: { staggerChildren: 0.11 } }
 };
 
-const allProjects = [
-  ...projectsData.graphic_design,
-  ...projectsData.website_design,
-  ...projectsData.apps,
-  ...projectsData.vibe_coding,
-].slice(0, 4);
+export default function HomeClient({ initialProjects = {}, initialSettings = {} }) {
+  const projectsData = initialProjects;
+  const settingsData = initialSettings;
 
-export default function HomeClient() {
+  const allProjects = [
+    ...(projectsData.graphic_design || []),
+    ...(projectsData.website_design || []),
+    ...(projectsData.apps || []),
+    ...(projectsData.vibe_coding || []),
+  ].slice(0, 4);
+
   return (
     <>
       <div className="grain" aria-hidden="true" />
