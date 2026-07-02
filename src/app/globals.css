@@ -8,6 +8,7 @@
 
 /* ─── DESIGN TOKENS ─── */
 :root, .dark {
+  color-scheme: dark;
   --bg:           #080706;
   --bg-2:         #0E0E10;
   --bg-card:      rgba(14, 14, 16, 0.62);

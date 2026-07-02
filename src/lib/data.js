@@ -20,9 +20,9 @@ const KEYS = {
 
 // Execute any Redis command via the REST API
 async function redisCmd(...args) {
-  const url   = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) throw new Error('UPSTASH env vars not set');
+  const url   = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  if (!url || !token) throw new Error('UPSTASH/KV env vars not set');
 
   const res = await fetch(url, {
     method: 'POST',
