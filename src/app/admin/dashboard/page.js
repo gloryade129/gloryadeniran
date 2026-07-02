@@ -148,7 +148,12 @@ export default function Dashboard() {
                 const proj = editingProject.project;
                 if (editingProject.isNew) newData[cat] = [proj, ...newData[cat]];
                 else newData[cat] = newData[cat].map(p => p.id === proj.id ? proj : p);
-                saveToApi('/api/admin/projects', newData, 'Project Saved').then(ok => ok && setEditingProject(null));
+                saveToApi('/api/admin/projects', newData, 'Project Saved').then(ok => {
+                  if (ok) {
+                    setProjectsData(newData);
+                    setEditingProject(null);
+                  }
+                });
               }}>
                 <div className={styles.formGrid}>
                   <div className={styles.settingField}>
@@ -169,8 +174,20 @@ export default function Dashboard() {
                   </div>
                   <div className={styles.settingField}>
                     <label className="mono">COVER IMAGE</label>
+                    {editingProject.project.image && (
+                      <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px', border: '1px solid var(--border)' }}>
+                        <Image src={editingProject.project.image} alt="Cover Preview" fill style={{ objectFit: 'cover' }} unoptimized />
+                        <button 
+                          type="button" 
+                          onClick={() => setEditingProject({...editingProject, project: {...editingProject.project, image: ''}})} 
+                          style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(249, 66, 61, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <input className={styles.settingInput} value={editingProject.project.image} readOnly />
+                      <input className={styles.settingInput} value={editingProject.project.image || ''} placeholder="Upload image or paste URL" onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, image: e.target.value}})} />
                       <button type="button" onClick={() => fileInputRef.current.click()} className="btn-secondary">UPLOAD</button>
                     </div>
                     <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, (path) => setEditingProject({...editingProject, project: {...editingProject.project, image: path}}))} />
@@ -362,7 +379,7 @@ export default function Dashboard() {
                        <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
                        <div className={styles.projectRowInfo}><p>{p.title}</p><span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory}</span></div>
                        <div className={styles.projectRowActions}>
-                        <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: { images: [], links: [], details: '', ...p } })}>EDIT</button>
+                        <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: { details: '', ...p, images: p.images || [], links: p.links || [] } })}>EDIT</button>
                         <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = {...projectsData}; d[cat] = d[cat].filter(x => x.id !== p.id); setProjectsData(d); saveToApi('/api/admin/projects', d, 'Deleted'); } }}>DEL</button>
                        </div>
                     </div>

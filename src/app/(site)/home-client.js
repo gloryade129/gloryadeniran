@@ -135,7 +135,7 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
                 alt={settingsData.profile.name}
                 fill
                 priority
-                quality={90}
+                quality={80}
                 style={{
                   objectFit: 'cover',
                   objectPosition: 'top center',
