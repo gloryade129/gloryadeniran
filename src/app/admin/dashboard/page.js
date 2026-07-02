@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { upload } from '@vercel/blob/client';
 import styles from './dashboard.module.css';
 
 export default function Dashboard() {
@@ -82,16 +83,13 @@ export default function Dashboard() {
   const handleImageUpload = async (e, callback) => {
     const file = e.target.files[0];
     if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
     try {
       setSaving(true);
-      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to upload file to storage');
-      }
-      if (data.path) callback(data.path);
+      const newBlob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/admin/upload',
+      });
+      if (newBlob.url) callback(newBlob.url);
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Upload failed: ' + error.message);

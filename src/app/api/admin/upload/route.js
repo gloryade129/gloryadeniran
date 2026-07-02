@@ -1,33 +1,39 @@
+import { handleUpload } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
 
 export async function POST(request) {
+  const body = await request.json();
+
   try {
-    const formData = await request.formData();
-    const file = formData.get('file');
-
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-    }
-
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json(
-        { error: 'Blob storage not configured. Please add BLOB_READ_WRITE_TOKEN to Vercel environment variables.' },
-        { status: 503 }
-      );
-    }
-
-    const blob = await put(file.name, file, {
-      access: 'public',
-      addRandomSuffix: true, // prevents filename collisions
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
+        // Authenticate the request if needed
+        return {
+          allowedContentTypes: [
+            'image/jpeg', 
+            'image/png', 
+            'image/gif', 
+            'image/webp',
+            'image/avif',
+            'application/pdf', 
+            'application/octet-stream'
+          ],
+          tokenPayload: JSON.stringify({}),
+        };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        console.log('Blob upload completed successfully:', blob.url);
+      },
     });
 
-    return NextResponse.json({
-      message: 'File uploaded successfully',
-      path: blob.url,
-    });
+    return NextResponse.json(jsonResponse);
   } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: `Upload error details: ${error.message}` }, { status: 500 });
+    console.error('Blob upload handler error:', error);
+    return NextResponse.json(
+      { error: `Upload authentication error: ${error.message}` },
+      { status: 400 }
+    );
   }
 }
