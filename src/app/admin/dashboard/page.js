@@ -20,6 +20,12 @@ export default function Dashboard() {
   // Editor States
   const [editingProject, setEditingProject] = useState(null);
   const [editingExp, setEditingExp] = useState(null);
+  
+  // AI Reply States
+  const [replyingMessage, setReplyingMessage] = useState(null);
+  const [replySubject, setReplySubject] = useState('');
+  const [replyText, setReplyText] = useState('');
+
   const fileInputRef = useRef(null);
   const profileInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -104,6 +110,58 @@ export default function Dashboard() {
       });
       setMessages(messages.filter(m => m.id !== id));
     } catch (err) { console.error(err); }
+  };
+
+  const openReplyModal = (msg) => {
+    setReplyingMessage(msg);
+    setReplySubject(`Re: Project Inquiry — Glory Adeniran`);
+    
+    // Extract client name and original content details
+    const nameMatch = msg.from?.match(/(.*)<(.*)>/);
+    const clientName = nameMatch ? nameMatch[1].trim() : (msg.from || 'there');
+    const content = msg.content || '';
+    
+    const projectMatch = content.match(/([^:]+):/);
+    const project = projectMatch ? projectMatch[1].trim() : 'Project';
+    const body = content.includes(':') ? content.split(':').slice(1).join(':').trim() : content;
+
+    // Set dynamic default draft (Creative Hype mode)
+    const defaultDraft = `Yo ${clientName}! Glory here. ✦\n\nHyped that you reached out about cooking up some next-level ${project} magic! I just read your message:\n"${body}"\n\nI'm already brainstorming how we can make this project absolutely stand out. Let's chat on WhatsApp to iron out the details, or let me know a time that works for you to hop on a quick call!\n\nBest,\nGlory`;
+    
+    setReplyText(defaultDraft);
+  };
+
+  const sendReplyEmail = async (e) => {
+    e.preventDefault();
+    if (!replyingMessage) return;
+    const emailMatch = replyingMessage.from?.match(/<([^>]+)>/) || replyingMessage.from?.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/);
+    const toEmail = emailMatch ? emailMatch[1] : replyingMessage.from;
+
+    try {
+      setSaving(true);
+      const res = await fetch('/api/admin/messages/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: toEmail,
+          subject: replySubject,
+          replyText: replyText,
+          originalMessage: replyingMessage.content
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send reply');
+      }
+      setMessage('REPLY DISPATCHED SUCCESSFULLY ✓');
+      setTimeout(() => setMessage(''), 3000);
+      setReplyingMessage(null);
+    } catch (err) {
+      console.error(err);
+      alert('Error sending reply: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const logout = () => {
@@ -310,6 +368,104 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* ── AI REPLY MODAL ── */}
+      <AnimatePresence>
+        {replyingMessage && (
+          <div className={styles.modalOverlay}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={styles.modal} style={{ maxWidth: '640px' }}>
+              <div className={styles.modalHeader}>
+                <h2 className="mono">AI_EMAIL_RESPONDER</h2>
+                <button onClick={() => setReplyingMessage(null)} className={styles.closeBtn}>✕</button>
+              </div>
+              <form className={styles.modalContent} onSubmit={sendReplyEmail}>
+                
+                {/* AI suggestion panel buttons */}
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '20px' }}>
+                  <p className="mono" style={{ color: 'var(--lime)', fontSize: '10px', marginBottom: '12px', letterSpacing: '0.08em' }}>SELECT_AI_REPLY_VIBE</p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ fontSize: '11px', padding: '6px 12px', height: 'auto' }}
+                      onClick={() => {
+                        const nameMatch = replyingMessage.from?.match(/(.*)<(.*)>/);
+                        const clientName = nameMatch ? nameMatch[1].trim() : (replyingMessage.from || 'there');
+                        const content = replyingMessage.content || '';
+                        const projectMatch = content.match(/([^:]+):/);
+                        const project = projectMatch ? projectMatch[1].trim() : 'Project';
+                        const body = content.includes(':') ? content.split(':').slice(1).join(':').trim() : content;
+                        
+                        setReplyText(`Yo ${clientName}! Glory here. ✦\n\nHyped that you reached out about cooking up some next-level ${project} magic! I just read your message:\n"${body}"\n\nI'm already brainstorming how we can make this project absolutely stand out. Let's chat on WhatsApp to iron out the details, or let me know a time that works for you to hop on a quick call!\n\nBest,\nGlory`);
+                      }}
+                    >
+                      🌟 Creative Hype
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ fontSize: '11px', padding: '6px 12px', height: 'auto' }}
+                      onClick={() => {
+                        const nameMatch = replyingMessage.from?.match(/(.*)<(.*)>/);
+                        const clientName = nameMatch ? nameMatch[1].trim() : (replyingMessage.from || 'there');
+                        const content = replyingMessage.content || '';
+                        const projectMatch = content.match(/([^:]+):/);
+                        const project = projectMatch ? projectMatch[1].trim() : 'Project';
+                        const body = content.includes(':') ? content.split(':').slice(1).join(':').trim() : content;
+                        
+                        setReplyText(`Dear ${clientName},\n\nThank you for reaching out. I have reviewed your inquiry regarding the ${project} design request.\n\nYour message details:\n"${body}"\n\nI am confident that we can deliver a premium, high-impact design solution tailored specifically to your goals. Please let me know your availability for a brief introductory call this week, or feel free to message me on WhatsApp to align further.\n\nSincerely,\nGlory Adeniran\nCreative Lead`);
+                      }}
+                    >
+                      💼 Professional
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ fontSize: '11px', padding: '6px 12px', height: 'auto' }}
+                      onClick={() => {
+                        const nameMatch = replyingMessage.from?.match(/(.*)<(.*)>/);
+                        const clientName = nameMatch ? nameMatch[1].trim() : (replyingMessage.from || 'there');
+                        const content = replyingMessage.content || '';
+                        const projectMatch = content.match(/([^:]+):/);
+                        const project = projectMatch ? projectMatch[1].trim() : 'Project';
+                        
+                        setReplyText(`Hi ${clientName},\n\nThanks for reaching out! Your ideas for the ${project} sound fantastic.\n\nLet's cut through the back-and-forth and jump on a quick 10-minute discovery call to align on details and pricing. \n\nYou can suggest a time that works best for you, or click this link to chat with me instantly on WhatsApp: https://wa.me/2349168047236\n\nLooking forward to working together!\n\nCheers,\nGlory`);
+                      }}
+                    >
+                      ⚡ Quick Call Invitation
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.formGrid}>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">RECIPIENT EMAIL</label>
+                    <input className={styles.settingInput} value={replyingMessage.from} readOnly disabled style={{ opacity: 0.6 }} />
+                  </div>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">SUBJECT</label>
+                    <input className={styles.settingInput} value={replySubject} onChange={e => setReplySubject(e.target.value)} required />
+                  </div>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">REPLY MESSAGE (EDITABLE)</label>
+                    <textarea 
+                      className={styles.settingInput} 
+                      style={{ height: '220px', resize: 'vertical', lineHeight: '1.6', fontFamily: 'var(--font)' }} 
+                      value={replyText} 
+                      onChange={e => setReplyText(e.target.value)} 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="shiny-cta" style={{ width: '100%', marginTop: '24px' }} disabled={saving}>
+                  {saving ? 'SENDING EMAIL...' : 'SEND REPLY via BREVO →'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <aside className={styles.sidebar}>
         <div className={styles.sidebarTop}>
           <div className={styles.sidebarLogo}>GLORY<span style={{ color: 'var(--lime)' }}>.</span></div>
@@ -470,9 +626,9 @@ export default function Dashboard() {
 
                     {m.type === 'PROJECT_INQUIRY' && (
                       <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '16px', flexWrap: 'wrap' }}>
-                        <a href={`mailto:${email}?subject=Re: Your Project Inquiry`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <button onClick={() => openReplyModal(m)} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           <span>✉ Reply via Email</span>
-                        </a>
+                        </button>
                         {whatsappUrl && (
                           <a href={whatsappUrl} target="_blank" rel="noreferrer" className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#25D366', borderColor: '#25D366' }}>
                             <span>💬 Chat on WhatsApp</span>
