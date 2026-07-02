@@ -17,6 +17,10 @@ export async function POST(request) {
             'image/gif', 
             'image/webp',
             'image/avif',
+            'video/mp4',
+            'video/webm',
+            'video/quicktime',
+            'video/ogg',
             'application/pdf', 
             'application/octet-stream'
           ],

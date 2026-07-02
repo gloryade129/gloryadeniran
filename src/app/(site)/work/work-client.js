@@ -1,9 +1,49 @@
 'use client';
 
+import { useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import styles from './work.module.css';
+
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg');
+};
+
+const HoverVideo = ({ src, className }) => {
+  const videoRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(e => console.warn('Video play failed:', e));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      className={className}
+      muted
+      playsInline
+      loop
+      preload="metadata"
+      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    />
+  );
+};
+
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -46,14 +86,18 @@ function CategorySection({ cat, tag, label, sub, data, index }) {
           >
             <Link href={`/work/${project.id}`} className={styles.shotLink}>
               <div className={styles.shotImg}>
-                <Image
-                  src={project.image}
-                  alt={project.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className={styles.img}
-                  unoptimized={project.image.startsWith('https://images.unsplash.com')}
-                />
+                {isVideoUrl(project.image) ? (
+                  <HoverVideo src={project.image} className={styles.img} />
+                ) : (
+                  <Image
+                    src={project.image}
+                    alt={project.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className={styles.img}
+                    unoptimized={project.image.startsWith('https://images.unsplash.com')}
+                  />
+                )}
               </div>
               <figcaption className={styles.shotCaption}>
                 <div>

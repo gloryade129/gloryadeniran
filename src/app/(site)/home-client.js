@@ -1,10 +1,50 @@
 'use client';
 
+import { useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import dynamic_import from 'next/dynamic';
 import styles from './home.module.css';
+
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg');
+};
+
+const HoverVideo = ({ src, className }) => {
+  const videoRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(e => console.warn('Video play failed:', e));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      className={className}
+      muted
+      playsInline
+      loop
+      preload="metadata"
+      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    />
+  );
+};
+
 import { TextRotate } from '@/components/TextRotate';
 
 const Scene3D = dynamic_import(() => import('@/components/Scene3D'), { ssr: false });
@@ -194,7 +234,11 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
               >
                 <Link href={`/work/${p.id}`} className={styles.shotLink}>
                   <div className={styles.shotImg}>
-                    <Image src={p.image} alt={p.title} fill sizes="(max-width: 768px) 100vw, 50vw" className={styles.img} />
+                    {isVideoUrl(p.image) ? (
+                      <HoverVideo src={p.image} className={styles.img} />
+                    ) : (
+                      <Image src={p.image} alt={p.title} fill sizes="(max-width: 768px) 100vw, 50vw" className={styles.img} />
+                    )}
                     <div className={styles.shotGradient} />
                   </div>
                   <figcaption className={styles.shotCaption}>

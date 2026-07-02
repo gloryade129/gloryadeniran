@@ -7,6 +7,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { upload } from '@vercel/blob/client';
 import styles from './dashboard.module.css';
 
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg');
+};
+
+const HoverVideo = ({ src, className, style }) => {
+  const videoRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(e => console.warn('Video play failed:', e));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      className={className}
+      muted
+      playsInline
+      loop
+      preload="metadata"
+      style={style || { width: '100%', height: '100%', objectFit: 'cover' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    />
+  );
+};
+
 export default function Dashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
@@ -93,6 +131,28 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Upload failed: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkImageUpload = async (e, callback) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    try {
+      setSaving(true);
+      const uploadPromises = files.map(async (file) => {
+        const newBlob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/admin/upload',
+        });
+        return newBlob.url;
+      });
+      const urls = await Promise.all(uploadPromises);
+      callback(urls);
+    } catch (error) {
+      console.error('Bulk upload failed:', error);
+      alert('Bulk upload failed: ' + error.message);
     } finally {
       setSaving(false);
     }
@@ -233,10 +293,14 @@ export default function Dashboard() {
                     <textarea className={styles.settingInput} style={{ height: '100px' }} value={editingProject.project.details || ''} onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, details: e.target.value}})} placeholder="Describe the project story, timeline, disciplines, etc." />
                   </div>
                   <div className={styles.settingField}>
-                    <label className="mono">COVER IMAGE</label>
+                    <label className="mono">COVER (IMAGE / VIDEO)</label>
                     {editingProject.project.image && (
                       <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px', border: '1px solid var(--border)' }}>
-                        <Image src={editingProject.project.image} alt="Cover Preview" fill style={{ objectFit: 'cover' }} unoptimized />
+                        {isVideoUrl(editingProject.project.image) ? (
+                          <HoverVideo src={editingProject.project.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Image src={editingProject.project.image} alt="Cover Preview" fill style={{ objectFit: 'cover' }} unoptimized />
+                        )}
                         <button 
                           type="button" 
                           onClick={() => setEditingProject({...editingProject, project: {...editingProject.project, image: ''}})} 
@@ -247,10 +311,10 @@ export default function Dashboard() {
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <input className={styles.settingInput} value={editingProject.project.image || ''} placeholder="Upload image or paste URL" onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, image: e.target.value}})} />
+                      <input className={styles.settingInput} value={editingProject.project.image || ''} placeholder="Upload file or paste URL" onChange={e => setEditingProject({...editingProject, project: {...editingProject.project, image: e.target.value}})} />
                       <button type="button" onClick={() => fileInputRef.current.click()} className="btn-secondary">UPLOAD</button>
                     </div>
-                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, (path) => setEditingProject({...editingProject, project: {...editingProject.project, image: path}}))} />
+                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,video/*" onChange={(e) => handleImageUpload(e, (path) => setEditingProject({...editingProject, project: {...editingProject.project, image: path}}))} />
                   </div>
                   <div className={styles.settingField}>
                     <label className="mono">MAIN ACTION LINK</label>
@@ -260,22 +324,26 @@ export default function Dashboard() {
                   {/* ADDITIONAL GALLERY IMAGES */}
                   <div className={`${styles.settingField} ${styles.fullWidth}`}>
                     <label className="mono" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>ADDITIONAL GALLERY IMAGES</span>
-                      <button type="button" onClick={() => galleryInputRef.current.click()} className="btn-secondary" style={{ fontSize: '10px', padding: '4px 8px' }}>+ UPLOAD IMAGE</button>
+                      <span>ADDITIONAL GALLERY IMAGES / VIDEOS</span>
+                      <button type="button" onClick={() => galleryInputRef.current.click()} className="btn-secondary" style={{ fontSize: '10px', padding: '4px 8px' }}>+ UPLOAD ASSETS</button>
                     </label>
-                    <input type="file" ref={galleryInputRef} style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, (path) => {
+                    <input type="file" ref={galleryInputRef} style={{ display: 'none' }} accept="image/*,video/*" multiple onChange={(e) => handleBulkImageUpload(e, (paths) => {
                       const currentImages = editingProject.project.images || [];
-                      setEditingProject({...editingProject, project: {...editingProject.project, images: [...currentImages, path]}});
+                      setEditingProject({...editingProject, project: {...editingProject.project, images: [...currentImages, ...paths]}});
                     })} />
                     
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', marginTop: '10px' }}>
                       {(editingProject.project.images || []).map((imgUrl, idx) => (
                         <div key={idx} style={{ position: 'relative', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', height: '80px' }}>
-                          <Image src={imgUrl} alt="" fill style={{ objectFit: 'cover' }} unoptimized />
+                          {isVideoUrl(imgUrl) ? (
+                            <HoverVideo src={imgUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <Image src={imgUrl} alt="" fill style={{ objectFit: 'cover' }} unoptimized />
+                          )}
                           <button type="button" onClick={() => {
                             const filtered = editingProject.project.images.filter((_, i) => i !== idx);
                             setEditingProject({...editingProject, project: {...editingProject.project, images: filtered}});
-                          }} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(249, 66, 61, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}>✕</button>
+                          }} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(249, 66, 61, 0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px', zIndex: 10 }}>✕</button>
                         </div>
                       ))}
                     </div>

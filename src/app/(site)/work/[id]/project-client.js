@@ -5,6 +5,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './project.module.css';
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const cleanUrl = url.split('?')[0].toLowerCase();
+  return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg');
+};
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -53,14 +58,27 @@ export default function ProjectClient({ project }) {
                   onClick={() => setActiveImage(project.image)}
                 >
                   <div className={styles.imageInner}>
-                    <Image
-                      src={project.image}
-                      alt={project.title}
-                      fill
-                      priority
-                      className={styles.mainImg}
-                      unoptimized={project.image.startsWith('https://images.unsplash.com')}
-                    />
+                    {isVideoUrl(project.image) ? (
+                      <video
+                        src={project.image}
+                        controls
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className={styles.mainImg}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <Image
+                        src={project.image}
+                        alt={project.title}
+                        fill
+                        priority
+                        className={styles.mainImg}
+                        unoptimized={project.image.startsWith('https://images.unsplash.com')}
+                      />
+                    )}
                     <div className={styles.zoomOverlay}>
                       <span className={styles.zoomIcon}>🔍 Click to expand</span>
                     </div>
@@ -80,13 +98,26 @@ export default function ProjectClient({ project }) {
                           className={`${styles.subImageWrap} card`}
                           onClick={() => setActiveImage(imgUrl)}
                         >
-                          <Image
-                            src={imgUrl}
-                            alt=""
-                            fill
-                            className={styles.subImg}
-                            unoptimized={imgUrl.startsWith('https://images.unsplash.com')}
-                          />
+                          {isVideoUrl(imgUrl) ? (
+                            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                              <video
+                                src={imgUrl}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', fontSize: '20px' }}>▶</div>
+                            </div>
+                          ) : (
+                            <Image
+                              src={imgUrl}
+                              alt=""
+                              fill
+                              className={styles.subImg}
+                              unoptimized={imgUrl.startsWith('https://images.unsplash.com')}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -181,13 +212,23 @@ export default function ProjectClient({ project }) {
           >
             <button className={styles.lightboxClose} onClick={() => setActiveImage(null)}>✕</button>
             <div className={styles.lightboxImgContainer} onClick={(e) => e.stopPropagation()}>
-              <Image 
-                src={activeImage} 
-                alt="" 
-                fill 
-                className={styles.lightboxImg}
-                unoptimized={activeImage.startsWith('https://images.unsplash.com')}
-              />
+              {isVideoUrl(activeImage) ? (
+                <video
+                  src={activeImage}
+                  controls
+                  autoPlay
+                  className={styles.lightboxImg}
+                  style={{ width: '100%', height: '100%', maxHeight: '85vh', objectFit: 'contain', background: 'transparent' }}
+                />
+              ) : (
+                <Image 
+                  src={activeImage} 
+                  alt="" 
+                  fill 
+                  className={styles.lightboxImg}
+                  unoptimized={activeImage.startsWith('https://images.unsplash.com')}
+                />
+              )}
             </div>
           </motion.div>
         )}
