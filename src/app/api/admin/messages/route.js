@@ -1,25 +1,29 @@
 import { NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
 import { sendEmail } from '@/lib/brevo';
 
 const MESSAGES_KEY = 'ga:messages';
 
-function getRedis() {
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) return null;
-  return new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+async function redisCmd(...args) {
+  const url   = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) throw new Error('Redis not configured');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+    cache: 'no-store',
   });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.result;
 }
 
 export async function GET() {
-  const redis = getRedis();
-  if (!redis) return NextResponse.json([]);
   try {
-    const raw = await redis.get(MESSAGES_KEY);
-    if (!raw) return NextResponse.json([]);
-    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return NextResponse.json(data);
+    const result = await redisCmd('GET', MESSAGES_KEY);
+    if (!result) return NextResponse.json([]);
+    const data = typeof result === 'string' ? JSON.parse(result) : result;
+    return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error) {
     console.error('Messages GET error:', error);
     return NextResponse.json([]);
@@ -36,18 +40,15 @@ export async function POST(request) {
     };
 
     // Save message to Redis
-    const redis = getRedis();
-    if (redis) {
-      try {
-        const raw = await redis.get(MESSAGES_KEY);
-        const existing = raw
-          ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
-          : [];
-        existing.unshift(newMessage);
-        await redis.set(MESSAGES_KEY, JSON.stringify(existing));
-      } catch (e) {
-        console.warn('Redis message save failed:', e.message);
-      }
+    try {
+      const raw = await redisCmd('GET', MESSAGES_KEY);
+      const existing = raw
+        ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
+        : [];
+      existing.unshift(newMessage);
+      await redisCmd('SET', MESSAGES_KEY, JSON.stringify(existing));
+    } catch (e) {
+      console.warn('Redis message save failed:', e.message);
     }
 
     // Parse sender details
@@ -151,12 +152,10 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     const { id } = await request.json();
-    const redis = getRedis();
-    if (!redis) return NextResponse.json({ error: 'Storage not configured' }, { status: 503 });
-    const raw = await redis.get(MESSAGES_KEY);
+    const raw = await redisCmd('GET', MESSAGES_KEY);
     const existing = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : [];
     const filtered = existing.filter((m) => m.id !== id);
-    await redis.set(MESSAGES_KEY, JSON.stringify(filtered));
+    await redisCmd('SET', MESSAGES_KEY, JSON.stringify(filtered));
     return NextResponse.json({ message: 'Message deleted' });
   } catch (error) {
     console.error('Messages DELETE error:', error);

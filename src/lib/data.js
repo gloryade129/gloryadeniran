@@ -1,15 +1,13 @@
 /**
  * lib/data.js
- * Centralised data-access layer.
- * Reads/writes from Upstash Redis with a graceful fallback
- * to the static JSON files baked into the bundle if Redis is not configured.
+ * Uses Upstash Redis REST API directly via fetch.
+ * No SDK — no serialization quirks, full control.
  *
- * Required env vars (set in Vercel dashboard + .env.local):
+ * Required env vars (set in Vercel dashboard):
  *   UPSTASH_REDIS_REST_URL
  *   UPSTASH_REDIS_REST_TOKEN
  */
 
-import { Redis } from '@upstash/redis';
 import projectsJSON from '@/data/projects.json';
 import settingsJSON from '@/data/settings.json';
 import experienceJSON from '@/data/experience.json';
@@ -20,40 +18,50 @@ const KEYS = {
   experience: 'ga:experience',
 };
 
-function getRedis() {
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return null; // Not configured — will use static fallback
-  }
-  return new Redis({
-    url:   process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+// Execute any Redis command via the REST API
+async function redisCmd(...args) {
+  const url   = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) throw new Error('UPSTASH env vars not set');
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization:  `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(args),
+    cache: 'no-store', // Always skip Next.js fetch cache
   });
+
+  if (!res.ok) throw new Error(`Redis HTTP error ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(`Redis error: ${data.error}`);
+  return data.result;
 }
 
 async function kvGet(key, fallback) {
-  const redis = getRedis();
-  if (!redis) return fallback;
   try {
-    const data = await redis.get(key);
-    if (data == null) {
-      // First run — seed Redis with the static data from the repo
-      await redis.set(key, JSON.stringify(fallback));
+    const result = await redisCmd('GET', key);
+    if (result === null) {
+      // Key doesn't exist yet — seed with static JSON
+      await redisCmd('SET', key, JSON.stringify(fallback));
       return fallback;
     }
-    // Upstash auto-parses JSON strings
-    return typeof data === 'string' ? JSON.parse(data) : data;
-  } catch {
-    return fallback;
+    // result is always a string from Redis; parse it back to object
+    return typeof result === 'string' ? JSON.parse(result) : result;
+  } catch (err) {
+    console.error(`[data.js] kvGet(${key}) failed:`, err.message);
+    return fallback; // Graceful fallback to static data
   }
 }
 
 async function kvSet(key, data) {
-  const redis = getRedis();
-  if (!redis) return false;
   try {
-    await redis.set(key, JSON.stringify(data));
+    await redisCmd('SET', key, JSON.stringify(data));
     return true;
-  } catch {
+  } catch (err) {
+    console.error(`[data.js] kvSet(${key}) failed:`, err.message);
     return false;
   }
 }
