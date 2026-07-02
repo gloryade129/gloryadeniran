@@ -109,12 +109,12 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
             </motion.div>
 
             <motion.div variants={fadeUp} className={styles.actions}>
-              <Link href="/work" className="shiny-cta">
-                <span>View Work &nbsp;↗</span>
+              <Link href="/contact" className="shiny-cta">
+                <span>Start a Project &nbsp;→</span>
               </Link>
-              <Link href="/about" className="btn-secondary">
+              <Link href="/work" className="btn-secondary">
                 <span className="btn-dot" aria-hidden="true" />
-                <span>About Me</span>
+                <span>Explore Work</span>
               </Link>
             </motion.div>
           </motion.div>

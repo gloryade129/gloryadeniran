@@ -82,9 +82,13 @@ export default function Dashboard() {
       setSaving(true);
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to upload file to storage');
+      }
       if (data.path) callback(data.path);
     } catch (error) {
       console.error('Upload failed:', error);
+      alert('Upload failed: ' + error.message);
     } finally {
       setSaving(false);
     }
@@ -443,19 +447,42 @@ export default function Dashboard() {
 
           {activeTab === 'inbox' && (
             <div className={styles.projectList}>
-              {messages.map(m => (
-                <div key={m.id} className={`${styles.projectRow} card`} style={{ alignItems: 'flex-start' }}>
-                  <div className={styles.projectRowInfo}>
-                    <p style={{ fontSize: '15px', marginBottom: '8px' }}>{m.content}</p>
-                    <div className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)', display: 'flex', gap: '12px' }}>
-                      <span>TYPE: {m.type}</span>
-                      <span>FROM: {m.from}</span>
-                      <span>DATE: {new Date(m.date).toLocaleString()}</span>
+              {messages.map(m => {
+                const emailMatch = m.from?.match(/<([^>]+)>/) || m.from?.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/);
+                const email = emailMatch ? emailMatch[1] : m.from;
+                const cleanPhone = m.phone ? m.phone.replace(/[^0-9]/g, '') : '';
+                const whatsappUrl = cleanPhone ? `https://wa.me/${cleanPhone}` : null;
+
+                return (
+                  <div key={m.id} className={`${styles.projectRow} card`} style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px', alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+                      <div className={styles.projectRowInfo} style={{ flex: 1 }}>
+                        <p style={{ fontSize: '15px', marginBottom: '8px', lineHeight: 1.6 }}>{m.content}</p>
+                        <div className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                          <span>TYPE: {m.type}</span>
+                          <span>FROM: {m.from}</span>
+                          {m.phone && <span>PHONE: {m.phone}</span>}
+                          <span>DATE: {new Date(m.date).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <button className="btn-secondary" style={{ color: '#F9423D', alignSelf: 'flex-start' }} onClick={() => deleteMessage(m.id)}>DELETE</button>
                     </div>
+
+                    {m.type === 'PROJECT_INQUIRY' && (
+                      <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '16px', flexWrap: 'wrap' }}>
+                        <a href={`mailto:${email}?subject=Re: Your Project Inquiry`} className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>✉ Reply via Email</span>
+                        </a>
+                        {whatsappUrl && (
+                          <a href={whatsappUrl} target="_blank" rel="noreferrer" className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#25D366', borderColor: '#25D366' }}>
+                            <span>💬 Chat on WhatsApp</span>
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => deleteMessage(m.id)}>DELETE</button>
-                </div>
-              ))}
+                );
+              })}
               {messages.length === 0 && <p className="mono" style={{ opacity: 0.5, textAlign: 'center', padding: '40px' }}>No messages or requests yet.</p>}
             </div>
           )}

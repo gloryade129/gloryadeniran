@@ -69,6 +69,7 @@ export async function POST(request) {
         <div style="font-family: sans-serif; padding: 24px; background: #080706; color: #FAFAFA; max-width: 600px; margin: 0 auto; border: 1px solid #0091FF;">
           <h2 style="color: #0091FF; border-bottom: 1px solid #2A2A2D; padding-bottom: 12px; margin-top: 0;">💼 New Project Inquiry</h2>
           <p><strong>From:</strong> ${name} &lt;${clientEmail}&gt;</p>
+          ${message.phone ? `<p><strong>Phone (WhatsApp):</strong> <a href="https://wa.me/${message.phone.replace(/[^0-9]/g, '')}" style="color: #0091FF; text-decoration: none;">${message.phone}</a></p>` : ''}
           <p><strong>Message:</strong></p>
           <div style="background: rgba(255,255,255,0.03); padding: 16px; border: 1px solid #2A2A2D; line-height: 1.6; border-radius: 4px;">
             ${message.content.replace(/\n/g, '<br/>')}

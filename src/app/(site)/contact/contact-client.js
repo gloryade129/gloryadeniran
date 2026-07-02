@@ -5,7 +5,7 @@ import styles from './contact.module.css';
 
 export default function ContactClient({ initialSettings = {} }) {
   const { profile = {}, services = [] } = initialSettings;
-  const [form, setForm] = useState({ name: '', email: '', project: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', project: '', message: '' });
   const [sent, setSent] = useState(false);
 
   const [sending, setSending] = useState(false);
@@ -22,7 +22,8 @@ export default function ContactClient({ initialSettings = {} }) {
         body: JSON.stringify({
           type: 'PROJECT_INQUIRY',
           content: `${form.project}: ${form.message}`,
-          from: `${form.name} <${form.email}>`
+          from: `${form.name} <${form.email}>`,
+          phone: form.phone || ''
         })
       });
       setSent(true);
@@ -137,6 +138,11 @@ export default function ContactClient({ initialSettings = {} }) {
                     <label htmlFor="email" className="mono">Email</label>
                     <input id="email" type="email" value={form.email} onChange={update('email')} placeholder="you@example.com" className={styles.input} required />
                   </div>
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor="phone" className="mono">Phone Number (Optional, for WhatsApp reply)</label>
+                  <input id="phone" type="tel" value={form.phone || ''} onChange={update('phone')} placeholder="+234..." className={styles.input} />
                 </div>
 
                 <div className={styles.field}>
