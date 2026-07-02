@@ -499,12 +499,17 @@ export default function Dashboard() {
             <>
               <div className={styles.statsGrid}>
                 {[
-                  { label: 'Projects', value: allProjects.length, tag: 'LIVE' },
-                  { label: 'Inbox', value: messages.length, tag: 'UNREAD' },
-                  { label: 'Exp', value: experienceData.length, tag: 'YEARS' },
-                  { label: 'Status', value: 'OPTIMAL', tag: 'HEALTH' },
+                  { label: 'Projects', value: allProjects.length, tag: 'LIVE', tab: 'portfolio' },
+                  { label: 'Inbox', value: messages.length, tag: 'UNREAD', tab: 'inbox' },
+                  { label: 'Exp', value: experienceData.length, tag: 'YEARS', tab: 'experience' },
+                  { label: 'Status', value: 'OPTIMAL', tag: 'HEALTH', tab: 'settings' },
                 ].map(s => (
-                  <div key={s.label} className={`${styles.statCard} card`}>
+                  <div 
+                    key={s.label} 
+                    className={`${styles.statCard} card`}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => s.tab && setActiveTab(s.tab)}
+                  >
                     <span className="mono" style={{ color: 'var(--gray-2)', fontSize: '10px' }}>{s.tag}</span>
                     <div className={styles.statValue}>{s.value}</div>
                     <div className={styles.statLabel}>{s.label}</div>
@@ -514,7 +519,12 @@ export default function Dashboard() {
               <div className={styles.sectionTitle}><p className="mono">LATEST_MESSAGES</p></div>
               <div className={styles.projectList}>
                 {messages.slice(0, 3).map(m => (
-                  <div key={m.id} className={`${styles.projectRow} card`}>
+                  <div 
+                    key={m.id} 
+                    className={`${styles.projectRow} card`}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setActiveTab('inbox')}
+                  >
                     <div className={styles.projectRowInfo}>
                       <p className={styles.projectRowTitle}>{m.content}</p>
                       <span className="mono" style={{ fontSize: '10px', color: 'var(--lime)' }}>{m.type} — FROM {m.from}</span>

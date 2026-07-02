@@ -28,6 +28,6 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+    return NextResponse.json({ error: `Upload error details: ${error.message}` }, { status: 500 });
   }
 }
