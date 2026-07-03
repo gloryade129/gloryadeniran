@@ -127,7 +127,11 @@ export default function Scene3D() {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 0 }}>
-      <Canvas camera={{ position: [0, 0, 10], fov: 45 }}>
+      <Canvas 
+        camera={{ position: [0, 0, 10], fov: 45 }}
+        dpr={[1, 1.5]}
+        gl={{ powerPreference: "high-performance", antialias: false }}
+      >
         <Suspense fallback={null}>
           <ambientLight intensity={isLight ? 0.85 : 0.6} />
           <spotLight position={[10, 10, 10]} angle={0.2} penumbra={1} intensity={isLight ? 1.8 : 1.5} />

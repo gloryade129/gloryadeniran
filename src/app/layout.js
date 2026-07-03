@@ -46,18 +46,11 @@ export const metadata = {
   },
 };
 
-import { getSettings } from "@/lib/data";
-
-export default async function RootLayout({ children }) {
-  const settings = await getSettings().catch(() => ({}));
-  const customCSS = settings?.customCSS || '';
-
+export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${space.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
-        {customCSS && (
-          <style dangerouslySetInnerHTML={{ __html: customCSS }} />
-        )}
+        <link rel="stylesheet" href="/api/custom-style.css" />
       </head>
       <body className={space.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
