@@ -11,6 +11,8 @@
 }
 
 .heroInner {
+  position: relative;
+  z-index: 2;
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
@@ -389,4 +391,24 @@
   gap: 16px;
   margin-top: 40px;
   flex-wrap: wrap;
+}
+
+/* ── BACKGROUND WATERMARK TITLE ── */
+.bgTitle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(5rem, 15vw, 11rem);
+  font-weight: 900;
+  line-height: 0.88;
+  text-align: center;
+  color: var(--white);
+  opacity: 0.024;
+  pointer-events: none;
+  z-index: 0;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  font-family: var(--font);
+  user-select: none;
 }

@@ -81,6 +81,10 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
 
       {/* ── HERO ── */}
       <section className={styles.hero}>
+        {/* Lightweight CSS Watermark Background Title */}
+        <div className={styles.bgTitle} aria-hidden="true">
+          GLORY<br />ADENIRAN
+        </div>
         <div className={styles.heroInner}>
 
           {/* LEFT — Text content */}

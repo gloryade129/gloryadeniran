@@ -44,7 +44,13 @@
 }
 
 .navBtn:hover { color: var(--white); background: rgba(255,255,255,0.04); }
-.navBtnActive { color: var(--lime) !important; background: rgba(201,226,101,0.06) !important; }
+.navBtnActive { 
+  color: var(--white) !important; 
+  background: rgba(0, 145, 255, 0.08) !important; 
+  border-left: 2px solid var(--lime);
+  padding-left: 10px !important;
+  text-shadow: 0 0 8px var(--lime-glow);
+}
 
 .logoutBtn {
   background: none;
