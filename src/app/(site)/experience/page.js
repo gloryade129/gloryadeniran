@@ -1,5 +1,10 @@
 import { getExperience } from '@/lib/data';
 
+export const metadata = {
+  title: "Professional Experience | Glory Adeniran",
+  description: "Explore the professional timeline, agency roles, and design accomplishments of Glory Adeniran working as Creative Lead at Global Graphics and product designer.",
+};
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
