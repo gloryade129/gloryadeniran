@@ -618,3 +618,51 @@
   50% { opacity: 0; }
 }
 
+/* ── CHAT FILE ATTACHMENTS ── */
+.attachedPreviewBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 145, 255, 0.08);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 0;
+  margin-bottom: 8px;
+}
+
+.removeAttachBtn {
+  background: transparent;
+  border: none;
+  color: var(--gray-2);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+
+.removeAttachBtn:hover {
+  color: #ff4a4a;
+}
+
+.attachBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--btn-border);
+  color: var(--white);
+  padding: 0 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.attachBtn:hover {
+  background: rgba(0, 145, 255, 0.1);
+  border-color: var(--lime);
+}
+
+.chatAttachmentBubble {
+  margin-top: 8px;
+  display: block;
+}
+

@@ -13,7 +13,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata = {
-  metadataBase: new URL('https://gloryadeniran.com'),
+  metadataBase: new URL('https://gloryadeniran.cv'),
   title: "Glory Adeniran | Product Designer & Vibe Coder",
   description: "Portfolio of Glory Adeniran - Product Designer and Vibe Coder crafting premium digital experiences through Graphic Design, Web Design, Apps and interactive Front-End.",
   icons: {
@@ -25,7 +25,7 @@ export const metadata = {
   openGraph: {
     title: "Glory Adeniran | Product Designer & Vibe Coder",
     description: "Portfolio of Glory Adeniran - Product Designer and Vibe Coder crafting premium digital experiences.",
-    url: "https://gloryadeniran.com",
+    url: "https://gloryadeniran.cv",
     siteName: "Glory Adeniran Portfolio",
     images: [
       {
@@ -46,9 +46,19 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }) {
+import { getSettings } from "@/lib/data";
+
+export default async function RootLayout({ children }) {
+  const settings = await getSettings().catch(() => ({}));
+  const customCSS = settings?.customCSS || '';
+
   return (
     <html lang="en" className={`${space.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        {customCSS && (
+          <style dangerouslySetInnerHTML={{ __html: customCSS }} />
+        )}
+      </head>
       <body className={space.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           {children}

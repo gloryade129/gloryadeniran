@@ -145,6 +145,7 @@ async function executeTool(name, args) {
       if (args.musicEnabled !== undefined) settings.musicEnabled = args.musicEnabled;
       if (args.services !== undefined) settings.services = args.services;
       if (args.tools !== undefined) settings.tools = args.tools;
+      if (args.customCSS !== undefined) settings.customCSS = args.customCSS;
       
       await setSettings(settings);
       revalidatePath('/');
@@ -170,9 +171,34 @@ export async function POST(request) {
   }
 
   try {
-    const { history = [], message } = await request.json();
+    const { history = [], message, fileAttachment } = await request.json();
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    }
+
+    // Process file attachment (if any) into base64 inlineData for Gemini multimodal capability
+    let filePart = null;
+    if (fileAttachment && fileAttachment.url) {
+      try {
+        const fileRes = await fetch(fileAttachment.url);
+        if (fileRes.ok) {
+          const arrayBuffer = await fileRes.arrayBuffer();
+          const base64Data = Buffer.from(arrayBuffer).toString('base64');
+          filePart = {
+            inlineData: {
+              mimeType: fileAttachment.mimeType || 'image/jpeg',
+              data: base64Data
+            }
+          };
+        }
+      } catch (err) {
+        console.error("Error fetching file for Gemini multimodal request:", err);
+      }
+    }
+
+    const userParts = [{ text: message }];
+    if (filePart) {
+      userParts.unshift(filePart);
     }
 
     // Format chat history for Gemini API
@@ -181,7 +207,7 @@ export async function POST(request) {
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       })),
-      { role: 'user', parts: [{ text: message }] }
+      { role: 'user', parts: userParts }
     ];
 
     const systemInstruction = {
@@ -192,7 +218,19 @@ Always assume the user is the admin who owns the site.
 When the user asks to view, edit, add, or delete content, do it by calling the appropriate tool.
 Confirm what you have changed. Keep your explanations concise, professional, and clear.
 Use clean markdown to format your text.
-Categories for projects must be exactly: 'graphic_design', 'website_design', 'apps', 'vibe_coding'.`
+Categories for projects must be exactly: 'graphic_design', 'website_design', 'apps', 'vibe_coding'.
+
+**Dynamic Styling (Redesigning the site):**
+You can redesign the site's layout, styles, and color themes! The site uses CSS variables defined in :root. You can override these variables by providing a string of custom CSS and calling the tool \`update_profile_settings({ customCSS: 'css_code' })\`.
+Key CSS variables you can override:
+- \`--bg\` (background color, default #080706)
+- \`--bg-2\` (sidebar/secondary background, default #0E0E10)
+- \`--bg-card\` (card transparent background, default rgba(14, 14, 16, 0.62))
+- \`--lime\` (accent color, default #0091FF)
+- \`--lime-glow\` (glow color, default rgba(0, 145, 255, 0.25))
+- \`--white\` (primary text color, default #FAFAFA)
+- \`--border\` (border color, default rgba(255,255,255,0.08))
+You can also inject other custom styles, layouts, or fonts! Any CSS you write will be dynamically injected into the head of the pages. Confirm what you changed.`
       }]
     };
 
@@ -313,7 +351,8 @@ Categories for projects must be exactly: 'graphic_design', 'website_design', 'ap
               availability: { type: "STRING", description: "e.g. AVAILABLE_FOR_FREELANCE" },
               musicEnabled: { type: "BOOLEAN", description: "Enable or disable Spotify background player" },
               services: { type: "ARRAY", items: { type: "STRING" }, description: "List of services offered" },
-              tools: { type: "ARRAY", items: { type: "STRING" }, description: "List of tools in the arsenal" }
+              tools: { type: "ARRAY", items: { type: "STRING" }, description: "List of tools in the arsenal" },
+              customCSS: { type: "STRING", description: "Custom CSS overrides to redesign the site's layout and colors." }
             }
           }
         }

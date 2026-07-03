@@ -72,12 +72,15 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatKeyConfigured, setChatKeyConfigured] = useState(true);
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const fileInputRef = useRef(null);
   const profileInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const docInputRef = useRef(null);
   const chatScrollRef = useRef(null);
+  const chatFileInputRef = useRef(null);
 
   // Check API key configuration on mount
   useEffect(() => {
@@ -99,8 +102,11 @@ export default function Dashboard() {
     if (!chatInput.trim() || chatLoading) return;
 
     const userMsg = chatInput.trim();
+    const fileToSend = attachedFile;
+    
     setChatInput('');
-    setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
+    setAttachedFile(null);
+    setChatHistory(prev => [...prev, { role: 'user', content: userMsg, attachment: fileToSend }]);
     setChatLoading(true);
 
     try {
@@ -109,7 +115,8 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           history: chatHistory.slice(1), // omit the greeting
-          message: userMsg
+          message: userMsg,
+          fileAttachment: fileToSend
         })
       });
 
@@ -133,6 +140,30 @@ export default function Dashboard() {
       setChatHistory(prev => [...prev, { role: 'assistant', content: `[ERROR] — ${err.message}` }]);
     } finally {
       setChatLoading(false);
+    }
+  };
+
+  const handleChatFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingFile(true);
+    try {
+      const newBlob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/admin/upload',
+      });
+      if (newBlob.url) {
+        setAttachedFile({
+          url: newBlob.url,
+          name: file.name,
+          mimeType: file.type
+        });
+      }
+    } catch (err) {
+      console.error("Chat file upload failed:", err);
+      alert("Upload failed: " + err.message);
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -897,6 +928,23 @@ export default function Dashboard() {
                             }
                             return <p key={li} className="mono" style={{ margin: '4px 0' }}>{line}</p>;
                           })}
+                          
+                          {/* Attached asset preview in message bubble */}
+                          {msg.attachment && msg.attachment.mimeType?.startsWith('image/') && (
+                            <div className={styles.chatAttachmentBubble}>
+                              <img src={msg.attachment.url} alt="" style={{ maxWidth: '240px', maxHeight: '180px', borderRadius: '4px', marginTop: '8px', border: '1px solid var(--border)' }} />
+                            </div>
+                          )}
+                          {msg.attachment && msg.attachment.mimeType?.startsWith('video/') && (
+                            <div className={styles.chatAttachmentBubble}>
+                              <video src={msg.attachment.url} controls muted style={{ maxWidth: '240px', maxHeight: '180px', borderRadius: '4px', marginTop: '8px', border: '1px solid var(--border)' }} />
+                            </div>
+                          )}
+                          {msg.attachment && !msg.attachment.mimeType?.startsWith('image/') && !msg.attachment.mimeType?.startsWith('video/') && (
+                            <div className={styles.chatAttachmentBubble} style={{ marginTop: '8px', fontSize: '11px', opacity: 0.8 }}>
+                              📎 {msg.attachment.name}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -913,16 +961,50 @@ export default function Dashboard() {
                     )}
                   </div>
 
+                  {/* Attachment Preview Banner */}
+                  {attachedFile && (
+                    <div className={styles.attachedPreviewBar}>
+                      <span className="mono" style={{ fontSize: '11px', color: 'var(--lime)' }}>
+                        📎 ATTACHED: {attachedFile.name} {uploadingFile ? '(UPLOADING...)' : '(READY)'}
+                      </span>
+                      <button type="button" className={styles.removeAttachBtn} onClick={() => setAttachedFile(null)}>✕</button>
+                    </div>
+                  )}
+                  {uploadingFile && !attachedFile && (
+                    <div className={styles.attachedPreviewBar}>
+                      <span className="mono" style={{ fontSize: '11px', color: 'var(--gray-2)' }}>
+                        ⚡ UPLOADING FILE TO BLOB STORAGE...
+                      </span>
+                    </div>
+                  )}
+
                   <form onSubmit={handleSendChat} className={styles.chatInputForm}>
+                    <button 
+                      type="button" 
+                      className={styles.attachBtn} 
+                      onClick={() => chatFileInputRef.current.click()} 
+                      disabled={chatLoading || uploadingFile}
+                      title="Attach Image/Video"
+                    >
+                      <span>📎</span>
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={chatFileInputRef} 
+                      style={{ display: 'none' }} 
+                      onChange={handleChatFileUpload} 
+                      accept="image/*,video/*" 
+                    />
+                    
                     <input
                       type="text"
                       className={styles.chatInput}
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
-                      placeholder="e.g. Add a project called 'My New App' to apps, set availability to 'BUSY'"
-                      disabled={chatLoading}
+                      placeholder={uploadingFile ? "Uploading attachment..." : "e.g. Redesign the site theme to dark blue, or use this image to add a project"}
+                      disabled={chatLoading || uploadingFile}
                     />
-                    <button type="submit" className={styles.chatSendBtn} disabled={chatLoading || !chatInput.trim()}>
+                    <button type="submit" className={styles.chatSendBtn} disabled={chatLoading || uploadingFile || !chatInput.trim()}>
                       <span>EXECUTE →</span>
                     </button>
                   </form>
