@@ -51,6 +51,32 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${space.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="stylesheet" href="/api/custom-style.css" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Person",
+              "name": "Glory Adeniran",
+              "jobTitle": "Product Designer & Lead Creative",
+              "worksFor": {
+                "@type": "Organization",
+                "name": "Global Graphics"
+              },
+              "url": "https://gloryadeniran.cv",
+              "sameAs": [
+                "https://www.instagram.com/gloryadeniran129/",
+                "https://www.facebook.com/adeniranglo/"
+              ],
+              "image": "https://gloryadeniran.cv/images/Put_an_I_watch_to_202606282357.jpeg",
+              "description": "Portfolio of Glory Adeniran - Product Designer and Creative Lead at Global Graphics crafting premium digital experiences through Web Design, Apps and interactive Front-End.",
+              "address": {
+                "@type": "PostalAddress",
+                "addressCountry": "NG"
+              }
+            })
+          }}
+        />
       </head>
       <body className={space.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
