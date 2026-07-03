@@ -14,10 +14,17 @@ export async function GET() {
 export async function POST(request) {
   try {
     const data = await request.json();
-    await setExperience(data);
+    const success = await setExperience(data);
+    if (!success) {
+      throw new Error('Redis write failed');
+    }
+    // Purge caches for both layout and page paths
+    revalidatePath('/');
     revalidatePath('/experience');
+    revalidatePath('/(site)/experience', 'page');
     return NextResponse.json({ message: 'Experience updated successfully' });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to update experience' }, { status: 500 });
+    console.error('[experience/route.js] POST error:', error);
+    return NextResponse.json({ error: `Failed to update experience: ${error.message}` }, { status: 500 });
   }
 }

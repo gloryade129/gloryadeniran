@@ -14,11 +14,16 @@ export async function GET() {
 export async function POST(request) {
   try {
     const data = await request.json();
-    await setSettings(data);
+    const success = await setSettings(data);
+    if (!success) {
+      throw new Error('Redis write failed');
+    }
     revalidatePath('/');
     revalidatePath('/about');
+    revalidatePath('/(site)/about', 'page');
     return NextResponse.json({ message: 'Settings updated successfully' });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    console.error('[settings/route.js] POST error:', error);
+    return NextResponse.json({ error: `Failed to update settings: ${error.message}` }, { status: 500 });
   }
 }

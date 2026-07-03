@@ -65,10 +65,76 @@ export default function Dashboard() {
   const [replySubject, setReplySubject] = useState('');
   const [replyText, setReplyText] = useState('');
 
+  // AI Assistant States
+  const [chatHistory, setChatHistory] = useState([
+    { role: 'assistant', content: "SYSTEM ONLINE.\nHello Admin. I am Antigravity, your dashboard co-pilot. I can modify projects, experience entries, or update settings on your command. What would you like to build or modify today?" }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatKeyConfigured, setChatKeyConfigured] = useState(true);
+
   const fileInputRef = useRef(null);
   const profileInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const docInputRef = useRef(null);
+  const chatScrollRef = useRef(null);
+
+  // Check API key configuration on mount
+  useEffect(() => {
+    fetch('/api/admin/chat')
+      .then(res => res.json())
+      .then(data => setChatKeyConfigured(data.configured))
+      .catch(err => console.error("Error checking assistant key status:", err));
+  }, []);
+
+  // Scroll chat window to bottom on new messages
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatHistory, chatLoading]);
+
+  const handleSendChat = async (e) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatInput('');
+    setChatHistory(prev => [...prev, { role: 'user', content: userMsg }]);
+    setChatLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: chatHistory.slice(1), // omit the greeting
+          message: userMsg
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.configured === false) {
+          setChatKeyConfigured(false);
+        }
+        throw new Error(data.error || "Failed to get reply");
+      }
+
+      setChatHistory(prev => [...prev, { role: 'assistant', content: data.response }]);
+      
+      if (data.actionExecuted) {
+        setMessage("Assistant executed site edits...");
+        setTimeout(() => setMessage(''), 3000);
+        await fetchData(); // reload states from API/Redis
+      }
+    } catch (err) {
+      console.error(err);
+      setChatHistory(prev => [...prev, { role: 'assistant', content: `[ERROR] — ${err.message}` }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !sessionStorage.getItem('ga_admin')) {
@@ -544,6 +610,7 @@ export default function Dashboard() {
               { id: 'inbox', label: 'INBOX', count: messages.length },
               { id: 'profile', label: 'PUBLIC_INFO' },
               { id: 'settings', label: 'ECOSYSTEM' },
+              { id: 'assistant', label: 'AI_COCKPIT' },
             ].map(t => (
               <button key={t.id} className={`${styles.navBtn} ${activeTab === t.id ? styles.navBtnActive : ''}`} onClick={() => setActiveTab(t.id)}>
                 <span className="mono">{t.label} {t.count > 0 && `(${t.count})`}</span>
@@ -773,6 +840,94 @@ export default function Dashboard() {
                  <textarea className={styles.settingInput} value={settingsData.tools.join(', ')} onChange={e => setSettingsData({...settingsData, tools: e.target.value.split(',').map(s => s.trim())})} style={{ height: '80px' }} />
                </div>
                <button className="shiny-cta" style={{ width: '100%', marginTop: '24px' }} onClick={() => saveToApi('/api/admin/settings', settingsData, 'Ecosystem Updated')}>SAVE ECOSYSTEM SETTINGS</button>
+            </div>
+          )}
+
+          {activeTab === 'assistant' && (
+            <div className={styles.assistantContainer}>
+              <div className={styles.quickActions}>
+                <button type="button" className={styles.quickActionBtn} onClick={() => setChatInput("Show me all current projects")}>LIST_PROJECTS</button>
+                <button type="button" className={styles.quickActionBtn} onClick={() => setChatInput("Add a website design project named 'Antigravity Workspace' with description 'Modern workflow builder'")}>ADD_PROJECT_TEMPLATE</button>
+                <button type="button" className={styles.quickActionBtn} onClick={() => setChatInput("Change my availability setting to 'OPEN FOR VIBE CODING'")}>SET_AVAILABILITY</button>
+                <button type="button" className={styles.quickActionBtn} onClick={() => setChatInput("Update my profile title to 'Creative Agentic Developer'")}>UPDATE_ROLE_TITLE</button>
+              </div>
+
+              {!chatKeyConfigured ? (
+                <div className={styles.setupCard}>
+                  <h3 className={styles.setupTitle}>[API_KEY_REQUIRED] — Configuration Missing</h3>
+                  <p className="mono" style={{ fontSize: '12px', color: 'var(--gray-2)', lineHeight: '1.6' }}>
+                    Antigravity requires a Google Gemini Developer API Key to process natural language instructions and run workspace updates.
+                  </p>
+                  <ul className={styles.setupSteps + " mono"} style={{ fontSize: '11px', color: 'var(--gray-2)' }}>
+                    <li>Get a free Gemini API Key from the <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--lime)', textDecoration: 'underline' }}>Google AI Studio</a>.</li>
+                    <li>Open your project files and locate (or create) a file named <code>.env.local</code> in the root directory.</li>
+                    <li>Add the following environment variable to the file:<br />
+                      <code style={{ display: 'block', margin: '8px 0', padding: '10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)' }}>GEMINI_API_KEY=your_actual_api_key_here</code>
+                    </li>
+                    <li>Restart your local development server (or deploy to Vercel and inject it in Environment Variables).</li>
+                  </ul>
+                  <button type="button" className="shiny-cta" style={{ marginTop: '24px' }} onClick={async () => {
+                    const res = await fetch('/api/admin/chat');
+                    const d = await res.json();
+                    if (d.configured) {
+                      setChatKeyConfigured(true);
+                      setChatHistory(prev => [...prev, { role: 'assistant', content: "[SYSTEM] — API Key detected! Terminal is fully operational." }]);
+                    } else {
+                      alert("Still could not find GEMINI_API_KEY. Make sure the development server is restarted after creating .env.local.");
+                    }
+                  }}>
+                    <span>RE-VERIFY CONNECTION</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className={styles.chatWindow} ref={chatScrollRef}>
+                    {chatHistory.map((msg, i) => (
+                      <div key={i} className={`${styles.chatMessage} ${msg.role === 'user' ? styles.chatMessageUser : styles.chatMessageAssistant}`}>
+                        <div className={styles.msgHeader}>
+                          <span className="mono">[{msg.role === 'user' ? 'ADMIN_USER' : 'ANTIGRAVITY_AI'}]</span>
+                        </div>
+                        <div className={`${styles.bubble} ${msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant}`}>
+                          {msg.content.split('\n').map((line, li) => {
+                            if (line.startsWith('- ') || line.startsWith('* ')) {
+                              return <li key={li} className="mono" style={{ marginLeft: '12px', listStyleType: 'square' }}>{line.slice(2)}</li>;
+                            }
+                            if (line.match(/^\d+\.\s/)) {
+                              return <li key={li} className="mono" style={{ marginLeft: '12px' }}>{line}</li>;
+                            }
+                            return <p key={li} className="mono" style={{ margin: '4px 0' }}>{line}</p>;
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className={`${styles.chatMessage} ${styles.chatMessageAssistant}`}>
+                        <div className={styles.msgHeader}>
+                          <span className="mono">[ANTIGRAVITY_AI]</span>
+                        </div>
+                        <div className={`${styles.bubble} ${styles.bubbleAssistant}`}>
+                          <span className="mono">THINKING_AND_VIBING</span>
+                          <span className={styles.cursorBlink} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSendChat} className={styles.chatInputForm}>
+                    <input
+                      type="text"
+                      className={styles.chatInput}
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      placeholder="e.g. Add a project called 'My New App' to apps, set availability to 'BUSY'"
+                      disabled={chatLoading}
+                    />
+                    <button type="submit" className={styles.chatSendBtn} disabled={chatLoading || !chatInput.trim()}>
+                      <span>EXECUTE →</span>
+                    </button>
+                  </form>
+                </>
+              )}
             </div>
           )}
         </div>

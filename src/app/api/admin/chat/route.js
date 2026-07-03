@@ -1,0 +1,410 @@
+import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
+import { 
+  getProjects, setProjects, 
+  getSettings, setSettings, 
+  getExperience, setExperience 
+} from '@/lib/data';
+
+// Helper to execute tools requested by Gemini
+async function executeTool(name, args) {
+  switch (name) {
+    case 'get_projects': {
+      const data = await getProjects();
+      return data;
+    }
+    case 'add_project': {
+      const data = await getProjects();
+      const cat = args.category;
+      if (!data[cat]) {
+        data[cat] = [];
+      }
+      const newProj = {
+        id: `p_${Date.now()}`,
+        title: args.title,
+        subcategory: args.subcategory || '',
+        description: args.description || '',
+        image: args.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop',
+        link: args.link || '',
+        images: [],
+        links: args.link ? [{ label: 'Link', url: args.link }] : [],
+        details: args.details || args.description || ''
+      };
+      data[cat].push(newProj);
+      await setProjects(data);
+      revalidatePath('/');
+      revalidatePath('/work');
+      revalidatePath('/work/[id]', 'page');
+      return { success: true, project: newProj };
+    }
+    case 'update_project': {
+      const data = await getProjects();
+      const cat = args.category;
+      const id = args.projectId;
+      if (!data[cat]) {
+        throw new Error(`Category ${cat} not found`);
+      }
+      const projIndex = data[cat].findIndex(p => p.id === id);
+      if (projIndex === -1) {
+        throw new Error(`Project ${id} not found in category ${cat}`);
+      }
+      
+      const current = data[cat][projIndex];
+      const updated = {
+        ...current,
+        title: args.title !== undefined ? args.title : current.title,
+        subcategory: args.subcategory !== undefined ? args.subcategory : current.subcategory,
+        description: args.description !== undefined ? args.description : current.description,
+        image: args.image !== undefined ? args.image : current.image,
+        link: args.link !== undefined ? args.link : current.link,
+        details: args.details !== undefined ? args.details : current.details
+      };
+      
+      data[cat][projIndex] = updated;
+      await setProjects(data);
+      revalidatePath('/');
+      revalidatePath('/work');
+      revalidatePath('/work/[id]', 'page');
+      return { success: true, project: updated };
+    }
+    case 'delete_project': {
+      const data = await getProjects();
+      const cat = args.category;
+      const id = args.projectId;
+      if (!data[cat]) {
+        throw new Error(`Category ${cat} not found`);
+      }
+      data[cat] = data[cat].filter(p => p.id !== id);
+      await setProjects(data);
+      revalidatePath('/');
+      revalidatePath('/work');
+      revalidatePath('/work/[id]', 'page');
+      return { success: true };
+    }
+    case 'get_experience': {
+      const data = await getExperience();
+      return data;
+    }
+    case 'add_experience': {
+      const data = await getExperience();
+      const newEntry = {
+        id: `e_${Date.now()}`,
+        role: args.role,
+        company: args.company,
+        period: args.period,
+        description: args.description || ''
+      };
+      data.push(newEntry);
+      await setExperience(data);
+      revalidatePath('/');
+      return { success: true, entry: newEntry };
+    }
+    case 'update_experience': {
+      const data = await getExperience();
+      const id = args.entryId;
+      const index = data.findIndex(e => e.id === id);
+      if (index === -1) {
+        throw new Error(`Experience entry ${id} not found`);
+      }
+      
+      const current = data[index];
+      const updated = {
+        ...current,
+        role: args.role !== undefined ? args.role : current.role,
+        company: args.company !== undefined ? args.company : current.company,
+        period: args.period !== undefined ? args.period : current.period,
+        description: args.description !== undefined ? args.description : current.description
+      };
+      data[index] = updated;
+      await setExperience(data);
+      revalidatePath('/');
+      return { success: true, entry: updated };
+    }
+    case 'delete_experience': {
+      let data = await getExperience();
+      const id = args.entryId;
+      data = data.filter(e => e.id !== id);
+      await setExperience(data);
+      revalidatePath('/');
+      return { success: true };
+    }
+    case 'get_profile_settings': {
+      const data = await getSettings();
+      return data;
+    }
+    case 'update_profile_settings': {
+      const settings = await getSettings();
+      if (args.name !== undefined) settings.profile.name = args.name;
+      if (args.title !== undefined) settings.profile.title = args.title;
+      if (args.bio !== undefined) settings.profile.bio = args.bio;
+      if (args.email !== undefined) settings.profile.email = args.email;
+      if (args.location !== undefined) settings.profile.location = args.location;
+      if (args.instagram !== undefined) settings.profile.instagram = args.instagram;
+      if (args.facebook !== undefined) settings.profile.facebook = args.facebook;
+      if (args.availability !== undefined) settings.profile.availability = args.availability;
+      if (args.musicEnabled !== undefined) settings.musicEnabled = args.musicEnabled;
+      if (args.services !== undefined) settings.services = args.services;
+      if (args.tools !== undefined) settings.tools = args.tools;
+      
+      await setSettings(settings);
+      revalidatePath('/');
+      return { success: true, settings };
+    }
+    default:
+      throw new Error(`Tool ${name} is not implemented`);
+  }
+}
+
+export async function GET() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  return NextResponse.json({ configured: !!apiKey });
+}
+
+export async function POST(request) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ 
+      error: 'GEMINI_API_KEY is not configured on the server. Please add it to your environment variables or .env.local file.',
+      configured: false
+    }, { status: 400 });
+  }
+
+  try {
+    const { history = [], message } = await request.json();
+    if (!message) {
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    }
+
+    // Format chat history for Gemini API
+    const chatMessages = [
+      ...history.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    const systemInstruction = {
+      parts: [{
+        text: `You are Antigravity, the autonomous AI coding and administration assistant built into the admin session of Glory Adeniran's portfolio.
+Your role is to help the admin manage the site dynamically. You have direct access to tools that can read and write projects, work experience entries, and profile settings.
+Always assume the user is the admin who owns the site.
+When the user asks to view, edit, add, or delete content, do it by calling the appropriate tool.
+Confirm what you have changed. Keep your explanations concise, professional, and clear.
+Use clean markdown to format your text.
+Categories for projects must be exactly: 'graphic_design', 'website_design', 'apps', 'vibe_coding'.`
+      }]
+    };
+
+    const tools = [{
+      functionDeclarations: [
+        {
+          name: "get_projects",
+          description: "Retrieve all portfolio projects grouped by category."
+        },
+        {
+          name: "add_project",
+          description: "Add a new project to the website portfolio.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              category: { type: "STRING", description: "The category to add to: 'graphic_design', 'website_design', 'apps', 'vibe_coding'" },
+              title: { type: "STRING", description: "The title of the project" },
+              subcategory: { type: "STRING", description: "The subcategory or sub-title (e.g. Mobile UI/UX, Sports Graphics)" },
+              description: { type: "STRING", description: "Short description of the project" },
+              image: { type: "STRING", description: "Main image URL (use placeholder or search Unsplash)" },
+              link: { type: "STRING", description: "Project link or GitHub repo" },
+              details: { type: "STRING", description: "Extended details about the project" }
+            },
+            required: ["category", "title"]
+          }
+        },
+        {
+          name: "update_project",
+          description: "Update an existing project's fields.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              category: { type: "STRING", description: "The category the project belongs to" },
+              projectId: { type: "STRING", description: "The unique ID of the project to update" },
+              title: { type: "STRING" },
+              subcategory: { type: "STRING" },
+              description: { type: "STRING" },
+              image: { type: "STRING" },
+              link: { type: "STRING" },
+              details: { type: "STRING" }
+            },
+            required: ["category", "projectId"]
+          }
+        },
+        {
+          name: "delete_project",
+          description: "Delete an existing project.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              category: { type: "STRING", description: "The category the project belongs to" },
+              projectId: { type: "STRING", description: "The ID of the project to delete" }
+            },
+            required: ["category", "projectId"]
+          }
+        },
+        {
+          name: "get_experience",
+          description: "Retrieve all work history/experience entries."
+        },
+        {
+          name: "add_experience",
+          description: "Add a new work experience entry.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              role: { type: "STRING", description: "Role title, e.g. Lead Designer" },
+              company: { type: "STRING", description: "Company name, e.g. Google" },
+              period: { type: "STRING", description: "Period of employment, e.g. 2024 - Present" },
+              description: { type: "STRING", description: "Role description and accomplishments" }
+            },
+            required: ["role", "company", "period"]
+          }
+        },
+        {
+          name: "update_experience",
+          description: "Update an existing experience entry.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              entryId: { type: "STRING", description: "The ID of the experience entry" },
+              role: { type: "STRING" },
+              company: { type: "STRING" },
+              period: { type: "STRING" },
+              description: { type: "STRING" }
+            },
+            required: ["entryId"]
+          }
+        },
+        {
+          name: "delete_experience",
+          description: "Delete an experience entry.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              entryId: { type: "STRING", description: "The ID of the entry to delete" }
+            },
+            required: ["entryId"]
+          }
+        },
+        {
+          name: "get_profile_settings",
+          description: "Retrieve profile info, email, links, tools, services, and other site-wide settings."
+        },
+        {
+          name: "update_profile_settings",
+          description: "Update profile and ecosystem settings.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              name: { type: "STRING", description: "Display name" },
+              title: { type: "STRING", description: "Role title" },
+              bio: { type: "STRING", description: "Short biography" },
+              email: { type: "STRING" },
+              location: { type: "STRING" },
+              instagram: { type: "STRING" },
+              facebook: { type: "STRING" },
+              availability: { type: "STRING", description: "e.g. AVAILABLE_FOR_FREELANCE" },
+              musicEnabled: { type: "BOOLEAN", description: "Enable or disable Spotify background player" },
+              services: { type: "ARRAY", items: { type: "STRING" }, description: "List of services offered" },
+              tools: { type: "ARRAY", items: { type: "STRING" }, description: "List of tools in the arsenal" }
+            }
+          }
+        }
+      ]
+    }];
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    let actionExecuted = false;
+    let loopCount = 0;
+    const maxLoops = 5;
+    let finalContent = '';
+
+    while (loopCount < maxLoops) {
+      const reqBody = {
+        contents: chatMessages,
+        systemInstruction,
+        tools,
+        toolConfig: { functionCallingConfig: { mode: 'AUTO' } }
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reqBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Gemini error:', errorText);
+        throw new Error(`Gemini API error (${response.status}): ${errorText}`);
+      }
+
+      const resData = await response.json();
+      const candidate = resData.candidates?.[0];
+      if (!candidate || !candidate.content) {
+        throw new Error("Invalid response from Gemini API");
+      }
+
+      // Append assistant turn to chat messages
+      const modelContent = candidate.content;
+      chatMessages.push(modelContent);
+
+      const parts = modelContent.parts || [];
+      const textPart = parts.find(p => p.text);
+      if (textPart) {
+        finalContent = textPart.text;
+      }
+
+      const functionCalls = parts.filter(p => p.functionCall);
+      if (functionCalls.length === 0) {
+        // No function calls, we are finished
+        break;
+      }
+
+      // Execute tool calls
+      const functionResponseParts = [];
+      for (const call of functionCalls) {
+        const { name, args } = call.functionCall;
+        let result;
+        try {
+          result = await executeTool(name, args);
+          actionExecuted = true;
+        } catch (err) {
+          console.error(`Error executing tool ${name}:`, err);
+          result = { error: err.message };
+        }
+
+        functionResponseParts.push({
+          functionResponse: {
+            name,
+            response: { result }
+          }
+        });
+      }
+
+      // Append function response turn to chat messages
+      chatMessages.push({
+        role: 'function',
+        parts: functionResponseParts
+      });
+
+      loopCount++;
+    }
+
+    return NextResponse.json({ 
+      response: finalContent || "Done.", 
+      actionExecuted 
+    });
+
+  } catch (error) {
+    console.error('[chat/route.js] error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

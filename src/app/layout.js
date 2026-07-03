@@ -13,6 +13,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata = {
+  metadataBase: new URL('https://gloryadeniran.com'),
   title: "Glory Adeniran | Product Designer & Vibe Coder",
   description: "Portfolio of Glory Adeniran - Product Designer and Vibe Coder crafting premium digital experiences through Graphic Design, Web Design, Apps and interactive Front-End.",
   icons: {
@@ -20,6 +21,28 @@ export const metadata = {
       { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
     apple: '/favicon.svg',
+  },
+  openGraph: {
+    title: "Glory Adeniran | Product Designer & Vibe Coder",
+    description: "Portfolio of Glory Adeniran - Product Designer and Vibe Coder crafting premium digital experiences.",
+    url: "https://gloryadeniran.com",
+    siteName: "Glory Adeniran Portfolio",
+    images: [
+      {
+        url: "/images/og-preview.png",
+        width: 1200,
+        height: 630,
+        alt: "Glory Adeniran | Product Designer & Vibe Coder",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Glory Adeniran | Product Designer & Vibe Coder",
+    description: "Portfolio of Glory Adeniran - Product Designer and Vibe Coder crafting premium digital experiences.",
+    images: ["/images/og-preview.png"],
   },
 };
 
