@@ -5,15 +5,32 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Preloader() {
   const [loading, setLoading] = useState(true);
+  const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
-    // Play animation then hide
+    // Check if user has already seen the preloader in this session
+    if (typeof window !== 'undefined') {
+      const hasVisited = sessionStorage.getItem('preloader-shown');
+      if (hasVisited) {
+        setLoading(false);
+        return;
+      }
+    }
+    
+    // Only render the preloader if it's the first visit of the session
+    setShouldRender(true);
+
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 2800); // 2.8s total loading experience
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('preloader-shown', 'true');
+      }
+    }, 1500); // 1.5s total loading experience (reduced from 2.8s)
 
     return () => clearTimeout(timer);
   }, []);
+
+  if (!shouldRender) return null;
 
   // An elegant SVG path resembling a fast handwritten "G" and swoop
   const signaturePath = "M 30,70 C 10,70 10,30 30,30 C 50,30 60,50 40,70 C 20,90 10,100 30,100 C 60,100 80,60 90,60 C 100,60 110,70 120,60 C 130,50 140,50 150,60 C 160,70 170,80 190,60 M 30,110 C 100,110 150,110 250,100";
@@ -27,7 +44,7 @@ export default function Preloader() {
           exit={{ 
             opacity: 0, 
             y: '-100%',
-            transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1] } 
+            transition: { duration: 0.6, ease: [0.76, 0, 0.24, 1] } 
           }}
           style={{
             position: 'fixed',
@@ -52,7 +69,7 @@ export default function Preloader() {
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ pathLength: 1, opacity: 1 }}
               transition={{
-                pathLength: { duration: 1.5, ease: "easeInOut", delay: 0.2 },
+                pathLength: { duration: 0.8, ease: "easeInOut", delay: 0.1 },
                 opacity: { duration: 0.1 }
               }}
             />
@@ -62,7 +79,7 @@ export default function Preloader() {
           <motion.div
             initial={{ opacity: 0, filter: 'blur(10px)', y: 10 }}
             animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-            transition={{ duration: 1, delay: 1.2, ease: "easeOut" }}
+            transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
             style={{
               position: 'absolute',
               color: '#FAFAFA',
@@ -89,7 +106,7 @@ export default function Preloader() {
             <motion.div
               initial={{ width: '0%' }}
               animate={{ width: '100%' }}
-              transition={{ duration: 2.2, ease: "circOut" }}
+              transition={{ duration: 1.2, ease: "circOut" }}
               style={{
                 height: '100%',
                 background: '#0091FF'
