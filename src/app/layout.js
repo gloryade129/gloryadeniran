@@ -70,8 +70,24 @@ export default function RootLayout({ children }) {
               ],
               "image": "https://gloryadeniran.cv/images/Put_an_I_watch_to_202606282357.jpeg",
               "description": "Portfolio of Glory Adeniran - Product Designer and Creative Lead at Global Graphics crafting premium digital experiences through Web Design, Apps and interactive Front-End.",
+              "knowsAbout": [
+                "Product Design",
+                "Graphic Design",
+                "UI/UX Design",
+                "Web Design",
+                "Mobile App Design",
+                "Brand Identity",
+                "Frontend Development",
+                "Vibe Coding"
+              ],
+              "alumniOf": {
+                "@type": "EducationalOrganization",
+                "name": "University of Ilorin"
+              },
               "address": {
                 "@type": "PostalAddress",
+                "addressLocality": "Ilorin",
+                "addressRegion": "Kwara",
                 "addressCountry": "NG"
               }
             })
