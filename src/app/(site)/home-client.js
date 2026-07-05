@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -67,6 +67,11 @@ const stagger = {
 export default function HomeClient({ initialProjects = {}, initialSettings = {} }) {
   const projectsData = initialProjects;
   const settingsData = initialSettings;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth <= 768);
+  }, []);
 
   const allProjects = [
     ...(projectsData.graphic_design || []),
@@ -109,8 +114,8 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
                   <TextRotate
                     texts={settingsData.hero.rotate_1}
                     staggerFrom="last"
-                    staggerDuration={0.025}
-                    splitBy="characters"
+                    staggerDuration={isMobile ? 0 : 0.025}
+                    splitBy={isMobile ? "words" : "characters"}
                     rotationInterval={3500}
                     transition={{ type: "spring", damping: 30, stiffness: 400 }}
                     elementLevelClassName={styles.rotateTextLime}
@@ -125,8 +130,8 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
                   <TextRotate
                     texts={settingsData.hero.rotate_2}
                     staggerFrom="first"
-                    staggerDuration={0.025}
-                    splitBy="characters"
+                    staggerDuration={isMobile ? 0 : 0.025}
+                    splitBy={isMobile ? "words" : "characters"}
                     rotationInterval={3500}
                     transition={{ type: "spring", damping: 30, stiffness: 400 }}
                     elementLevelClassName={styles.rotateTextItalic}

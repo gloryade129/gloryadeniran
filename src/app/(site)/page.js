@@ -23,7 +23,7 @@ export const metadata = {
     siteName: "Glory Adeniran Portfolio",
     images: [
       {
-        url: "/images/og-preview.png",
+        url: "/images/Put_an_I_watch_to_202606282357.jpeg",
         width: 1200,
         height: 630,
         alt: "Glory Adeniran | Product Designer & Graphic Designer Nigeria",
