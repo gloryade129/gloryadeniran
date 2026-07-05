@@ -51,7 +51,7 @@ const fadeUp = {
 };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
 
-const categories = [
+const defaultCategories = [
   { key: 'graphic_design',  label: 'Graphic Design',  tag: '01', sub: 'Logo · Flyers · Print · Branding' },
   { key: 'website_design',  label: 'Website Design',  tag: '02', sub: 'Shopify · WordPress · Wix' },
   { key: 'apps',            label: 'Apps',             tag: '03', sub: 'Mobile UI/UX · Prototyping' },
@@ -116,8 +116,9 @@ function CategorySection({ cat, tag, label, sub, data, index }) {
   );
 }
 
-export default function WorkClient({ initialData }) {
+export default function WorkClient({ initialData, initialSettings }) {
   const projectsData = initialData || {};
+  const categories = initialSettings?.categories || defaultCategories;
   return (
     <>
       <div className="grain" aria-hidden="true" />

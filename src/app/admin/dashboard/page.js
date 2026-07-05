@@ -702,24 +702,27 @@ export default function Dashboard() {
 
           {activeTab === 'portfolio' && (
             <>
-              {Object.keys(projectsData).map(cat => (
-                <div key={cat} className={styles.catSection}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <p className="mono" style={{ color: 'var(--lime)' }}>{cat.toUpperCase()}</p>
-                    <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: true, project: { id: Date.now().toString(), title: '', subcategory: '', description: '', image: '/images/brand.png', link: '', images: [], links: [], details: '' } })}>+ ADD</button>
-                  </div>
-                  {projectsData[cat].map(p => (
-                    <div key={p.id} className={`${styles.projectRow} card`}>
-                       <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
-                       <div className={styles.projectRowInfo}><p>{p.title}</p><span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory}</span></div>
-                       <div className={styles.projectRowActions}>
-                        <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: { details: '', ...p, images: p.images || [], links: p.links || [] } })}>EDIT</button>
-                        <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = {...projectsData}; d[cat] = d[cat].filter(x => x.id !== p.id); setProjectsData(d); saveToApi('/api/admin/projects', d, 'Deleted'); } }}>DEL</button>
-                       </div>
+              {Object.keys(projectsData).map(cat => {
+                const catInfo = settingsData.categories?.find(c => c.key === cat) || { label: cat.replace('_', ' ').toUpperCase() };
+                return (
+                  <div key={cat} className={styles.catSection}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <p className="mono" style={{ color: 'var(--lime)' }}>{catInfo.label.toUpperCase()}</p>
+                      <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: true, project: { id: Date.now().toString(), title: '', subcategory: '', description: '', image: '/images/brand.png', link: '', images: [], links: [], details: '' } })}>+ ADD</button>
                     </div>
-                  ))}
-                </div>
-              ))}
+                    {projectsData[cat].map(p => (
+                      <div key={p.id} className={`${styles.projectRow} card`}>
+                         <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
+                         <div className={styles.projectRowInfo}><p>{p.title}</p><span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory}</span></div>
+                         <div className={styles.projectRowActions}>
+                          <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: { details: '', ...p, images: p.images || [], links: p.links || [] } })}>EDIT</button>
+                          <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = {...projectsData}; d[cat] = d[cat].filter(x => x.id !== p.id); setProjectsData(d); saveToApi('/api/admin/projects', d, 'Deleted'); } }}>DEL</button>
+                         </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </>
           )}
 

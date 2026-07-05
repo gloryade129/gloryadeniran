@@ -1,4 +1,4 @@
-import { getProjects } from '@/lib/data';
+import { getProjects, getSettings } from '@/lib/data';
 import WorkClient from './work-client';
 
 export const metadata = {
@@ -10,6 +10,9 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function WorkPage() {
-  const projectsData = await getProjects();
-  return <WorkClient initialData={projectsData} />;
+  const [projectsData, settingsData] = await Promise.all([
+    getProjects(),
+    getSettings(),
+  ]);
+  return <WorkClient initialData={projectsData} initialSettings={settingsData} />;
 }

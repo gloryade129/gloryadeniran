@@ -108,5 +108,11 @@
     "Vibe Coding",
     "Brand Identity"
   ],
-  "musicEnabled": true
+  "musicEnabled": true,
+  "categories": [
+    { "key": "graphic_design",  "label": "Graphic Design",  "tag": "01", "sub": "Logo · Flyers · Print · Branding" },
+    { "key": "website_design",  "label": "Website Design",  "tag": "02", "sub": "Shopify · WordPress · Wix" },
+    { "key": "apps",            "label": "Apps",             "tag": "03", "sub": "Mobile UI/UX · Prototyping" },
+    { "key": "vibe_coding",     "label": "Vibe Coding",     "tag": "04", "sub": "Next.js · React · Three.js" }
+  ]
 }

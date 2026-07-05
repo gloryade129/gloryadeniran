@@ -73,12 +73,16 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
     setIsMobile(window.innerWidth <= 768);
   }, []);
 
-  const allProjects = [
-    ...(projectsData.graphic_design || []),
-    ...(projectsData.website_design || []),
-    ...(projectsData.apps || []),
-    ...(projectsData.vibe_coding || []),
-  ].slice(0, 4);
+  const categoriesList = settingsData.categories || [
+    { key: 'graphic_design',  label: 'Graphic Design',  tag: '01', sub: 'Logo · Flyers · Print · Branding' },
+    { key: 'website_design',  label: 'Website Design',  tag: '02', sub: 'Shopify · WordPress · Wix' },
+    { key: 'apps',            label: 'Apps',             tag: '03', sub: 'Mobile UI/UX · Prototyping' },
+    { key: 'vibe_coding',     label: 'Vibe Coding',     tag: '04', sub: 'Next.js · React · Three.js' },
+  ];
+
+  const allProjects = categoriesList
+    .flatMap(cat => projectsData[cat.key] || [])
+    .slice(0, 4);
 
   return (
     <>

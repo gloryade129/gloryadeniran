@@ -146,6 +146,7 @@ async function executeTool(name, args) {
       if (args.services !== undefined) settings.services = args.services;
       if (args.tools !== undefined) settings.tools = args.tools;
       if (args.customCSS !== undefined) settings.customCSS = args.customCSS;
+      if (args.categories !== undefined) settings.categories = args.categories;
       
       await setSettings(settings);
       revalidatePath('/');
@@ -218,7 +219,20 @@ Always assume the user is the admin who owns the site.
 When the user asks to view, edit, add, or delete content, do it by calling the appropriate tool.
 Confirm what you have changed. Keep your explanations concise, professional, and clear.
 Use clean markdown to format your text.
-Categories for projects must be exactly: 'graphic_design', 'website_design', 'apps', 'vibe_coding'.
+
+**Project Categories:**
+Project categories are fully dynamic! To see existing categories, fetch settings using get_profile_settings.
+If the user wants to add a project under a new category (e.g., 'slide design'), do not decline!
+Instead, suggest creating a new category:
+1. Register/create the category first by calling update_profile_settings and adding/modifying the 'categories' list. Provide a suitable snake_case key (e.g. 'slide_design'), display label (e.g. 'Slide Design'), sequential tag (e.g. '05'), and subtitle.
+2. Then, call add_project with that category.
+
+**Guided Project Creation Flow (Proactive Assistant):**
+You must be skilled at guiding the user step-by-step when creating or updating projects. If details are missing, do not make assumptions or leave fields empty; proactively engage:
+- Ask clarifying questions about missing fields (e.g., subcategory, description, main links, cover image/video, or additional gallery assets).
+- If the user doesn't have a cover image/video, suggest a suitable Unsplash image URL that matches the project's vibe, or offer to use a default placeholder, or remind them they can upload files via the UPLOAD button in the admin edit modal.
+- Proactively suggest adding relevant gallery assets or main links (e.g., GitHub or live demo links) to make the portfolio look premium and complete.
+- Be friendly, collaborative, and conversational in asking these questions.
 
 **Dynamic Styling (Redesigning the site):**
 You can redesign the site's layout, styles, and color themes! The site uses CSS variables defined in :root. You can override these variables by providing a string of custom CSS and calling the tool \`update_profile_settings({ customCSS: 'css_code' })\`.
@@ -246,7 +260,7 @@ You can also inject other custom styles, layouts, or fonts! Any CSS you write wi
           parameters: {
             type: "OBJECT",
             properties: {
-              category: { type: "STRING", description: "The category to add to: 'graphic_design', 'website_design', 'apps', 'vibe_coding'" },
+              category: { type: "STRING", description: "The category key to add to (e.g., 'graphic_design', or any custom category key registered in settings)" },
               title: { type: "STRING", description: "The title of the project" },
               subcategory: { type: "STRING", description: "The subcategory or sub-title (e.g. Mobile UI/UX, Sports Graphics)" },
               description: { type: "STRING", description: "Short description of the project" },
@@ -263,7 +277,7 @@ You can also inject other custom styles, layouts, or fonts! Any CSS you write wi
           parameters: {
             type: "OBJECT",
             properties: {
-              category: { type: "STRING", description: "The category the project belongs to" },
+              category: { type: "STRING", description: "The category key the project belongs to (e.g., 'graphic_design', or any custom category key registered in settings)" },
               projectId: { type: "STRING", description: "The unique ID of the project to update" },
               title: { type: "STRING" },
               subcategory: { type: "STRING" },
@@ -352,7 +366,21 @@ You can also inject other custom styles, layouts, or fonts! Any CSS you write wi
               musicEnabled: { type: "BOOLEAN", description: "Enable or disable Spotify background player" },
               services: { type: "ARRAY", items: { type: "STRING" }, description: "List of services offered" },
               tools: { type: "ARRAY", items: { type: "STRING" }, description: "List of tools in the arsenal" },
-              customCSS: { type: "STRING", description: "Custom CSS overrides to redesign the site's layout and colors." }
+              customCSS: { type: "STRING", description: "Custom CSS overrides to redesign the site's layout and colors." },
+              categories: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    key: { type: "STRING", description: "Unique snake_case key for the category, e.g., 'slide_design'" },
+                    label: { type: "STRING", description: "Display name for the category, e.g., 'Slide Design'" },
+                    tag: { type: "STRING", description: "Category tag number, e.g., '05'" },
+                    sub: { type: "STRING", description: "Subtitle/disciplines, e.g., 'Keynote · Pitch Decks · PowerPoint'" }
+                  },
+                  required: ["key", "label"]
+                },
+                description: "Update the list of categories on the portfolio."
+              }
             }
           }
         }
