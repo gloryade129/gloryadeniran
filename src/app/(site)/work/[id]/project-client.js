@@ -18,7 +18,115 @@ const fadeUp = {
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
 export default function ProjectClient({ project }) {
-  const [activeImage, setActiveImage] = useState(null);
+  const allMedia = [project.image, ...(project.images || [])].filter(Boolean);
+  const [activeIndex, setActiveIndex] = useState(null);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [isSlideshow, setIsSlideshow] = useState(false);
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+
+  const openLightbox = (index) => {
+    setActiveIndex(index);
+    setZoomScale(1);
+    setIsSlideshow(false);
+  };
+
+  const closeLightbox = () => {
+    setActiveIndex(null);
+    setZoomScale(1);
+    setIsSlideshow(false);
+  };
+
+  const nextMedia = () => {
+    setActiveIndex((prev) => (prev === null ? 0 : (prev + 1) % allMedia.length));
+    setZoomScale(1);
+  };
+
+  const prevMedia = () => {
+    setActiveIndex((prev) => (prev === null ? 0 : (prev - 1 + allMedia.length) % allMedia.length));
+    setZoomScale(1);
+  };
+
+  const zoomIn = () => {
+    setZoomScale((prev) => Math.min(4, Math.round((prev + 0.5) * 10) / 10));
+  };
+
+  const zoomOut = () => {
+    setZoomScale((prev) => Math.max(1, Math.round((prev - 0.5) * 10) / 10));
+  };
+
+  const resetZoom = () => {
+    setZoomScale(1);
+  };
+
+  const toggleSlideshow = () => {
+    setIsSlideshow((prev) => !prev);
+  };
+
+  // Slideshow auto advance
+  useEffect(() => {
+    if (!isSlideshow || activeIndex === null) return;
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev === null ? 0 : (prev + 1) % allMedia.length));
+      setZoomScale(1);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [isSlideshow, activeIndex, allMedia.length]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (activeIndex === null) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev === null ? 0 : (prev + 1) % allMedia.length));
+        setZoomScale(1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev === null ? 0 : (prev - 1 + allMedia.length) % allMedia.length));
+        setZoomScale(1);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeLightbox();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        setIsSlideshow((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeIndex, allMedia.length]);
+
+  const handleWheel = (e) => {
+    if (e.deltaY < 0) {
+      setZoomScale((prev) => Math.min(4, Math.round((prev + 0.25) * 100) / 100));
+    } else {
+      setZoomScale((prev) => Math.max(1, Math.round((prev - 0.25) * 100) / 100));
+    }
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const diffX = touchStartX - touchEndX;
+    const minSwipeDistance = 50;
+    if (diffX > minSwipeDistance) {
+      nextMedia();
+    } else if (diffX < -minSwipeDistance) {
+      prevMedia();
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
+  const currentMedia = activeIndex !== null ? allMedia[activeIndex] : null;
 
   return (
     <>
@@ -55,7 +163,7 @@ export default function ProjectClient({ project }) {
                 <motion.div 
                   variants={fadeUp} 
                   className={`${styles.mainImageWrap} card`}
-                  onClick={() => setActiveImage(project.image)}
+                  onClick={() => openLightbox(0)}
                 >
                   <div className={styles.imageInner}>
                     {isVideoUrl(project.image) ? (
@@ -80,7 +188,7 @@ export default function ProjectClient({ project }) {
                       />
                     )}
                     <div className={styles.zoomOverlay}>
-                      <span className={styles.zoomIcon}>🔍 Click to expand</span>
+                      <span className={styles.zoomIcon}>🔍 Click to expand & preview</span>
                     </div>
                   </div>
                 </motion.div>
@@ -96,7 +204,7 @@ export default function ProjectClient({ project }) {
                         <div 
                           key={idx} 
                           className={`${styles.subImageWrap} card`}
-                          onClick={() => setActiveImage(imgUrl)}
+                          onClick={() => openLightbox(idx + 1)}
                         >
                           {isVideoUrl(imgUrl) ? (
                             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -202,33 +310,128 @@ export default function ProjectClient({ project }) {
 
       {/* Lightbox Overlay */}
       <AnimatePresence>
-        {activeImage && (
+        {activeIndex !== null && currentMedia && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className={styles.lightboxOverlay}
-            onClick={() => setActiveImage(null)}
+            onClick={closeLightbox}
           >
-            <button className={styles.lightboxClose} onClick={() => setActiveImage(null)}>✕</button>
-            <div className={styles.lightboxImgContainer} onClick={(e) => e.stopPropagation()}>
-              {isVideoUrl(activeImage) ? (
-                <video
-                  src={activeImage}
-                  controls
-                  autoPlay
-                  className={styles.lightboxImg}
-                  style={{ width: '100%', height: '100%', maxHeight: '85vh', objectFit: 'contain', background: 'transparent' }}
-                />
-              ) : (
-                <Image 
-                  src={activeImage} 
-                  alt="" 
-                  fill 
-                  className={styles.lightboxImg}
-                  unoptimized={activeImage.startsWith('https://images.unsplash.com')}
-                />
-              )}
+            {/* Top Toolbar */}
+            <div className={styles.lightboxHeader} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.lightboxCounter}>
+                <span className="mono">ASSET {String(activeIndex + 1).padStart(2, '0')} / {String(allMedia.length).padStart(2, '0')}</span>
+              </div>
+
+              {/* Zoom Controls */}
+              <div className={styles.lightboxZoomControls}>
+                <button 
+                  className={styles.lightboxToolBtn} 
+                  onClick={zoomOut} 
+                  disabled={zoomScale <= 1}
+                  title="Zoom Out (-)"
+                >
+                  −
+                </button>
+                <span className={`${styles.zoomValue} mono`}>{Math.round(zoomScale * 100)}%</span>
+                <button 
+                  className={styles.lightboxToolBtn} 
+                  onClick={zoomIn} 
+                  disabled={zoomScale >= 4}
+                  title="Zoom In (+)"
+                >
+                  +
+                </button>
+                {zoomScale !== 1 && (
+                  <button className={styles.lightboxResetBtn} onClick={resetZoom} title="Reset Zoom">
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              {/* Actions Right */}
+              <div className={styles.lightboxActions}>
+                <button 
+                  className={`${styles.slideshowBtn} ${isSlideshow ? styles.slideshowActive : ''}`} 
+                  onClick={toggleSlideshow}
+                  title="Toggle Automatic Slideshow"
+                >
+                  {isSlideshow ? '⏸ PAUSE' : '▶ SLIDESHOW'}
+                </button>
+                <button className={styles.lightboxClose} onClick={closeLightbox} title="Close (Esc)">✕</button>
+              </div>
+            </div>
+
+            {/* Left Nav Arrow */}
+            {allMedia.length > 1 && (
+              <button 
+                className={`${styles.navBtn} ${styles.navBtnPrev}`} 
+                onClick={(e) => { e.stopPropagation(); prevMedia(); }}
+                title="Previous (Left Arrow)"
+              >
+                ‹
+              </button>
+            )}
+
+            {/* Right Nav Arrow */}
+            {allMedia.length > 1 && (
+              <button 
+                className={`${styles.navBtn} ${styles.navBtnNext}`} 
+                onClick={(e) => { e.stopPropagation(); nextMedia(); }}
+                title="Next (Right Arrow)"
+              >
+                ›
+              </button>
+            )}
+
+            {/* Media Container */}
+            <div 
+              className={styles.lightboxImgContainer} 
+              onClick={(e) => e.stopPropagation()}
+              onWheel={handleWheel}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onDoubleClick={() => setZoomScale((prev) => (prev > 1 ? 1 : 2))}
+            >
+              <motion.div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  scale: zoomScale,
+                  cursor: zoomScale > 1 ? 'grab' : 'default',
+                  transition: zoomScale === 1 ? 'transform 0.2s ease-out' : 'none',
+                }}
+                drag={zoomScale > 1}
+                dragConstraints={{ left: -600, right: 600, top: -600, bottom: 600 }}
+                dragElastic={0.05}
+              >
+                {isVideoUrl(currentMedia) ? (
+                  <video
+                    src={currentMedia}
+                    controls
+                    autoPlay
+                    key={currentMedia}
+                    className={styles.lightboxImg}
+                    style={{ width: '100%', height: '100%', maxHeight: '80vh', objectFit: 'contain', background: 'transparent' }}
+                  />
+                ) : (
+                  <div style={{ position: 'relative', width: '100%', height: '80vh' }}>
+                    <Image 
+                      src={currentMedia} 
+                      alt="" 
+                      fill 
+                      priority
+                      className={styles.lightboxImg}
+                      unoptimized={currentMedia.startsWith('https://images.unsplash.com')}
+                    />
+                  </div>
+                )}
+              </motion.div>
             </div>
           </motion.div>
         )}
