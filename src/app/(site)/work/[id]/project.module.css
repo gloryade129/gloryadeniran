@@ -458,6 +458,74 @@
   object-fit: contain;
 }
 
+/* Toast Notification */
+.toastNotification {
+  position: fixed;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 18, 24, 0.92);
+  border: 1px solid var(--lime, #ccff00);
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  padding: 10px 22px;
+  border-radius: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(204, 255, 0, 0.25);
+  backdrop-filter: blur(12px);
+  z-index: 10010;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.projectShareBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.projectShareBtn:hover {
+  border-color: var(--lime, #ccff00);
+  color: var(--lime, #ccff00);
+  background: rgba(204, 255, 0, 0.1);
+  box-shadow: 0 0 12px rgba(204, 255, 0, 0.2);
+}
+
+.shareHeaderBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.shareHeaderBtn:hover {
+  border-color: var(--lime, #ccff00);
+  color: var(--lime, #ccff00);
+  background: rgba(204, 255, 0, 0.1);
+}
+
 @media (max-width: 768px) {
   .lightboxHeader {
     padding: 0 12px;
@@ -492,5 +560,11 @@
     padding: 5px 10px;
     font-size: 10px;
   }
+
+  .shareHeaderBtn {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
 }
+
 

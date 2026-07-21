@@ -17,33 +17,100 @@ const fadeUp = {
 };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
+const slideVariants = {
+  enter: (direction) => ({
+    x: direction > 0 ? 320 : -320,
+    opacity: 0,
+    scale: 0.95,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    transition: {
+      x: { type: 'spring', stiffness: 300, damping: 30 },
+      opacity: { duration: 0.25 },
+      scale: { type: 'spring', stiffness: 300, damping: 25 },
+    },
+  },
+  exit: (direction) => ({
+    x: direction < 0 ? 320 : -320,
+    opacity: 0,
+    scale: 0.95,
+    transition: {
+      x: { type: 'spring', stiffness: 300, damping: 30 },
+      opacity: { duration: 0.2 },
+    },
+  }),
+};
+
 export default function ProjectClient({ project }) {
   const allMedia = [project.image, ...(project.images || [])].filter(Boolean);
   const [activeIndex, setActiveIndex] = useState(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [isSlideshow, setIsSlideshow] = useState(false);
+  const [direction, setDirection] = useState(1);
   const [touchStartX, setTouchStartX] = useState(null);
   const [touchEndX, setTouchEndX] = useState(null);
+  const [toast, setToast] = useState('');
+
+  // Synchronize deep links in URL
+  const updateUrlParam = (index) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (index !== null && index >= 0) {
+      url.searchParams.set('asset', (index + 1).toString());
+    } else {
+      url.searchParams.delete('asset');
+    }
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  // Initial check for ?asset= query param
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const assetParam = params.get('asset');
+    if (assetParam) {
+      const parsed = parseInt(assetParam, 10) - 1;
+      if (!isNaN(parsed) && parsed >= 0 && parsed < allMedia.length) {
+        setActiveIndex(parsed);
+      }
+    }
+  }, [allMedia.length]);
 
   const openLightbox = (index) => {
+    setDirection(1);
     setActiveIndex(index);
     setZoomScale(1);
     setIsSlideshow(false);
+    updateUrlParam(index);
   };
 
   const closeLightbox = () => {
     setActiveIndex(null);
     setZoomScale(1);
     setIsSlideshow(false);
+    updateUrlParam(null);
   };
 
   const nextMedia = () => {
-    setActiveIndex((prev) => (prev === null ? 0 : (prev + 1) % allMedia.length));
+    setDirection(1);
+    setActiveIndex((prev) => {
+      const nextIdx = prev === null ? 0 : (prev + 1) % allMedia.length;
+      updateUrlParam(nextIdx);
+      return nextIdx;
+    });
     setZoomScale(1);
   };
 
   const prevMedia = () => {
-    setActiveIndex((prev) => (prev === null ? 0 : (prev - 1 + allMedia.length) % allMedia.length));
+    setDirection(-1);
+    setActiveIndex((prev) => {
+      const prevIdx = prev === null ? 0 : (prev - 1 + allMedia.length) % allMedia.length;
+      updateUrlParam(prevIdx);
+      return prevIdx;
+    });
     setZoomScale(1);
   };
 
@@ -63,11 +130,54 @@ export default function ProjectClient({ project }) {
     setIsSlideshow((prev) => !prev);
   };
 
+  const handleShare = async (e) => {
+    if (e) e.stopPropagation();
+    const currentIdx = activeIndex !== null ? activeIndex : 0;
+    const shareUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/work/${project.id}?asset=${currentIdx + 1}`
+      : `/work/${project.id}?asset=${currentIdx + 1}`;
+
+    const shareData = {
+      title: `${project.title} - Asset ${currentIdx + 1}`,
+      text: `Check out this design asset from "${project.title}" by Glory Adeniran`,
+      url: shareUrl,
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Native share error, falling back to copy:', err);
+        } else {
+          return;
+        }
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setToast('Asset link copied to clipboard!');
+        setTimeout(() => setToast(''), 2800);
+      } catch (err) {
+        setToast('Failed to copy link.');
+        setTimeout(() => setToast(''), 2800);
+      }
+    }
+  };
+
   // Slideshow auto advance
   useEffect(() => {
     if (!isSlideshow || activeIndex === null) return;
     const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev === null ? 0 : (prev + 1) % allMedia.length));
+      setDirection(1);
+      setActiveIndex((prev) => {
+        const nextIdx = prev === null ? 0 : (prev + 1) % allMedia.length;
+        updateUrlParam(nextIdx);
+        return nextIdx;
+      });
       setZoomScale(1);
     }, 3500);
     return () => clearInterval(interval);
@@ -79,12 +189,10 @@ export default function ProjectClient({ project }) {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
-        setActiveIndex((prev) => (prev === null ? 0 : (prev + 1) % allMedia.length));
-        setZoomScale(1);
+        nextMedia();
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
-        setActiveIndex((prev) => (prev === null ? 0 : (prev - 1 + allMedia.length) % allMedia.length));
-        setZoomScale(1);
+        prevMedia();
       } else if (e.key === 'Escape') {
         e.preventDefault();
         closeLightbox();
@@ -116,7 +224,7 @@ export default function ProjectClient({ project }) {
   const handleTouchEnd = () => {
     if (touchStartX === null || touchEndX === null) return;
     const diffX = touchStartX - touchEndX;
-    const minSwipeDistance = 50;
+    const minSwipeDistance = 45;
     if (diffX > minSwipeDistance) {
       nextMedia();
     } else if (diffX < -minSwipeDistance) {
@@ -131,6 +239,20 @@ export default function ProjectClient({ project }) {
   return (
     <>
       <div className="grain" aria-hidden="true" />
+
+      {/* Floating Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className={styles.toastNotification}
+          >
+            <span>✨ {toast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <section className={styles.section}>
         <div className="container">
@@ -150,9 +272,19 @@ export default function ProjectClient({ project }) {
                 <span className="eyebrow-tag">[{project.subcategory.toUpperCase()}]</span>
                 Project Overview
               </motion.p>
-              <motion.h1 variants={fadeUp} className={styles.title}>
-                {project.title}
-              </motion.h1>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <motion.h1 variants={fadeUp} className={styles.title}>
+                  {project.title}
+                </motion.h1>
+                <motion.button 
+                  variants={fadeUp} 
+                  className={styles.projectShareBtn}
+                  onClick={handleShare}
+                  title="Share Project & Asset Link"
+                >
+                  <span style={{ fontSize: '14px' }}>🔗</span> SHARE PROJECT
+                </motion.button>
+              </div>
             </header>
 
             {/* Content Grid */}
@@ -353,6 +485,13 @@ export default function ProjectClient({ project }) {
               {/* Actions Right */}
               <div className={styles.lightboxActions}>
                 <button 
+                  className={styles.shareHeaderBtn}
+                  onClick={handleShare}
+                  title="Share Direct Asset Link"
+                >
+                  🔗 SHARE
+                </button>
+                <button 
                   className={`${styles.slideshowBtn} ${isSlideshow ? styles.slideshowActive : ''}`} 
                   onClick={toggleSlideshow}
                   title="Toggle Automatic Slideshow"
@@ -393,45 +532,65 @@ export default function ProjectClient({ project }) {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              onDoubleClick={() => setZoomScale((prev) => (prev > 1 ? 1 : 2))}
+              onDoubleClick={() => setZoomScale((prev) => (prev > 1 ? 1 : 2.5))}
             >
-              <motion.div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  scale: zoomScale,
-                  cursor: zoomScale > 1 ? 'grab' : 'default',
-                  transition: zoomScale === 1 ? 'transform 0.2s ease-out' : 'none',
-                }}
-                drag={zoomScale > 1}
-                dragConstraints={{ left: -600, right: 600, top: -600, bottom: 600 }}
-                dragElastic={0.05}
-              >
-                {isVideoUrl(currentMedia) ? (
-                  <video
-                    src={currentMedia}
-                    controls
-                    autoPlay
-                    key={currentMedia}
-                    className={styles.lightboxImg}
-                    style={{ width: '100%', height: '100%', maxHeight: '80vh', objectFit: 'contain', background: 'transparent' }}
-                  />
-                ) : (
-                  <div style={{ position: 'relative', width: '100%', height: '80vh' }}>
-                    <Image 
-                      src={currentMedia} 
-                      alt="" 
-                      fill 
-                      priority
-                      className={styles.lightboxImg}
-                      unoptimized={currentMedia.startsWith('https://images.unsplash.com')}
-                    />
-                  </div>
-                )}
-              </motion.div>
+              <AnimatePresence custom={direction} mode="wait">
+                <motion.div
+                  key={activeIndex}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <motion.div
+                    animate={{ scale: zoomScale }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                    drag={zoomScale > 1}
+                    dragConstraints={false}
+                    dragElastic={0.12}
+                    dragMomentum={true}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: zoomScale > 1 ? 'grab' : 'default',
+                      touchAction: 'none',
+                    }}
+                  >
+                    {isVideoUrl(currentMedia) ? (
+                      <video
+                        src={currentMedia}
+                        controls
+                        autoPlay
+                        key={currentMedia}
+                        className={styles.lightboxImg}
+                        style={{ width: '100%', height: '100%', maxHeight: '80vh', objectFit: 'contain', background: 'transparent' }}
+                      />
+                    ) : (
+                      <div style={{ position: 'relative', width: '100%', height: '80vh' }}>
+                        <Image 
+                          src={currentMedia} 
+                          alt="" 
+                          fill 
+                          priority
+                          className={styles.lightboxImg}
+                          unoptimized={currentMedia.startsWith('https://images.unsplash.com')}
+                        />
+                      </div>
+                    )}
+                  </motion.div>
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
