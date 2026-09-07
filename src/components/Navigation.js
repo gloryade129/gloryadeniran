@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
 import settingsData from '@/data/settings.json';
@@ -65,23 +65,44 @@ const DOCK_ITEMS = [
 
 function DockIcon({ item, mouseX, isActive }) {
   const ref = useRef(null);
+  const cachedCenter = useRef(null);
   const distance = useMotionValue(999);
   const [hovered, setHovered] = useState(false);
 
+  const measure = useCallback(() => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      cachedCenter.current = rect.left + rect.width / 2;
+    }
+  }, []);
+
+  useEffect(() => {
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [measure]);
+
   useEffect(() => {
     const unsub = mouseX.onChange((mx) => {
-      if (!ref.current) return;
-      const rect = ref.current.getBoundingClientRect();
-      distance.set(Math.abs(mx - (rect.left + rect.width / 2)));
+      if (mx === 999) {
+        distance.set(999);
+        return;
+      }
+      if (cachedCenter.current === null) {
+        measure();
+      }
+      if (cachedCenter.current !== null) {
+        distance.set(Math.abs(mx - cachedCenter.current));
+      }
     });
     return unsub;
-  }, [mouseX, distance]);
+  }, [mouseX, distance, measure]);
 
-  const scale = useTransform(distance, [0, 55, 110], [1.5, 1.2, 1]);
-  const springScale = useSpring(scale, { stiffness: 420, damping: 28 });
+  const scale = useTransform(distance, [0, 55, 110], [1.35, 1.15, 1]);
+  const springScale = useSpring(scale, { stiffness: 450, damping: 30 });
 
   return (
-    <div className={styles.iconWrap} ref={ref}>
+    <div className={styles.iconWrap} ref={ref} onMouseEnter={measure}>
       <AnimatePresence>
         {hovered && (
           <motion.div
@@ -89,7 +110,7 @@ function DockIcon({ item, mouseX, isActive }) {
             initial={{ opacity: 0, y: -6, scale: 0.85 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -3, scale: 0.9 }}
-            transition={{ duration: 0.14 }}
+            transition={{ duration: 0.12 }}
           >
             {item.label}
           </motion.div>
@@ -102,12 +123,12 @@ function DockIcon({ item, mouseX, isActive }) {
           style={{ scale: springScale }}
           onHoverStart={() => setHovered(true)}
           onHoverEnd={() => setHovered(false)}
-          whileTap={{ scale: 0.85 }}
+          whileTap={{ scale: 0.9 }}
         >
           {/* Liquid glass layers */}
-          <div className={styles.glassBlur} />
-          <div className={styles.glassTint} />
-          <div className={styles.glassRim} />
+          <div className={styles.dockGlassBlur} />
+          <div className={styles.dockGlassTint} />
+          <div className={styles.dockGlassRim} />
           {/* Icon content */}
           <span className={styles.iconSvg}>{item.icon}</span>
         </motion.div>
@@ -126,8 +147,17 @@ export default function Navigation() {
   const mouseX = useMotionValue(999);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
@@ -153,26 +183,25 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* Center — Liquid Glass Dock (decoupled from grid to ensure perfect viewport centering) */}
+      {/* Center — Liquid Glass Dock */}
       <div
         className={styles.dock}
         onMouseMove={(e) => mouseX.set(e.clientX)}
         onMouseLeave={() => mouseX.set(999)}
       >
-        {/* Dock glass layers */}
         <div className={styles.dockGlassBlur} />
         <div className={styles.dockGlassTint} />
         <div className={styles.dockGlassRim} />
 
         <div className={styles.dockIcons}>
           {DOCK_ITEMS.map((item) => (
-              <DockIcon
-                key={item.href}
-                item={item}
-                mouseX={mouseX}
-                isActive={pathname === item.href}
-              />
-            ))}
+            <DockIcon
+              key={item.href}
+              item={item}
+              mouseX={mouseX}
+              isActive={pathname === item.href}
+            />
+          ))}
         </div>
       </div>
     </nav>
