@@ -5,38 +5,46 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Preloader() {
   const [loading, setLoading] = useState(true);
-  const [shouldRender, setShouldRender] = useState(false);
+  const [hasVisited, setHasVisited] = useState(false);
 
   useEffect(() => {
     // Check if user has already seen the preloader in this session
-    if (typeof window !== 'undefined') {
-      const hasVisited = sessionStorage.getItem('preloader-shown');
-      if (hasVisited) {
+    try {
+      const visited = sessionStorage.getItem('preloader-shown');
+      if (visited) {
+        setHasVisited(true);
         setLoading(false);
         return;
       }
+    } catch (e) {
+      // Ignore sessionStorage errors
     }
-    
-    // Only render the preloader if it's the first visit of the session
-    setShouldRender(true);
+
+    // Lock body scroll while loading
+    document.body.style.overflow = 'hidden';
 
     const timer = setTimeout(() => {
       setLoading(false);
-      if (typeof window !== 'undefined') {
+      document.body.style.overflow = '';
+      try {
         sessionStorage.setItem('preloader-shown', 'true');
-      }
-    }, 1500); // 1.5s total loading experience (reduced from 2.8s)
+      } catch (e) {}
+    }, 1400);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = '';
+    };
   }, []);
 
-  if (!shouldRender) return null;
+  // If already visited, render nothing to avoid any flash
+  if (hasVisited) return null;
 
   // An elegant SVG path resembling a fast handwritten "G" and swoop
   const signaturePath = "M 30,70 C 10,70 10,30 30,30 C 50,30 60,50 40,70 C 20,90 10,100 30,100 C 60,100 80,60 90,60 C 100,60 110,70 120,60 C 130,50 140,50 150,60 C 160,70 170,80 190,60 M 30,110 C 100,110 150,110 250,100";
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {loading && (
         <motion.div
           key="preloader"
@@ -44,72 +52,100 @@ export default function Preloader() {
           exit={{ 
             opacity: 0, 
             y: '-100%',
-            transition: { duration: 0.6, ease: [0.76, 0, 0.24, 1] } 
+            transition: { duration: 0.7, ease: [0.76, 0, 0.24, 1] } 
           }}
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 9999,
+            zIndex: 99999,
             background: '#080706',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            pointerEvents: 'all'
           }}
         >
+          {/* Subtle background glow */}
+          <div 
+            style={{
+              position: 'absolute',
+              width: '350px',
+              height: '350px',
+              background: 'radial-gradient(circle, rgba(0, 145, 255, 0.12) 0%, transparent 70%)',
+              filter: 'blur(60px)',
+              pointerEvents: 'none',
+            }} 
+          />
+
           {/* Animated Signature SVG */}
-          <svg width="300" height="150" viewBox="0 0 300 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="280" height="140" viewBox="0 0 300 150" fill="none" xmlns="http://www.w3.org/2000/svg">
             <motion.path
               d={signaturePath}
-              stroke="#0091FF"
+              stroke="var(--lime, #0091FF)"
               strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ pathLength: 1, opacity: 1 }}
               transition={{
-                pathLength: { duration: 0.8, ease: "easeInOut", delay: 0.1 },
-                opacity: { duration: 0.1 }
+                pathLength: { duration: 0.85, ease: "easeInOut", delay: 0.1 },
+                opacity: { duration: 0.15 }
               }}
             />
           </svg>
 
-          {/* Fading in the real text slightly after the squiggle starts */}
+          {/* Fading in the name */}
           <motion.div
-            initial={{ opacity: 0, filter: 'blur(10px)', y: 10 }}
+            initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
             animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
+            transition={{ duration: 0.5, delay: 0.5, ease: "easeOut" }}
             style={{
-              position: 'absolute',
               color: '#FAFAFA',
-              fontSize: '2rem',
-              letterSpacing: '0.15em',
-              fontWeight: 300,
+              fontSize: '1.25rem',
+              letterSpacing: '0.25em',
+              fontWeight: 500,
               textTransform: 'uppercase',
-              marginTop: '40px'
+              fontFamily: 'var(--font, sans-serif)',
+              marginTop: '16px'
             }}
           >
-            Glory
+            Glory Adeniran
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.6 }}
+            transition={{ duration: 0.4, delay: 0.7 }}
+            style={{
+              fontFamily: 'var(--mono, monospace)',
+              fontSize: '10px',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: 'var(--gray-2, #9A9994)',
+              marginTop: '6px'
+            }}
+          >
+            Product Designer &amp; Vibe Coder
           </motion.div>
 
           {/* Loading Progress Bar */}
           <div style={{
             position: 'absolute',
             bottom: '40px',
-            width: '200px',
+            width: '160px',
             height: '2px',
-            background: 'rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.08)',
             overflow: 'hidden',
-            borderRadius: '2px'
           }}>
             <motion.div
               initial={{ width: '0%' }}
               animate={{ width: '100%' }}
-              transition={{ duration: 1.2, ease: "circOut" }}
+              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 height: '100%',
-                background: '#0091FF'
+                background: 'var(--lime, #0091FF)'
               }}
             />
           </div>
