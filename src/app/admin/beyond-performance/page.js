@@ -2,7 +2,7 @@
 
 /**
  * Admin Dashboard: Beyond Performance Survey Entries
- * Displays summary metrics, segment distributions, and detailed search/table view.
+ * Design: Matches gloryadeniran.cv native aesthetic and tokens
  * Strictly zero emojis.
  */
 
@@ -68,21 +68,37 @@ export default function AdminBeyondPerformancePage() {
   };
 
   return (
-    <div className={styles.adminContainer}>
+    <div className={styles.pageContainer}>
+      {/* Background Watermark Title */}
+      <div className={styles.bgTitle} aria-hidden="true">
+        BEYOND<br />ADMIN
+      </div>
+
       <div className={styles.innerWrap}>
         
         {/* Top Header */}
         <div className={styles.topBar}>
-          <div className={styles.headingArea}>
-            <h1>Beyond Performance · Survey Reflections</h1>
-            <p>Participant responses, spiritual segmentation, and friction diagnostics</p>
+          <div>
+            <div className={styles.eyebrow}>
+              <span className={styles.eyebrowBar} />
+              <span className={styles.eyebrowTag}>00 / SYSTEM CONTROL</span>
+              <span>SURVEY ANALYTICS &amp; DIAGNOSTICS</span>
+            </div>
+            <h1 className={styles.mainTitle}>
+              Beyond Performance <em>Admin.</em>
+            </h1>
+            <p className={styles.subTitle}>
+              Live diagnostics, participant responses, and spiritual segmentation distribution.
+            </p>
           </div>
+
           <div className={styles.navLinks}>
-            <Link href="/beyond-performance" target="_blank" className={styles.navBtn}>
-              Open Live Survey
+            <Link href="/beyond-performance" target="_blank" className={styles.shinyCta}>
+              <span>Open Live Survey &nbsp;→</span>
             </Link>
-            <Link href="/admin/dashboard" className={styles.navBtnPrimary}>
-              Portfolio Admin
+            <Link href="/admin/dashboard" className={styles.btnSecondary}>
+              <span className={styles.btnDot} />
+              <span>Portfolio Admin</span>
             </Link>
           </div>
         </div>
@@ -92,21 +108,21 @@ export default function AdminBeyondPerformancePage() {
           <>
             <div className={styles.statsGrid}>
               <div className={styles.statCard}>
-                <div className={styles.statLabel}>Total Responses</div>
+                <div className={styles.statLabel}>[TOTAL_RESPONSES]</div>
                 <div className={styles.statValue}>{stats.total}</div>
-                <div className={styles.statSubtext}>Completed survey records</div>
+                <div className={styles.statSubtext}>// Live recorded reflections</div>
               </div>
               <div className={styles.statCard}>
-                <div className={styles.statLabel}>Average Openness</div>
-                <div className={styles.statValue}>{stats.averageOpenness} / 5.0</div>
-                <div className={styles.statSubtext}>Conversational transparency</div>
+                <div className={styles.statLabel}>[AVG_TRANSPARENCY]</div>
+                <div className={styles.statValue}>{stats.averageOpenness} <span style={{ fontSize: '18px', color: 'var(--gray-2)' }}>/ 5.0</span></div>
+                <div className={styles.statSubtext}>// Conversational openness rating</div>
               </div>
               <div className={styles.statCard}>
-                <div className={styles.statLabel}>Top Segment</div>
-                <div className={styles.statValue} style={{ fontSize: '20px', lineHeight: '36px' }}>
+                <div className={styles.statLabel}>[DOMINANT_SEGMENT]</div>
+                <div className={styles.statValue} style={{ fontSize: '18px', lineHeight: '36px' }}>
                   {Object.entries(stats.segmentCounts || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'GENERAL_GROWTH'}
                 </div>
-                <div className={styles.statSubtext}>Most frequent classification</div>
+                <div className={styles.statSubtext}>// Highest frequency classification</div>
               </div>
             </div>
 
@@ -116,11 +132,11 @@ export default function AdminBeyondPerformancePage() {
                 const count = stats.segmentCounts?.[key] || 0;
                 const percent = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
                 return (
-                  <div key={key} className={styles.segmentSummaryCard}>
-                    <div className={styles.segmentSummaryTitle}>{label}</div>
-                    <div className={styles.segmentSummaryCount}>{count}</div>
-                    <div className={styles.segmentSummaryPercent}>
-                      {percent}% of all respondents ({key})
+                  <div key={key} className={styles.segmentCard}>
+                    <div className={styles.segmentTitle}>{label}</div>
+                    <div className={styles.segmentCount}>{count}</div>
+                    <div className={styles.segmentPercent}>
+                      {percent}% of total [{key}]
                     </div>
                   </div>
                 );
@@ -134,7 +150,7 @@ export default function AdminBeyondPerformancePage() {
           <input
             type="text"
             className={styles.searchBox}
-            placeholder="Search by participant name, email, or church..."
+            placeholder="// Search by participant name, email, or church..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -144,11 +160,11 @@ export default function AdminBeyondPerformancePage() {
             value={selectedSegment}
             onChange={(e) => setSelectedSegment(e.target.value)}
           >
-            <option value="ALL">All Segments ({entries.length})</option>
-            <option value="PERFORMANCE_BURNOUT">Performance Burnout</option>
-            <option value="GENTLE_REBUILD">Gentle Rebuild</option>
-            <option value="FOUNDATIONAL_STUDY">Foundational Study</option>
-            <option value="GENERAL_GROWTH">General Growth</option>
+            <option value="ALL">ALL SEGMENTS ({entries.length})</option>
+            <option value="PERFORMANCE_BURNOUT">PERFORMANCE BURNOUT</option>
+            <option value="GENTLE_REBUILD">GENTLE REBUILD</option>
+            <option value="FOUNDATIONAL_STUDY">FOUNDATIONAL STUDY</option>
+            <option value="GENERAL_GROWTH">GENERAL GROWTH</option>
           </select>
         </div>
 
@@ -163,37 +179,37 @@ export default function AdminBeyondPerformancePage() {
                 <th>Faith Walk</th>
                 <th>Assigned Segment</th>
                 <th>Openness</th>
-                <th>Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#94A3B8' }}>
-                    Loading survey entries...
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--gray-2)' }}>
+                    Loading survey records...
                   </td>
                 </tr>
               ) : entries.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#94A3B8' }}>
-                    No responses matching the current filter.
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--gray-2)' }}>
+                    No responses matching the current query.
                   </td>
                 </tr>
               ) : (
                 entries.map((item) => (
                   <tr key={item.id || item.email}>
-                    <td style={{ color: '#94A3B8', fontSize: '12px' }}>
+                    <td style={{ color: 'var(--gray-2)', fontFamily: 'var(--mono, monospace)', fontSize: '11px' }}>
                       {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
                     </td>
-                    <td style={{ fontWeight: '600', color: '#FFFFFF' }}>{item.full_name}</td>
-                    <td style={{ color: '#94A3B8' }}>{item.email}</td>
-                    <td>{item.faith_status}</td>
+                    <td style={{ fontWeight: '600', color: 'var(--white)' }}>{item.full_name}</td>
+                    <td style={{ color: 'var(--gray-1)', fontFamily: 'var(--mono, monospace)', fontSize: '12px' }}>{item.email}</td>
+                    <td style={{ fontSize: '13px' }}>{item.faith_status}</td>
                     <td>
                       <span className={`${styles.badge} ${getSegmentBadgeClass(item.assigned_segment)}`}>
                         {item.assigned_segment}
                       </span>
                     </td>
-                    <td style={{ fontWeight: '700', color: '#D4AF37' }}>
+                    <td style={{ fontWeight: '700', color: 'var(--lime)', fontFamily: 'var(--mono, monospace)' }}>
                       {item.openness_rating} / 5
                     </td>
                     <td>
@@ -202,7 +218,7 @@ export default function AdminBeyondPerformancePage() {
                         className={styles.btnView}
                         onClick={() => setActiveModalEntry(item)}
                       >
-                        View Full Details
+                        VIEW DETAILS
                       </button>
                     </td>
                   </tr>
@@ -226,12 +242,12 @@ export default function AdminBeyondPerformancePage() {
                   className={styles.modalClose}
                   onClick={() => setActiveModalEntry(null)}
                 >
-                  ✕
+                  [ESC]
                 </button>
               </div>
 
               <div className={styles.modalSection}>
-                <div className={styles.modalSectionTitle}>Faith Walk &amp; Classification</div>
+                <div className={styles.modalSectionTitle}>[01] Faith Walk &amp; Classification</div>
                 <div className={styles.modalSectionContent}>
                   <strong>Faith Journey:</strong> {activeModalEntry.faith_status}<br />
                   <strong>Assigned Segment:</strong> {activeModalEntry.assigned_segment} ({SEGMENT_LABELS[activeModalEntry.assigned_segment] || ''})<br />
@@ -240,14 +256,14 @@ export default function AdminBeyondPerformancePage() {
               </div>
 
               <div className={styles.modalSection}>
-                <div className={styles.modalSectionTitle}>Daily Prayer Reality</div>
+                <div className={styles.modalSectionTitle}>[02] Daily Prayer Reality</div>
                 <div className={styles.modalSectionContent}>
                   {activeModalEntry.prayer_reality}
                 </div>
               </div>
 
               <div className={styles.modalSection}>
-                <div className={styles.modalSectionTitle}>Primary Friction Points</div>
+                <div className={styles.modalSectionTitle}>[03] Primary Friction Points</div>
                 <div className={styles.modalSectionContent}>
                   {(activeModalEntry.prayer_friction_points || []).map((f) => (
                     <span key={f} className={styles.tagPill}>{f}</span>
@@ -256,7 +272,7 @@ export default function AdminBeyondPerformancePage() {
               </div>
 
               <div className={styles.modalSection}>
-                <div className={styles.modalSectionTitle}>Bible Study &amp; Preferred Formats</div>
+                <div className={styles.modalSectionTitle}>[04] Bible Study &amp; Preferred Formats</div>
                 <div className={styles.modalSectionContent}>
                   <strong>Current Approach:</strong> {activeModalEntry.bible_reading_status}<br /><br />
                   <strong>Preferred Formats:</strong><br />
@@ -268,7 +284,7 @@ export default function AdminBeyondPerformancePage() {
 
               {activeModalEntry.open_reflection && (
                 <div className={styles.modalSection}>
-                  <div className={styles.modalSectionTitle}>Observation on Biggest Misconception</div>
+                  <div className={styles.modalSectionTitle}>[05] Biggest Misconception Observation</div>
                   <div className={styles.modalSectionContent} style={{ fontStyle: 'italic' }}>
                     "{activeModalEntry.open_reflection}"
                   </div>
@@ -278,11 +294,10 @@ export default function AdminBeyondPerformancePage() {
               <div style={{ textAlign: 'right', marginTop: '24px' }}>
                 <button
                   type="button"
-                  className={styles.btnView}
-                  style={{ background: '#10B981', color: '#001647', border: 'none', fontWeight: '700' }}
+                  className={styles.shinyCta}
                   onClick={() => setActiveModalEntry(null)}
                 >
-                  Close Reflection
+                  <span>Close Details &nbsp;→</span>
                 </button>
               </div>
             </div>
