@@ -2,7 +2,11 @@
 
 /**
  * Admin Dashboard: Beyond Performance Survey Entries
- * Design: Matches gloryadeniran.cv native aesthetic and tokens
+ * Features:
+ * - Delete responses from Supabase & Redis
+ * - Send personalized emails / pastoral follow-ups directly via Brevo
+ * - Copy all email addresses / export summary
+ * - View full diagnostic details
  * Strictly zero emojis.
  */
 
@@ -24,6 +28,17 @@ export default function AdminBeyondPerformancePage() {
   const [search, setSearch] = useState('');
   const [selectedSegment, setSelectedSegment] = useState('ALL');
   const [activeModalEntry, setActiveModalEntry] = useState(null);
+
+  // Email modal state
+  const [emailModalEntry, setEmailModalEntry] = useState(null);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailStatusMessage, setEmailStatusMessage] = useState('');
+
+  // Delete state
+  const [isDeletingId, setIsDeletingId] = useState(null);
+  const [copyStatus, setCopyStatus] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -54,6 +69,91 @@ export default function AdminBeyondPerformancePage() {
     return () => clearTimeout(delayDebounceFn);
   }, [fetchData]);
 
+  // Handle Deletion
+  const handleDelete = async (item) => {
+    if (!confirm(`Are you sure you want to delete the reflection for ${item.full_name} (${item.email})?`)) {
+      return;
+    }
+
+    setIsDeletingId(item.id || item.email);
+    try {
+      const res = await fetch('/api/beyond-performance/entries', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, email: item.email }),
+      });
+
+      if (res.ok) {
+        setEntries((prev) => prev.filter((e) => e.email !== item.email && e.id !== item.id));
+        if (activeModalEntry && (activeModalEntry.id === item.id || activeModalEntry.email === item.email)) {
+          setActiveModalEntry(null);
+        }
+      }
+    } catch (err) {
+      alert('Failed to delete response: ' + err.message);
+    } finally {
+      setIsDeletingId(null);
+    }
+  };
+
+  // Open Personalized Email Composer
+  const handleOpenEmailComposer = (item) => {
+    setEmailModalEntry(item);
+    setEmailSubject(`A Personal Note from Glory Adeniran (God's Virtue)`);
+    setEmailMessage(
+      `Dear ${item.full_name.split(' ')[0]},\n\n` +
+      `Thank you for taking the time to share your candid reflection in the Beyond Performance survey.\n\n` +
+      `I saw your notes on "${item.prayer_reality}" and wanted to personally reach out with encouragement...\n\n` +
+      `Remember, God is not grading you with a stopwatch. He is near and full of grace.`
+    );
+    setEmailStatusMessage('');
+  };
+
+  // Send Personalized Email
+  const handleSendCustomEmail = async (e) => {
+    e.preventDefault();
+    if (!emailModalEntry || !emailMessage.trim()) return;
+
+    setIsSendingEmail(true);
+    setEmailStatusMessage('');
+
+    try {
+      const res = await fetch('/api/beyond-performance/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailModalEntry.email,
+          participantName: emailModalEntry.full_name,
+          subject: emailSubject,
+          message: emailMessage,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setEmailStatusMessage(`Personalized email successfully dispatched to ${emailModalEntry.email}`);
+        setTimeout(() => {
+          setEmailModalEntry(null);
+          setEmailStatusMessage('');
+        }, 1600);
+      } else {
+        throw new Error(data.error || 'Failed to send email');
+      }
+    } catch (err) {
+      setEmailStatusMessage(`Error: ${err.message}`);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  // Copy All Emails
+  const handleCopyAllEmails = () => {
+    const emails = entries.map((e) => e.email).filter(Boolean).join(', ');
+    navigator.clipboard.writeText(emails);
+    setCopyStatus('Emails copied to clipboard!');
+    setTimeout(() => setCopyStatus(''), 2500);
+  };
+
   const getSegmentBadgeClass = (seg) => {
     switch (seg) {
       case 'PERFORMANCE_BURNOUT':
@@ -82,17 +182,21 @@ export default function AdminBeyondPerformancePage() {
             <div className={styles.eyebrow}>
               <span className={styles.eyebrowBar} />
               <span className={styles.eyebrowTag}>00 / SYSTEM CONTROL</span>
-              <span>SURVEY ANALYTICS &amp; DIAGNOSTICS</span>
+              <span>GLORY ADENIRAN (GOD'S VIRTUE)</span>
             </div>
             <h1 className={styles.mainTitle}>
               Beyond Performance <em>Admin.</em>
             </h1>
             <p className={styles.subTitle}>
-              Live diagnostics, participant responses, and spiritual segmentation distribution.
+              Live diagnostics, participant responses, and personalized follow-up console.
             </p>
           </div>
 
           <div className={styles.navLinks}>
+            <button type="button" onClick={handleCopyAllEmails} className={styles.btnSecondary}>
+              <span className={styles.btnDot} />
+              <span>{copyStatus || 'Copy All Emails'}</span>
+            </button>
             <Link href="/beyond-performance" target="_blank" className={styles.shinyCta}>
               <span>Open Live Survey &nbsp;→</span>
             </Link>
@@ -179,7 +283,7 @@ export default function AdminBeyondPerformancePage() {
                 <th>Faith Walk</th>
                 <th>Assigned Segment</th>
                 <th>Openness</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -213,13 +317,32 @@ export default function AdminBeyondPerformancePage() {
                       {item.openness_rating} / 5
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className={styles.btnView}
-                        onClick={() => setActiveModalEntry(item)}
-                      >
-                        VIEW DETAILS
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className={styles.btnView}
+                          onClick={() => setActiveModalEntry(item)}
+                        >
+                          VIEW
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.btnView}
+                          style={{ borderColor: 'var(--lime)', color: 'var(--lime)' }}
+                          onClick={() => handleOpenEmailComposer(item)}
+                        >
+                          EMAIL
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.btnView}
+                          style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#F87171' }}
+                          disabled={isDeletingId === (item.id || item.email)}
+                          onClick={() => handleDelete(item)}
+                        >
+                          {isDeletingId === (item.id || item.email) ? '...' : 'DEL'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -291,15 +414,110 @@ export default function AdminBeyondPerformancePage() {
                 </div>
               )}
 
-              <div style={{ textAlign: 'right', marginTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
                 <button
                   type="button"
-                  className={styles.shinyCta}
-                  onClick={() => setActiveModalEntry(null)}
+                  className={styles.btnSecondary}
+                  style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#F87171' }}
+                  onClick={() => handleDelete(activeModalEntry)}
                 >
-                  <span>Close Details &nbsp;→</span>
+                  <span className={styles.btnDot} style={{ background: '#EF4444' }} />
+                  <span>Delete Response</span>
+                </button>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className={styles.shinyCta}
+                    onClick={() => {
+                      const item = activeModalEntry;
+                      setActiveModalEntry(null);
+                      handleOpenEmailComposer(item);
+                    }}
+                  >
+                    <span>Write Personal Email &nbsp;→</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => setActiveModalEntry(null)}
+                  >
+                    <span>Close</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Personalized Email Composer Modal */}
+        {emailModalEntry && (
+          <div className={styles.modalBackdrop} onClick={() => setEmailModalEntry(null)}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <div>
+                  <h2 className={styles.modalTitle}>Send Personal Note</h2>
+                  <p className={styles.modalSubtitle}>To: {emailModalEntry.full_name} &lt;{emailModalEntry.email}&gt;</p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={() => setEmailModalEntry(null)}
+                >
+                  [ESC]
                 </button>
               </div>
+
+              {emailStatusMessage && (
+                <div style={{ padding: '10px 14px', background: 'rgba(0, 145, 255, 0.1)', border: '1px solid var(--lime)', color: 'var(--lime)', fontSize: '13px', marginBottom: '16px', fontFamily: 'var(--mono, monospace)' }}>
+                  {emailStatusMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleSendCustomEmail}>
+                <div className={styles.modalSection}>
+                  <label className={styles.modalSectionTitle} style={{ display: 'block' }}>Email Subject</label>
+                  <input
+                    type="text"
+                    className={styles.searchBox}
+                    style={{ width: '100%' }}
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className={styles.modalSection}>
+                  <label className={styles.modalSectionTitle} style={{ display: 'block' }}>Message Content</label>
+                  <textarea
+                    className={styles.searchBox}
+                    style={{ width: '100%', minHeight: '160px', resize: 'vertical', lineHeight: '1.6' }}
+                    value={emailMessage}
+                    onChange={(e) => setEmailMessage(e.target.value)}
+                    required
+                  />
+                  <div style={{ fontSize: '11px', color: 'var(--gray-2)', marginTop: '4px', fontFamily: 'var(--mono, monospace)' }}>
+                    // Dispatched via verified Brevo sender from Glory Adeniran (God's Virtue)
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => setEmailModalEntry(null)}
+                  >
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className={styles.shinyCta}
+                    disabled={isSendingEmail}
+                  >
+                    <span>{isSendingEmail ? 'DISPATCHING...' : 'SEND PERSONAL EMAIL →'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

@@ -270,3 +270,60 @@ export async function getSurveyStats() {
     formatCounts,
   };
 }
+
+/**
+ * Deletes a survey entry by ID and/or email
+ */
+export async function deleteSurveyEntry(id, email) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+
+  // 1. Delete from Supabase
+  if (isSupabaseConfigured()) {
+    try {
+      let url = `${supabaseUrl}/rest/v1/prayer_survey_entries?`;
+      if (id && !id.startsWith('local-') && !id.startsWith('saved-redis-')) {
+        url += `id=eq.${encodeURIComponent(id)}`;
+      } else if (normalizedEmail) {
+        url += `email=eq.${encodeURIComponent(normalizedEmail)}`;
+      }
+
+      await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      });
+    } catch (err) {
+      console.warn('[supabase.js] Delete Supabase error:', err.message);
+    }
+  }
+
+  // 2. Delete from Redis backup
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  if (url && token && normalizedEmail) {
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['DEL', `ga:prayer_surveys:email:${normalizedEmail}`]),
+      });
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['SREM', 'ga:prayer_surveys:all', normalizedEmail]),
+      });
+    } catch (err) {
+      console.warn('[supabase.js] Delete Redis error:', err.message);
+    }
+  }
+
+  return true;
+}

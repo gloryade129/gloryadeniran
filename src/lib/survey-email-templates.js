@@ -2,6 +2,7 @@
  * lib/survey-email-templates.js
  * Generates responsive, elegant HTML confirmation and follow-up emails
  * tailored by spiritual segment. Strictly zero emojis.
+ * Features Glory Adeniran (God's Virtue) with Christlike atmospheric styling.
  */
 
 import { getSegmentMetadata } from './survey-segmentation.js';
@@ -15,12 +16,10 @@ export function buildSurveyFollowUpEmail(entry = {}) {
   const {
     full_name = 'Friend',
     assigned_segment = 'GENERAL_GROWTH',
-    faith_status = '',
-    church_name = '',
   } = entry;
 
   const segmentMeta = getSegmentMetadata(assigned_segment);
-  const firstName = full_name.split(' ')[0] || full_name;
+  const firstName = full_name ? full_name.split(' ')[0] : 'Friend';
 
   return `
 <!DOCTYPE html>
@@ -28,53 +27,54 @@ export function buildSurveyFollowUpEmail(entry = {}) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Reflection on Prayer & Next Steps</title>
+  <title>Your Reflection on Prayer &amp; Next Steps</title>
   <style>
     body {
       margin: 0;
       padding: 0;
-      background-color: #0A0D14;
+      background-color: #080706;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      color: #E2E8F0;
+      color: #FAFAFA;
       line-height: 1.6;
     }
     .email-wrapper {
-      max-width: 600px;
+      max-width: 620px;
       margin: 0 auto;
-      background-color: #001647;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background-color: #0E0E10;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       overflow: hidden;
     }
     .header-banner {
-      background: linear-gradient(135deg, #001647 0%, #06286E 100%);
-      padding: 40px 32px 30px;
-      border-bottom: 2px solid #D4AF37;
+      background: #080706;
+      padding: 40px 32px 28px;
+      border-bottom: 2px solid #0091FF;
       text-align: left;
     }
     .brand-eyebrow {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 2px;
-      color: #D4AF37;
+      color: #0091FF;
       font-weight: 700;
       margin-bottom: 8px;
     }
     .header-title {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 700;
       color: #FFFFFF;
-      margin: 0 0 8px 0;
-      line-height: 1.3;
+      margin: 0 0 6px 0;
+      line-height: 1.25;
+      letter-spacing: -0.5px;
     }
     .header-subtitle {
-      font-size: 14px;
-      color: #94A3B8;
+      font-size: 13.5px;
+      color: #9A9994;
       margin: 0;
     }
     .content-body {
       padding: 36px 32px;
-      background-color: #021B54;
+      background-color: #0E0E10;
     }
     .greeting {
       font-size: 18px;
@@ -83,67 +83,67 @@ export function buildSurveyFollowUpEmail(entry = {}) {
       margin-bottom: 16px;
     }
     .paragraph {
-      font-size: 15px;
-      color: #CBD5E1;
+      font-size: 14.5px;
+      color: #C8C7C2;
       margin-bottom: 18px;
       line-height: 1.65;
     }
     .scripture-card {
-      background: rgba(0, 0, 0, 0.35);
-      border-left: 4px solid #10B981;
+      background: rgba(0, 145, 255, 0.05);
+      border-left: 3px solid #0091FF;
       padding: 18px 20px;
       margin: 24px 0;
-      border-radius: 2px;
     }
     .scripture-text {
-      font-size: 15px;
+      font-size: 14.5px;
       font-style: italic;
-      color: #F1F5F9;
+      color: #FAFAFA;
       margin: 0 0 6px 0;
-      line-height: 1.5;
+      line-height: 1.55;
     }
     .scripture-ref {
-      font-size: 12px;
-      font-weight: 600;
-      color: #10B981;
+      font-size: 11px;
+      font-weight: 700;
+      color: #0091FF;
       text-transform: uppercase;
       letter-spacing: 1px;
     }
     .segment-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(212, 175, 55, 0.3);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-top: 2px solid #0091FF;
       padding: 24px;
       margin: 28px 0;
-      border-radius: 4px;
     }
     .segment-tag {
       display: inline-block;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: #D4AF37;
+      color: #0091FF;
       margin-bottom: 8px;
     }
     .segment-title {
-      font-size: 19px;
+      font-size: 18px;
       font-weight: 700;
       color: #FFFFFF;
       margin: 0 0 10px 0;
     }
     .segment-desc {
       font-size: 14px;
-      color: #CBD5E1;
+      color: #C8C7C2;
       margin-bottom: 18px;
+      line-height: 1.6;
     }
     .section-heading {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #F8FAFC;
+      color: #FAFAFA;
       margin: 20px 0 10px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       padding-bottom: 6px;
     }
     .steps-list {
@@ -151,48 +151,65 @@ export function buildSurveyFollowUpEmail(entry = {}) {
       padding-left: 18px;
     }
     .steps-list li {
-      font-size: 14px;
-      color: #CBD5E1;
+      font-size: 13.5px;
+      color: #C8C7C2;
       margin-bottom: 8px;
     }
     .track-item {
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       padding: 14px 18px;
       margin-bottom: 12px;
-      border-radius: 3px;
     }
     .track-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 600;
       color: #FFFFFF;
       margin: 0 0 4px 0;
     }
     .track-desc {
       font-size: 13px;
-      color: #94A3B8;
+      color: #9A9994;
       margin: 0 0 10px 0;
     }
     .track-btn {
       display: inline-block;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
-      color: #001647;
-      background-color: #10B981;
+      color: #080706;
+      background-color: #0091FF;
       padding: 8px 14px;
       text-decoration: none;
-      border-radius: 2px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+    .whatsapp-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 20px;
+      text-align: center;
+      margin: 28px 0;
+    }
+    .whatsapp-btn {
+      display: inline-block;
+      background: #0091FF;
+      color: #080706;
+      padding: 10px 22px;
+      font-size: 12.5px;
+      font-weight: 700;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
     }
     .signature-box {
       margin-top: 36px;
       padding-top: 24px;
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
     .signoff {
-      font-size: 14px;
-      color: #94A3B8;
+      font-size: 13.5px;
+      color: #9A9994;
       margin-bottom: 4px;
     }
     .author-name {
@@ -202,21 +219,16 @@ export function buildSurveyFollowUpEmail(entry = {}) {
       margin: 0;
     }
     .author-role {
-      font-size: 13px;
-      color: #D4AF37;
+      font-size: 12.5px;
+      color: #0091FF;
       margin: 2px 0 0 0;
     }
     .footer {
       padding: 24px 32px;
-      background-color: #001133;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 12px;
-      color: #64748B;
-      text-align: left;
-    }
-    .footer a {
-      color: #94A3B8;
-      text-decoration: underline;
+      background-color: #080706;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 11.5px;
+      color: #9A9994;
     }
   </style>
 </head>
@@ -224,11 +236,11 @@ export function buildSurveyFollowUpEmail(entry = {}) {
   <div style="padding: 24px 12px;">
     <div class="email-wrapper">
       
-      <!-- Header -->
+      <!-- Header Banner -->
       <div class="header-banner">
-        <div class="brand-eyebrow">Glory Adeniran · Spiritual Reflections</div>
+        <div class="brand-eyebrow">Glory Adeniran (God's Virtue) · Beyond Performance</div>
         <h1 class="header-title">Beyond Performance</h1>
-        <p class="header-subtitle">Redefining Prayer &amp; Bible Connection</p>
+        <p class="header-subtitle">Redefining Prayer &amp; Bible Connection · Freedom from Stopwatch Legalism</p>
       </div>
 
       <!-- Main Body -->
@@ -236,11 +248,7 @@ export function buildSurveyFollowUpEmail(entry = {}) {
         <div class="greeting">Hello ${firstName},</div>
         
         <p class="paragraph">
-          Thank you for taking the time to share your honest thoughts and reflections. Prayer was never meant to be an exhausting performance, a rigid routine, or an endurance test against a stopwatch. It is fundamentally an unhurried, honest conversation with God.
-        </p>
-
-        <p class="paragraph">
-          We received your survey submission and have curated a set of personalized insights and recommended study tracks aligned with your specific responses.
+          Thank you so much for taking the time to share your real heart and honest reflection. I want to reassure you directly: prayer was never designed to be an exhausting performance, a religious routine, or a test of endurance against a stopwatch. It is fundamentally an unforced, honest conversation with a Father who loves you deeply.
         </p>
 
         <!-- Scripture Anchor -->
@@ -249,41 +257,44 @@ export function buildSurveyFollowUpEmail(entry = {}) {
           <div class="scripture-ref">Matthew 11:28-29</div>
         </div>
 
-        <!-- Segment Focus -->
+        <!-- Segment Personalized Focus -->
         <div class="segment-card">
-          <div class="segment-tag">Personalized Focus Pathway</div>
+          <div class="segment-tag">Your Personalized Reflection Focus</div>
           <h2 class="segment-title">${segmentMeta.title}</h2>
           <p class="segment-desc">${segmentMeta.summary}</p>
           
-          <div class="section-heading">Suggested Relational Steps</div>
+          <div class="section-heading">Suggested Practical Next Steps</div>
           <ul class="steps-list">
             ${segmentMeta.actionSteps.map((step) => `<li>${step}</li>`).join('')}
           </ul>
 
-          <div class="section-heading">Curated YouVersion Bible App Plans</div>
+          <div class="section-heading">Curated YouVersion Bible App Study Tracks</div>
           ${segmentMeta.youVersionTracks.map((track) => `
             <div class="track-item">
               <div class="track-title">${track.title}</div>
               <div class="track-desc">${track.description}</div>
-              <a href="${track.url}" class="track-btn" target="_blank" rel="noopener noreferrer">Open Reading Plan</a>
+              <a href="${track.url}" class="track-btn" target="_blank" rel="noopener noreferrer">Open Plan in Bible App</a>
             </div>
           `).join('')}
         </div>
 
-        <!-- Anchor of Peace -->
-        <div class="scripture-card" style="border-left-color: #D4AF37;">
-          <p class="scripture-text">"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."</p>
-          <div class="scripture-ref" style="color: #D4AF37;">Philippians 4:6-7</div>
+        <!-- Direct Contact & Prayer Assistance -->
+        <div class="whatsapp-card">
+          <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #FFFFFF;">Need 1-on-1 Prayer, Encouragement, or Study Guidance?</p>
+          <p style="margin: 0 0 12px 0; font-size: 13px; color: #9A9994;">I am always glad to pray with you or discuss questions about returning to peaceful communion with God.</p>
+          <a href="https://wa.me/2349168047236" class="whatsapp-btn" target="_blank">Connect with Glory on WhatsApp</a>
         </div>
 
-        <p class="paragraph">
-          If you ever want to discuss these reflections, share feedback, or connect one-on-one, you can reply directly to this email or reach out through my personal website.
-        </p>
+        <!-- Philippians Anchor -->
+        <div class="scripture-card">
+          <p class="scripture-text">"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."</p>
+          <div class="scripture-ref">Philippians 4:6-7</div>
+        </div>
 
         <!-- Signature -->
         <div class="signature-box">
-          <div class="signoff">With peace and grace,</div>
-          <div class="author-name">Glory Adeniran</div>
+          <div class="signoff">With brotherly love and grace,</div>
+          <div class="author-name">Glory Adeniran (God's Virtue)</div>
           <div class="author-role">Product Designer &amp; Creative Lead · gloryadeniran.cv</div>
         </div>
 
@@ -292,10 +303,10 @@ export function buildSurveyFollowUpEmail(entry = {}) {
       <!-- Footer -->
       <div class="footer">
         <p style="margin: 0 0 6px 0;">
-          You are receiving this one-time message because you completed the "Beyond Performance" reflection at <a href="https://gloryadeniran.cv/beyond-performance">gloryadeniran.cv</a>.
+          You are receiving this personal reflection summary because you completed the "Beyond Performance" reflection at <a href="https://gloryadeniran.cv/beyond-performance" style="color: #0091FF;">gloryadeniran.cv</a>.
         </p>
         <p style="margin: 0;">
-          Confidentiality Commitment: Your personal information is strictly protected and will never be shared, sold, or distributed to third parties.
+          Confidentiality Commitment: Your personal responses remain completely private and confidential.
         </p>
       </div>
 

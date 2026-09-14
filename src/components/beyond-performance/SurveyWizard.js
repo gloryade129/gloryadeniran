@@ -2,17 +2,20 @@
 
 /**
  * Component: SurveyWizard.js
- * Multi-step survey client for "Beyond Performance: Redefining Prayer & Bible Connection"
- * Design System: Matches gloryadeniran.cv native aesthetic
- * Strictly zero emojis.
+ * Multi-step spiritual survey client: "Beyond Performance: Redefining Prayer & Bible Connection"
+ * Host: Glory Adeniran (God's Virtue)
+ * Design: High readability, local & relatable questions, zero emojis, reverent modern aesthetic.
  */
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import PurposeModal from './PurposeModal';
 import styles from './survey.module.css';
 
 const LOCAL_STORAGE_KEY = 'ga_beyond_performance_draft';
+const PURPOSE_MODAL_SHOWN_KEY = 'ga_purpose_modal_shown';
 
 const INITIAL_STATE = {
   privacy_accepted: false,
@@ -28,44 +31,44 @@ const INITIAL_STATE = {
   open_reflection: '',
 };
 
-// Step 1: Faith Walk Options
+// Step 1: Faith Walk Options (Local, Friendly & Direct)
 const FAITH_OPTIONS = [
-  'Committed follower of Christ (Born Again)',
-  'Exploring the Christian faith / Asking questions',
-  'Previously active, but currently feeling distant or dry',
-  'Prefer not to define',
+  'Walking with Christ passionately (Born Again)',
+  'Still exploring the faith / Have sincere questions about God',
+  'Used to be very active, but feeling spiritually dry, distant, or tired right now',
+  'Prefer not to put a label on it',
 ];
 
 // Step 2: Daily Prayer Realities
 const PRAYER_REALITIES = [
-  'Consistent, peaceful, and life-giving',
-  'Maintained as a religious duty, but lacking personal intimacy',
-  'Inconsistent: Starting with ambitious goals (e.g., one hour daily) followed by exhaustion and guilt',
-  'Currently inactive due to frustration, fatigue, or perceived distance from God',
+  'Consistent, peaceful, and genuinely refreshing',
+  'Maintained mostly as a religious routine, but lacking personal sweetness',
+  'Inconsistent: Starting with big goals (like 1 hour daily), but ending up exhausted and guilty',
+  'Inactive right now due to frustration, tiredness, or feeling like God is silent',
 ];
 
 // Step 2: Friction Points (Multi-select)
 const FRICTION_POINTS = [
-  'Struggling to find words or maintain meaningful focus',
-  'The expectation that prayers must meet specific duration targets',
-  'Physical tiredness, sleepiness, or mental burnout',
-  'Feeling as though God is silent or uninterested in my requests',
-  'Fear of being inadequate or performing the act incorrectly',
+  'Struggling to find words or keep my mind from wandering',
+  'The pressure that prayers must last a long duration (stopwatch timing pressure)',
+  'Heavy physical tiredness, sleepiness, or mental burnout',
+  'Feeling as though God is silent, uninterested, or far away',
+  'Fear of being inadequate or not praying the "right" spiritual way',
 ];
 
 // Step 3: Bible Reading Status
 const BIBLE_STATUS_OPTIONS = [
-  'Consistent personal study with clarity and application',
-  'Reading out of obligation or checklist completion',
-  'Infrequent reading due to difficulty understanding the text',
-  'Relying almost entirely on sermon summaries and devotionals',
+  'Consistent personal study with clarity, joy, and practical life application',
+  'Reading out of routine or checklist obligation just to finish a chapter',
+  'Infrequent reading because I find Scripture hard, confusing, or abstract to understand',
+  'Relying almost entirely on sermon clips, devotionals, and church teachings',
 ];
 
 // Step 3: Preferred Formats (Multi-select)
 const PREFERRED_FORMATS = [
   'Structured reading plans via the YouVersion Bible App',
-  'Topical studies addressing specific emotional and spiritual hurdles',
-  'Verse-by-verse expository study guides',
+  'Topical studies addressing specific emotional, mental, and spiritual hurdles',
+  'Simple verse-by-verse expository study guides with real-life application',
   'Audio scriptures and quiet reflection exercises',
 ];
 
@@ -77,8 +80,23 @@ export default function SurveyWizard() {
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState(null);
+  const [showPurposeModal, setShowPurposeModal] = useState(false);
 
-  // 1. Restore draft from localStorage on mount
+  // 1. Check if purpose modal has been shown, auto-open gently once
+  useEffect(() => {
+    try {
+      const shown = sessionStorage.getItem(PURPOSE_MODAL_SHOWN_KEY);
+      if (!shown) {
+        const timer = setTimeout(() => {
+          setShowPurposeModal(true);
+          sessionStorage.setItem(PURPOSE_MODAL_SHOWN_KEY, 'true');
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {}
+  }, []);
+
+  // 2. Restore draft from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -86,29 +104,23 @@ export default function SurveyWizard() {
         const parsed = JSON.parse(saved);
         setFormData((prev) => ({ ...prev, ...parsed }));
       }
-    } catch (e) {
-      // Ignore localStorage errors
-    }
+    } catch (e) {}
   }, []);
 
-  // 2. Persist draft to localStorage on change (except when completed)
+  // 3. Persist draft to localStorage on change
   useEffect(() => {
     if (!submissionResult) {
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
-      } catch (e) {
-        // Ignore quota errors
-      }
+      } catch (e) {}
     }
   }, [formData, submissionResult]);
 
-  // Handle simple input change
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setValidationError('');
   };
 
-  // Handle multi-select toggle
   const handleToggleMulti = (field, item) => {
     setFormData((prev) => {
       const currentList = prev[field] || [];
@@ -121,13 +133,12 @@ export default function SurveyWizard() {
     setValidationError('');
   };
 
-  // Step Validation logic
   const validateStep = (currentStep) => {
     setValidationError('');
 
     if (currentStep === 0) {
       if (!formData.privacy_accepted) {
-        setValidationError('Please review and confirm the privacy acknowledgment to proceed.');
+        setValidationError('Please confirm the privacy and data confidentiality agreement to proceed.');
         return false;
       }
       return true;
@@ -140,11 +151,11 @@ export default function SurveyWizard() {
       }
       const email = (formData.email || '').trim();
       if (!email || !EMAIL_REGEX.test(email)) {
-        setValidationError('Please enter a valid email address so we can send your reflection resources.');
+        setValidationError('Please enter a valid email address so we can deliver your personalized next steps.');
         return false;
       }
       if (!formData.faith_status) {
-        setValidationError('Please select where you currently find yourself in your faith walk.');
+        setValidationError('Please select where you currently find yourself in your walk with God.');
         return false;
       }
       return true;
@@ -156,7 +167,7 @@ export default function SurveyWizard() {
         return false;
       }
       if (!formData.prayer_friction_points || formData.prayer_friction_points.length === 0) {
-        setValidationError('Please select at least one primary source of friction or pressure in prayer.');
+        setValidationError('Please select at least one primary source of friction or pressure.');
         return false;
       }
       return true;
@@ -164,7 +175,7 @@ export default function SurveyWizard() {
 
     if (currentStep === 3) {
       if (!formData.bible_reading_status) {
-        setValidationError('Please select your current experience with reading Scripture.');
+        setValidationError('Please select how your personal Bible study is going.');
         return false;
       }
       if (!formData.preferred_formats || formData.preferred_formats.length === 0) {
@@ -190,7 +201,6 @@ export default function SurveyWizard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Final Form Submission
   const handleSubmit = async () => {
     if (!validateStep(step)) return;
 
@@ -210,7 +220,6 @@ export default function SurveyWizard() {
         throw new Error(data.error || 'Failed to submit reflection. Please try again.');
       }
 
-      // Success
       setSubmissionResult(data);
       try {
         localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -224,27 +233,25 @@ export default function SurveyWizard() {
     }
   };
 
-  // Animation variants
   const slideVariants = {
     initial: { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
     exit: { opacity: 0, y: -12, transition: { duration: 0.2, ease: 'easeIn' } },
   };
 
-  // Render Confirmation Screen upon completion
+  // Completion State
   if (submissionResult) {
     return (
       <div className={styles.card}>
         <div className={styles.completionCard}>
           <div className={styles.successBadge}>
-            [✓] SUBMISSION_RECORDED
+            [✓] REFLECTION_RECEIVED
           </div>
-          <h2 className={styles.completionTitle}>Reflection Received.</h2>
+          <h2 className={styles.completionTitle}>Your Heart Has Been Heard.</h2>
           <p className={styles.completionSubtitle}>
-            Thank you, {formData.full_name.split(' ')[0]}. Your candid reflections have been securely recorded.
+            Thank you, {formData.full_name.split(' ')[0]}. Your honest reflections have been securely recorded. You do not have to perform for God.
           </p>
 
-          {/* Scripture Anchor */}
           <div className={styles.scriptureCompletion}>
             <p className={styles.scriptureCompletionText}>
               "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."
@@ -252,27 +259,34 @@ export default function SurveyWizard() {
             <div className={styles.scriptureCompletionRef}>Philippians 4:6-7</div>
           </div>
 
-          {/* Segment Identification */}
           <div className={styles.hostNoteCard} style={{ textAlign: 'left', marginBottom: '24px' }}>
-            <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--lime)', fontWeight: '700', marginBottom: '6px' }}>
-              [FOCUS_PATHWAY]
+            <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--lime)', fontWeight: '700', marginBottom: '6px' }}>
+              [YOUR_RECOMMENDED_PATHWAY]
             </div>
-            <h3 style={{ fontSize: '17px', color: 'var(--white)', fontWeight: '600', marginBottom: '6px', letterSpacing: '-0.02em' }}>
-              {submissionResult.segmentTitle || 'Spiritual Renewal & Growth'}
+            <h3 style={{ fontSize: '18px', color: 'var(--white)', fontWeight: '600', marginBottom: '6px', letterSpacing: '-0.02em' }}>
+              {submissionResult.segmentTitle || 'Spiritual Renewal & Rest'}
             </h3>
-            <p style={{ fontSize: '13.5px', color: 'var(--gray-1)', margin: 0, lineHeight: 1.55 }}>
-              {submissionResult.segmentSubtitle || 'Tailored insights designed to take you beyond religious performance and into genuine rest.'}
+            <p style={{ fontSize: '14px', color: 'var(--gray-1)', margin: 0, lineHeight: 1.6 }}>
+              {submissionResult.segmentSubtitle || 'Tailored insights designed to take you beyond religious performance and into genuine fellowship with God.'}
             </p>
           </div>
 
-          {/* Email Dispatch Notice */}
           <div className={styles.emailNoticeCard}>
-            A comprehensive follow-up guide, personal encouragement, and direct links to curated YouVersion Bible App reading plans have been dispatched to <strong>{formData.email}</strong>.
+            A personal follow-up message from Glory Adeniran (God's Virtue) with curated YouVersion Bible App study plans has been dispatched to <strong>{formData.email}</strong>.
           </div>
 
-          <div style={{ marginTop: '28px' }}>
-            <Link href="/" className={styles.shinyCta}>
-              <span>Return to Portfolio &nbsp;→</span>
+          <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '28px' }}>
+            <a
+              href="https://wa.me/2349168047236"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.shinyCta}
+            >
+              <span>Connect with Glory on WhatsApp &nbsp;→</span>
+            </a>
+            <Link href="/" className={styles.btnSecondary}>
+              <span className={styles.btnDot} />
+              <span>Return to Portfolio</span>
             </Link>
           </div>
         </div>
@@ -280,23 +294,37 @@ export default function SurveyWizard() {
     );
   }
 
-  // Calculate progress percentage
   const progressPercent = step === 0 ? 0 : Math.round((step / 4) * 100);
 
   return (
     <>
+      <PurposeModal isOpen={showPurposeModal} onClose={() => setShowPurposeModal(false)} />
+
       {/* Header Bar */}
       <div className={styles.headerBar}>
-        <div className={styles.eyebrow}>
-          <span className={styles.eyebrowBar} />
-          <span className={styles.eyebrowTag}>01 / SPIRITUAL SURVEY</span>
-          <span>RESEARCH &amp; REFLECTION</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+          <div className={styles.eyebrow} style={{ margin: 0 }}>
+            <span className={styles.eyebrowBar} />
+            <span className={styles.eyebrowTag}>01 / SPIRITUAL SURVEY</span>
+            <span>GLORY ADENIRAN (GOD'S VIRTUE)</span>
+          </div>
+
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            style={{ height: '32px', padding: '0 14px', fontSize: '11px' }}
+            onClick={() => setShowPurposeModal(true)}
+          >
+            <span className={styles.btnDot} />
+            <span>Why I Organized This Survey</span>
+          </button>
         </div>
+
         <h1 className={styles.mainTitle}>
           Beyond <em>Performance.</em>
         </h1>
         <p className={styles.subTitle}>
-          Redefining Prayer &amp; Bible Connection · Exploring honest rhythms free from performance pressure.
+          Redefining Prayer &amp; Bible Connection · A safe space to share where our daily spiritual practices get burdened by pressure, and how to return to genuine rest.
         </p>
       </div>
 
@@ -305,15 +333,12 @@ export default function SurveyWizard() {
         <div className={styles.progressContainer}>
           <div className={styles.progressMeta}>
             <span className={styles.stepIndicator}>
-              STEP 0{step} / 04 · {step === 1 ? 'IDENTITY' : step === 2 ? 'PRAYER REALITY' : step === 3 ? 'SCRIPTURAL STUDY' : 'REVIEW & OBSERVATIONS'}
+              STEP 0{step} / 04 · {step === 1 ? 'ABOUT YOU' : step === 2 ? 'HONEST PRAYER REALITY' : step === 3 ? 'BIBLE CONNECTION' : 'OBSERVATIONS & REVIEW'}
             </span>
             <span className={styles.stepPercentage}>{progressPercent}%</span>
           </div>
           <div className={styles.trackBar}>
-            <div
-              className={styles.trackFill}
-              style={{ width: `${progressPercent}%` }}
-            />
+            <div className={styles.trackFill} style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
       )}
@@ -337,17 +362,25 @@ export default function SurveyWizard() {
               animate="animate"
               exit="exit"
             >
-              {/* Host Note */}
+              {/* Host Note with Glory's Picture */}
               <div className={styles.hostNoteCard}>
                 <div className={styles.hostHeader}>
-                  <div className={styles.hostAvatar}>GA</div>
+                  <div className={styles.hostAvatar}>
+                    <Image
+                      src="/images/Put_an_I_watch_to_202606282357.jpeg"
+                      alt="Glory Adeniran"
+                      width={44}
+                      height={44}
+                      style={{ objectFit: 'cover', objectPosition: 'top' }}
+                    />
+                  </div>
                   <div className={styles.hostInfo}>
                     <div className={styles.hostName}>Glory Adeniran</div>
-                    <div className={styles.hostRole}>HOST &amp; CREATIVE LEAD</div>
+                    <div className={styles.hostRole}>GOD'S VIRTUE · HOST &amp; CREATIVE LEAD</div>
                   </div>
                 </div>
                 <p className={styles.hostQuote}>
-                  "Prayer was never designed to be an exhausting performance, a rigid routine, or an endurance test against a stopwatch. It is fundamentally an honest conversation with God. This survey exists to explore where our daily practices get burdened by pressure, and how we can return to genuine fellowship."
+                  "Prayer was never designed to be an exhausting performance, a rigid routine, or an endurance test against a stopwatch. It is fundamentally an honest, unhurried conversation with God. This survey exists to explore where our daily practices get weighed down by pressure, and how we can return to genuine fellowship."
                 </p>
               </div>
 
@@ -359,21 +392,21 @@ export default function SurveyWizard() {
                 <div className={styles.scriptureRef}>Matthew 11:28</div>
               </div>
 
-              {/* Privacy & Data Use Transparency Container */}
+              {/* Privacy Transparency Box */}
               <div className={styles.privacyBox}>
                 <div className={styles.privacyHeading}>
                   <span className={styles.privacyHeadingDot} />
-                  DATA TRANSPARENCY &amp; CONFIDENTIALITY POLICY
+                  DATA PRIVACY &amp; CONFIDENTIALITY POLICY
                 </div>
                 <ul className={styles.privacyList}>
                   <li>
-                    <strong>Purpose of Data Collection:</strong> Your name and email address are collected solely to deliver your personalized reflection summary, tailored study recommendations, and optional follow-up resources.
+                    <strong>Why your information is requested:</strong> Your name and email are collected solely to deliver your personalized reflection guide, tailored Scripture study plans, and 1-on-1 assistance.
                   </li>
                   <li>
-                    <strong>Strict Confidentiality:</strong> Your individual responses, spiritual reflections, and personal answers remain confidential and will never be shared, sold, rented, or made public.
+                    <strong>Complete Confidentiality:</strong> Your answers and spiritual struggles remain completely private and confidential. Data will never be sold, rented, or made public.
                   </li>
                   <li>
-                    <strong>Zero Spam Commitment:</strong> We respect your inbox. You will only receive direct, relevant materials relating to this study.
+                    <strong>Zero Spam Guarantee:</strong> You will only receive direct, relevant reflections relating to this study.
                   </li>
                 </ul>
 
@@ -385,7 +418,7 @@ export default function SurveyWizard() {
                     onChange={(e) => handleChange('privacy_accepted', e.target.checked)}
                   />
                   <span className={styles.consentText}>
-                    I understand how my information will be used and agree to proceed.
+                    I understand how my information will be used to send my personalized reflection resources and agree to proceed.
                   </span>
                 </label>
               </div>
@@ -412,9 +445,9 @@ export default function SurveyWizard() {
               animate="animate"
               exit="exit"
             >
-              <h2 className={styles.stepTitle}>Participant Identity</h2>
+              <h2 className={styles.stepTitle}>About You</h2>
               <p className={styles.stepDescription}>
-                Provide your contact details so we can deliver your personalized next steps.
+                Tell us a little bit about yourself so we can address you personally in your follow-up guide.
               </p>
 
               {/* Full Name */}
@@ -426,14 +459,14 @@ export default function SurveyWizard() {
                   id="full_name"
                   type="text"
                   className={styles.textInput}
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. Samuel Ade"
                   value={formData.full_name}
                   onChange={(e) => handleChange('full_name', e.target.value)}
                   autoFocus
                 />
               </div>
 
-              {/* Email Address */}
+              {/* Email */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel} htmlFor="email">
                   Email Address <span className={styles.requiredTag}>[REQUIRED]</span>
@@ -442,19 +475,19 @@ export default function SurveyWizard() {
                   id="email"
                   type="email"
                   className={styles.textInput}
-                  placeholder="e.g. yourname@example.com"
+                  placeholder="e.g. samuel@example.com"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
                 />
                 <div className={styles.fieldHint}>
-                  // Personalized study recommendations will be dispatched to this inbox.
+                  // Your personalized study tracks and recommendations will be sent here.
                 </div>
               </div>
 
               {/* Faith Walk */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Current Faith Journey <span className={styles.requiredTag}>[REQUIRED]</span>
+                  Where are you currently in your walk with God? <span className={styles.requiredTag}>[REQUIRED]</span>
                 </label>
                 <div className={styles.optionsGrid}>
                   {FAITH_OPTIONS.map((opt, idx) => {
@@ -483,13 +516,13 @@ export default function SurveyWizard() {
               {/* Local Church */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel} htmlFor="church_name">
-                  Local Assembly or Fellowship Community (Optional)
+                  Local Assembly, Fellowship, or Campus Community (Optional)
                 </label>
                 <input
                   id="church_name"
                   type="text"
                   className={styles.textInput}
-                  placeholder="Name of your local church, fellowship, or student assembly (if applicable)"
+                  placeholder="e.g. The King's Chamber / Campus Fellowship / RCCG (if applicable)"
                   value={formData.church_name}
                   onChange={(e) => handleChange('church_name', e.target.value)}
                 />
@@ -507,7 +540,7 @@ export default function SurveyWizard() {
             </motion.div>
           )}
 
-          {/* STEP 2: HONEST REFLECTIONS ON PRAYER */}
+          {/* STEP 2: HONEST REALITY IN PRAYER */}
           {step === 2 && (
             <motion.div
               key="step-2"
@@ -516,15 +549,15 @@ export default function SurveyWizard() {
               animate="animate"
               exit="exit"
             >
-              <h2 className={styles.stepTitle}>Honest Reality in Prayer</h2>
+              <h2 className={styles.stepTitle}>The Real Truth About Your Prayer Life</h2>
               <p className={styles.stepDescription}>
-                Be completely candid. There are no right or wrong answers.
+                Be 100% candid. Nobody is grading you. Honest vulnerability is where true freedom starts.
               </p>
 
               {/* Daily Prayer Reality */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Current Reality with Daily Prayer <span className={styles.requiredTag}>[REQUIRED]</span>
+                  What does your daily prayer life honestly look like right now? <span className={styles.requiredTag}>[REQUIRED]</span>
                 </label>
                 <div className={styles.optionsGrid}>
                   {PRAYER_REALITIES.map((opt, idx) => {
@@ -550,10 +583,10 @@ export default function SurveyWizard() {
                 </div>
               </div>
 
-              {/* Points of Friction (Multi-select) */}
+              {/* Friction Points (Multi-select) */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Primary Points of Friction or Pressure (Select all that apply) <span className={styles.requiredTag}>[REQUIRED]</span>
+                  What causes you the most pressure or headache when trying to pray? (Select all that apply) <span className={styles.requiredTag}>[REQUIRED]</span>
                 </label>
                 <div className={styles.optionsGrid}>
                   {FRICTION_POINTS.map((opt, idx) => {
@@ -581,7 +614,7 @@ export default function SurveyWizard() {
               {/* Openness Scale (1-5) */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Conversational Transparency with God (Scale 1 to 5) <span className={styles.requiredTag}>[REQUIRED]</span>
+                  When talking to God, how open and unfiltered are you? (Scale 1 to 5) <span className={styles.requiredTag}>[REQUIRED]</span>
                 </label>
                 <div className={styles.scaleContainer}>
                   <div className={styles.scaleNumbers}>
@@ -601,10 +634,10 @@ export default function SurveyWizard() {
                   </div>
                   <div className={styles.scaleLabels}>
                     <span className={styles.scaleLabelLeft}>
-                      1: Completely guarded; relying on formal or scripted phrasing
+                      1: Very guarded; relying on formal phrasing or repeated religious words
                     </span>
                     <span className={styles.scaleLabelRight}>
-                      5: Completely vulnerable; speaking openly without filters
+                      5: Completely raw &amp; transparent; pouring out my heart without filters
                     </span>
                   </div>
                 </div>
@@ -631,15 +664,15 @@ export default function SurveyWizard() {
               animate="animate"
               exit="exit"
             >
-              <h2 className={styles.stepTitle}>Scriptural Engagement &amp; Bible Study</h2>
+              <h2 className={styles.stepTitle}>Connecting with God's Word (Bible Study)</h2>
               <p className={styles.stepDescription}>
-                How you currently connect with Scripture and what formats serve you best.
+                How you currently connect with the Scriptures and what formats would make reading enjoyable.
               </p>
 
               {/* Bible Reading Status */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Current Approach to Reading Scripture <span className={styles.requiredTag}>[REQUIRED]</span>
+                  How is your personal Bible reading going? <span className={styles.requiredTag}>[REQUIRED]</span>
                 </label>
                 <div className={styles.optionsGrid}>
                   {BIBLE_STATUS_OPTIONS.map((opt, idx) => {
@@ -668,7 +701,7 @@ export default function SurveyWizard() {
               {/* Preferred Formats (Multi-select) */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Preferred Formats for Spiritual Growth (Select all that apply) <span className={styles.requiredTag}>[REQUIRED]</span>
+                  What format would help you enjoy and grow in the Word the most? (Select all that apply) <span className={styles.requiredTag}>[REQUIRED]</span>
                 </label>
                 <div className={styles.optionsGrid}>
                   {PREFERRED_FORMATS.map((opt, idx) => {
@@ -714,20 +747,20 @@ export default function SurveyWizard() {
               animate="animate"
               exit="exit"
             >
-              <h2 className={styles.stepTitle}>Open Observations &amp; Final Review</h2>
+              <h2 className={styles.stepTitle}>Your Honest Observations &amp; Final Review</h2>
               <p className={styles.stepDescription}>
-                Share your personal perspective before completing the reflection.
+                Share your personal perspective in your own words before completing your reflection.
               </p>
 
               {/* Misconception Textarea */}
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel} htmlFor="open_reflection">
-                  In your own words, what is the single biggest misconception about talking with God that you believe causes people to give up? (Optional)
+                  In your own words, what is the biggest lie or misconception about talking with God that you think discourages believers the most? (Optional)
                 </label>
                 <textarea
                   id="open_reflection"
                   className={styles.textArea}
-                  placeholder="e.g. Believing that prayers are only valid if they last a certain number of minutes, or thinking God is easily offended by our questions..."
+                  placeholder="e.g. Believing that prayers are only valid if they last a specific number of minutes, or feeling that God is angry when we don't know what to say..."
                   value={formData.open_reflection}
                   onChange={(e) => handleChange('open_reflection', e.target.value)}
                 />
@@ -771,7 +804,7 @@ export default function SurveyWizard() {
                   disabled={isSubmitting}
                   onClick={handleSubmit}
                 >
-                  <span>{isSubmitting ? 'RECORDING REFLECTION...' : 'COMPLETE & SUBMIT →'}</span>
+                  <span>{isSubmitting ? 'RECORDING REFLECTION...' : 'COMPLETE & SEND REFLECTION →'}</span>
                 </button>
               </div>
             </motion.div>

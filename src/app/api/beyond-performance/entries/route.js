@@ -1,10 +1,10 @@
 /**
  * API Route: /api/beyond-performance/entries
- * Handles retrieval of survey submissions and aggregated analytics for the admin dashboard.
+ * Handles retrieval of survey submissions, aggregated analytics, and deletion of responses for the admin dashboard.
  */
 
 import { NextResponse } from 'next/server';
-import { getSurveyEntries, getSurveyStats } from '@/lib/supabase';
+import { getSurveyEntries, getSurveyStats, deleteSurveyEntry } from '@/lib/supabase';
 
 export async function GET(req) {
   try {
@@ -34,9 +34,36 @@ export async function GET(req) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('[api/beyond-performance/entries] Error:', error);
+    console.error('[api/beyond-performance/entries] GET Error:', error);
     return NextResponse.json(
       { error: 'Failed to retrieve survey entries' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req) {
+  try {
+    const body = await req.json();
+    const { id, email } = body || {};
+
+    if (!id && !email) {
+      return NextResponse.json(
+        { error: 'Response ID or email is required for deletion.' },
+        { status: 400 }
+      );
+    }
+
+    await deleteSurveyEntry(id, email);
+
+    return NextResponse.json(
+      { success: true, message: 'Survey reflection deleted successfully.' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('[api/beyond-performance/entries] DELETE Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete survey entry' },
       { status: 500 }
     );
   }

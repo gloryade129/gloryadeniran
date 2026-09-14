@@ -1,0 +1,222 @@
+/* ==============================================================================
+   Purpose Modal Stylesheet
+   Design: gloryadeniran.cv Native Aesthetic with Christlike Reverence
+   ============================================================================== */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 7, 6, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+}
+
+.modal {
+  background: #0E0E10;
+  border: 1px solid var(--border-md, rgba(255, 255, 255, 0.18));
+  box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.95), var(--lime-dim) 0 0 32px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 88vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 32px 32px 20px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.hostBadge {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.imageFrame {
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--lime, #0091FF);
+  box-shadow: var(--lime-glow) 0 0 16px;
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--lime, #0091FF);
+  margin-bottom: 4px;
+}
+
+.eyebrowBar {
+  display: block;
+  width: 16px;
+  height: 1px;
+  background: var(--lime, #0091FF);
+  flex-shrink: 0;
+}
+
+.hostName {
+  font-family: var(--font, sans-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--white, #FAFAFA);
+  margin: 0 0 2px 0;
+  letter-spacing: -0.02em;
+}
+
+.hostTitle {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  color: var(--gray-2, #9A9994);
+}
+
+.btnClose {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  color: var(--gray-2, #9A9994);
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnClose:hover {
+  border-color: var(--lime, #0091FF);
+  color: var(--white, #FAFAFA);
+}
+
+.modalBody {
+  padding: 28px 32px 36px;
+}
+
+.scriptureBanner {
+  background: rgba(0, 145, 255, 0.05);
+  border-left: 3px solid var(--lime, #0091FF);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.scriptureText {
+  font-size: 14.5px;
+  font-style: italic;
+  color: var(--white, #FAFAFA);
+  line-height: 1.55;
+  margin-bottom: 6px;
+}
+
+.scriptureRef {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--lime, #0091FF);
+}
+
+.sectionTitle {
+  font-family: var(--font, sans-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--white, #FAFAFA);
+  margin: 0 0 12px 0;
+  letter-spacing: -0.02em;
+}
+
+.paragraph {
+  font-size: 14.5px;
+  color: var(--gray-1, #C8C7C2);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.highlightCard {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  padding: 18px 20px;
+  margin: 20px 0 24px;
+}
+
+.highlightTitle {
+  font-family: var(--mono, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--lime, #0091FF);
+  margin-bottom: 8px;
+}
+
+.highlightText {
+  font-size: 13.5px;
+  color: var(--white, #FAFAFA);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.modalFooter {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  text-align: right;
+}
+
+.shinyCta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 46px;
+  padding: 0 28px;
+  font-family: var(--font, sans-serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--bg, #080706);
+  background: var(--lime, #0091FF);
+  border: none;
+  overflow: hidden;
+  transition: background 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.shinyCta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.35) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.shinyCta:hover::after {
+  transform: translateX(100%);
+}
+
+.shinyCta:hover {
+  box-shadow: var(--lime-glow) 0 0 24px;
+}
+
+@media (max-width: 640px) {
+  .modalHeader, .modalBody {
+    padding: 24px 20px;
+  }
+}
