@@ -4,7 +4,11 @@
  * Component: SurveyWizard.js
  * Multi-step spiritual survey client: "Beyond Performance: Redefining Prayer & Bible Connection"
  * Host: Glory Adeniran (God's Virtue)
- * Design: High readability, local & relatable questions, zero emojis, reverent modern aesthetic.
+ * Features:
+ * - Light and Dark Theme selector & persistent storage
+ * - 3-Slide Interactive Purpose Modal with theme choice
+ * - Single submission per user tracked through email
+ * - High-readability, large typography, zero emojis
  */
 
 import React, { useState, useEffect } from 'react';
@@ -16,6 +20,8 @@ import styles from './survey.module.css';
 
 const LOCAL_STORAGE_KEY = 'ga_beyond_performance_draft';
 const PURPOSE_MODAL_SHOWN_KEY = 'ga_purpose_modal_shown';
+const THEME_STORAGE_KEY = 'ga_survey_theme';
+const SUBMITTED_EMAIL_KEY = 'ga_beyond_performance_submitted_email';
 
 const INITIAL_STATE = {
   privacy_accepted: false,
@@ -31,7 +37,7 @@ const INITIAL_STATE = {
   open_reflection: '',
 };
 
-// Step 1: Faith Walk Options (Local, Friendly & Direct)
+// Step 1: Faith Walk Options (Direct & Relatable)
 const FAITH_OPTIONS = [
   'Walking with Christ passionately (Born Again)',
   'Still exploring the faith / Have sincere questions about God',
@@ -75,14 +81,43 @@ const PREFERRED_FORMATS = [
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 export default function SurveyWizard() {
+  const [theme, setTheme] = useState('dark');
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [validationError, setValidationError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState(null);
   const [showPurposeModal, setShowPurposeModal] = useState(false);
+  const [alreadySubmittedEmail, setAlreadySubmittedEmail] = useState('');
 
-  // 1. Check if purpose modal has been shown, auto-open gently once
+  // 1. Initialize Theme from localStorage
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setTheme(savedTheme);
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleSelectTheme = (newTheme) => {
+    setTheme(newTheme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    } catch (e) {}
+  };
+
+  // 2. Check if user already submitted with an email on this browser
+  useEffect(() => {
+    try {
+      const prevEmail = localStorage.getItem(SUBMITTED_EMAIL_KEY);
+      if (prevEmail) {
+        setAlreadySubmittedEmail(prevEmail);
+      }
+    } catch (e) {}
+  }, []);
+
+  // 3. Auto-open Purpose Modal once gently if not shown
   useEffect(() => {
     try {
       const shown = sessionStorage.getItem(PURPOSE_MODAL_SHOWN_KEY);
@@ -90,13 +125,13 @@ export default function SurveyWizard() {
         const timer = setTimeout(() => {
           setShowPurposeModal(true);
           sessionStorage.setItem(PURPOSE_MODAL_SHOWN_KEY, 'true');
-        }, 800);
+        }, 700);
         return () => clearTimeout(timer);
       }
     } catch (e) {}
   }, []);
 
-  // 2. Restore draft from localStorage on mount
+  // 4. Restore draft from localStorage on mount (unless already submitted)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -107,14 +142,14 @@ export default function SurveyWizard() {
     } catch (e) {}
   }, []);
 
-  // 3. Persist draft to localStorage on change
+  // 5. Persist draft to localStorage on change
   useEffect(() => {
-    if (!submissionResult) {
+    if (!submissionResult && !alreadySubmittedEmail) {
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
       } catch (e) {}
     }
-  }, [formData, submissionResult]);
+  }, [formData, submissionResult, alreadySubmittedEmail]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -149,7 +184,7 @@ export default function SurveyWizard() {
         setValidationError('Please enter your full name (at least 2 characters).');
         return false;
       }
-      const email = (formData.email || '').trim();
+      const email = (formData.email || '').trim().toLowerCase();
       if (!email || !EMAIL_REGEX.test(email)) {
         setValidationError('Please enter a valid email address so we can deliver your personalized next steps.');
         return false;
@@ -221,8 +256,14 @@ export default function SurveyWizard() {
       }
 
       setSubmissionResult(data);
+      const cleanEmail = (formData.email || '').trim().toLowerCase();
+      
       try {
         localStorage.removeItem(LOCAL_STORAGE_KEY);
+        if (cleanEmail) {
+          localStorage.setItem(SUBMITTED_EMAIL_KEY, cleanEmail);
+          setAlreadySubmittedEmail(cleanEmail);
+        }
       } catch (e) {}
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -239,55 +280,73 @@ export default function SurveyWizard() {
     exit: { opacity: 0, y: -12, transition: { duration: 0.2, ease: 'easeIn' } },
   };
 
-  // Completion State
-  if (submissionResult) {
+  // ─── COMPLETION OR DUPLICATE SUBMISSION STATE ───
+  if (submissionResult || (alreadySubmittedEmail && step === 0 && !formData.email)) {
+    const isDuplicate = submissionResult?.isDuplicate || Boolean(alreadySubmittedEmail);
+    const displayEmail = formData.email || alreadySubmittedEmail;
+    const namePart = formData.full_name ? formData.full_name.split(' ')[0] : 'Friend';
+
     return (
-      <div className={styles.card}>
-        <div className={styles.completionCard}>
-          <div className={styles.successBadge}>
-            [✓] REFLECTION_RECEIVED
-          </div>
-          <h2 className={styles.completionTitle}>Your Heart Has Been Heard.</h2>
-          <p className={styles.completionSubtitle}>
-            Thank you, {formData.full_name.split(' ')[0]}. Your honest reflections have been securely recorded. You do not have to perform for God.
-          </p>
-
-          <div className={styles.scriptureCompletion}>
-            <p className={styles.scriptureCompletionText}>
-              "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."
-            </p>
-            <div className={styles.scriptureCompletionRef}>Philippians 4:6-7</div>
-          </div>
-
-          <div className={styles.hostNoteCard} style={{ textAlign: 'left', marginBottom: '24px' }}>
-            <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--lime)', fontWeight: '700', marginBottom: '6px' }}>
-              [YOUR_RECOMMENDED_PATHWAY]
+      <div className={`${styles.pageWrapper} ${theme === 'light' ? styles.themeLight : styles.themeDark}`} data-theme={theme}>
+        <div className={styles.card}>
+          <div className={styles.completionCard}>
+            <div className={styles.successBadge}>
+              {isDuplicate ? '[!] SUBMISSION_RECORDED' : '[✓] REFLECTION_RECEIVED'}
             </div>
-            <h3 style={{ fontSize: '18px', color: 'var(--white)', fontWeight: '600', marginBottom: '6px', letterSpacing: '-0.02em' }}>
-              {submissionResult.segmentTitle || 'Spiritual Renewal & Rest'}
-            </h3>
-            <p style={{ fontSize: '14px', color: 'var(--gray-1)', margin: 0, lineHeight: 1.6 }}>
-              {submissionResult.segmentSubtitle || 'Tailored insights designed to take you beyond religious performance and into genuine fellowship with God.'}
+
+            <h2 className={styles.completionTitle}>
+              {isDuplicate ? 'Welcome Back, ' + namePart : 'Your Heart Has Been Heard.'}
+            </h2>
+
+            <p className={styles.completionSubtitle}>
+              {isDuplicate
+                ? `You have already completed this reflection with ${displayEmail}. Your responses are securely preserved, and you do not need to submit another response.`
+                : `Thank you, ${namePart}. Your honest reflections have been securely recorded. You do not have to perform for God.`}
             </p>
-          </div>
 
-          <div className={styles.emailNoticeCard}>
-            A personal follow-up message from Glory Adeniran (God's Virtue) with curated YouVersion Bible App study plans has been dispatched to <strong>{formData.email}</strong>.
-          </div>
+            {isDuplicate && (
+              <div className={styles.alreadySubmittedBanner}>
+                <strong>One Submission Policy:</strong> To protect your privacy and ensure personalized follow-up, each participant submits once per email. If your situation has changed or you need urgent pastoral counsel, connect directly via WhatsApp below.
+              </div>
+            )}
 
-          <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '28px' }}>
-            <a
-              href="https://wa.me/2349168047236"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.shinyCta}
-            >
-              <span>Connect with Glory on WhatsApp &nbsp;→</span>
-            </a>
-            <Link href="/" className={styles.btnSecondary}>
-              <span className={styles.btnDot} />
-              <span>Return to Portfolio</span>
-            </Link>
+            <div className={styles.scriptureCompletion}>
+              <p className={styles.scriptureCompletionText}>
+                "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."
+              </p>
+              <div className={styles.scriptureCompletionRef}>Philippians 4:6-7</div>
+            </div>
+
+            <div className={styles.hostNoteCard} style={{ textAlign: 'left', marginBottom: '24px' }}>
+              <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--surv-accent)', fontWeight: '700', marginBottom: '8px' }}>
+                // YOUR RECOMMENDED PATHWAY
+              </div>
+              <h3 style={{ fontSize: '20px', color: 'var(--surv-text-primary)', fontWeight: '700', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+                {submissionResult?.segmentTitle || 'Spiritual Renewal & Rest'}
+              </h3>
+              <p style={{ fontSize: '15.5px', color: 'var(--surv-text-secondary)', margin: 0, lineHeight: 1.65 }}>
+                {submissionResult?.segmentSubtitle || 'Tailored insights and YouVersion reading plans designed to move you from exhausting performance into sweet, genuine communion with God.'}
+              </p>
+            </div>
+
+            <div className={styles.emailNoticeCard}>
+              Personal follow-up insights from Glory Adeniran (God's Virtue) with curated YouVersion study plans are available for <strong>{displayEmail}</strong>.
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '32px' }}>
+              <a
+                href="https://wa.me/2349168047236"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.shinyCta}
+              >
+                <span>Connect with Glory on WhatsApp &nbsp;&rarr;</span>
+              </a>
+              <Link href="/" className={styles.btnSecondary}>
+                <span className={styles.btnDot} />
+                <span>Return to Portfolio</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -297,34 +356,59 @@ export default function SurveyWizard() {
   const progressPercent = step === 0 ? 0 : Math.round((step / 4) * 100);
 
   return (
-    <>
-      <PurposeModal isOpen={showPurposeModal} onClose={() => setShowPurposeModal(false)} />
+    <div className={`${styles.pageWrapper} ${theme === 'light' ? styles.themeLight : styles.themeDark}`} data-theme={theme}>
+      <PurposeModal
+        isOpen={showPurposeModal}
+        onClose={() => setShowPurposeModal(false)}
+        currentTheme={theme}
+        onSelectTheme={handleSelectTheme}
+      />
 
       {/* Header Bar */}
       <div className={styles.headerBar}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
-          <div className={styles.eyebrow} style={{ margin: 0 }}>
+        <div className={styles.topControlRow}>
+          <div className={styles.eyebrow}>
             <span className={styles.eyebrowBar} />
             <span className={styles.eyebrowTag}>01 / SPIRITUAL SURVEY</span>
             <span>GLORY ADENIRAN (GOD'S VIRTUE)</span>
           </div>
 
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            style={{ height: '32px', padding: '0 14px', fontSize: '11px' }}
-            onClick={() => setShowPurposeModal(true)}
-          >
-            <span className={styles.btnDot} />
-            <span>Why I Organized This Survey</span>
-          </button>
+          <div className={styles.topActions}>
+            {/* Light / Dark Mode Toggle */}
+            <div className={styles.themeToggleGroup} role="group" aria-label="Theme preference">
+              <button
+                type="button"
+                className={`${styles.themeBtn} ${theme === 'dark' ? styles.themeBtnActive : ''}`}
+                onClick={() => handleSelectTheme('dark')}
+              >
+                Dark
+              </button>
+              <button
+                type="button"
+                className={`${styles.themeBtn} ${theme === 'light' ? styles.themeBtnActive : ''}`}
+                onClick={() => handleSelectTheme('light')}
+              >
+                Light
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              style={{ height: '36px', padding: '0 16px', fontSize: '12px' }}
+              onClick={() => setShowPurposeModal(true)}
+            >
+              <span className={styles.btnDot} />
+              <span>Why I Am Doing This</span>
+            </button>
+          </div>
         </div>
 
         <h1 className={styles.mainTitle}>
           Beyond <em>Performance.</em>
         </h1>
         <p className={styles.subTitle}>
-          Redefining Prayer &amp; Bible Connection · A safe space to share where our daily spiritual practices get burdened by pressure, and how to return to genuine rest.
+          Redefining Prayer &amp; Bible Connection &middot; A safe space to share where our daily spiritual practices get burdened by pressure, and how to return to genuine rest.
         </p>
       </div>
 
@@ -333,7 +417,7 @@ export default function SurveyWizard() {
         <div className={styles.progressContainer}>
           <div className={styles.progressMeta}>
             <span className={styles.stepIndicator}>
-              STEP 0{step} / 04 · {step === 1 ? 'ABOUT YOU' : step === 2 ? 'HONEST PRAYER REALITY' : step === 3 ? 'BIBLE CONNECTION' : 'OBSERVATIONS & REVIEW'}
+              STEP 0{step} / 04 &middot; {step === 1 ? 'ABOUT YOU' : step === 2 ? 'HONEST PRAYER REALITY' : step === 3 ? 'BIBLE CONNECTION' : 'OBSERVATIONS & REVIEW'}
             </span>
             <span className={styles.stepPercentage}>{progressPercent}%</span>
           </div>
@@ -369,14 +453,14 @@ export default function SurveyWizard() {
                     <Image
                       src="/images/Put_an_I_watch_to_202606282357.jpeg"
                       alt="Glory Adeniran"
-                      width={44}
-                      height={44}
+                      fill
+                      sizes="46px"
                       style={{ objectFit: 'cover', objectPosition: 'top' }}
                     />
                   </div>
                   <div className={styles.hostInfo}>
                     <div className={styles.hostName}>Glory Adeniran</div>
-                    <div className={styles.hostRole}>GOD'S VIRTUE · HOST &amp; CREATIVE LEAD</div>
+                    <div className={styles.hostRole}>GOD'S VIRTUE &middot; HOST &amp; CREATIVE LEAD</div>
                   </div>
                 </div>
                 <p className={styles.hostQuote}>
@@ -430,7 +514,7 @@ export default function SurveyWizard() {
                   disabled={!formData.privacy_accepted}
                   onClick={handleNext}
                 >
-                  <span>Proceed to Reflection &nbsp;→</span>
+                  <span>Proceed to Reflection &nbsp;&rarr;</span>
                 </button>
               </div>
             </motion.div>
@@ -480,7 +564,7 @@ export default function SurveyWizard() {
                   onChange={(e) => handleChange('email', e.target.value)}
                 />
                 <div className={styles.fieldHint}>
-                  // Your personalized study tracks and recommendations will be sent here.
+                  // Your personalized study tracks and recommendations will be sent here. One submission per email.
                 </div>
               </div>
 
@@ -534,7 +618,7 @@ export default function SurveyWizard() {
                   <span>Back</span>
                 </button>
                 <button type="button" className={styles.shinyCta} onClick={handleNext}>
-                  <span>Next Step &nbsp;→</span>
+                  <span>Next Step &nbsp;&rarr;</span>
                 </button>
               </div>
             </motion.div>
@@ -634,10 +718,10 @@ export default function SurveyWizard() {
                   </div>
                   <div className={styles.scaleLabels}>
                     <span className={styles.scaleLabelLeft}>
-                      1: Very guarded; relying on formal phrasing or repeated religious words
+                      1: Very guarded; formal phrasing or repeating words
                     </span>
                     <span className={styles.scaleLabelRight}>
-                      5: Completely raw &amp; transparent; pouring out my heart without filters
+                      5: Completely transparent; pouring out heart without filters
                     </span>
                   </div>
                 </div>
@@ -649,7 +733,7 @@ export default function SurveyWizard() {
                   <span>Back</span>
                 </button>
                 <button type="button" className={styles.shinyCta} onClick={handleNext}>
-                  <span>Next Step &nbsp;→</span>
+                  <span>Next Step &nbsp;&rarr;</span>
                 </button>
               </div>
             </motion.div>
@@ -732,7 +816,7 @@ export default function SurveyWizard() {
                   <span>Back</span>
                 </button>
                 <button type="button" className={styles.shinyCta} onClick={handleNext}>
-                  <span>Next Step &nbsp;→</span>
+                  <span>Next Step &nbsp;&rarr;</span>
                 </button>
               </div>
             </motion.div>
@@ -812,6 +896,7 @@ export default function SurveyWizard() {
 
         </AnimatePresence>
       </div>
-    </>
+    </div>
   );
 }
+

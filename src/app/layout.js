@@ -1,16 +1,5 @@
-import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
-
-const space = Space_Grotesk({ 
-  subsets: ["latin"],
-  variable: "--font-space"
-});
-const mono = JetBrains_Mono({ 
-  subsets: ["latin"], 
-  weight: ['400', '500', '700'],
-  variable: "--font-mono"
-});
 
 export const metadata = {
   metadataBase: new URL('https://gloryadeniran.cv'),
@@ -48,8 +37,14 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${space.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        />
         <link rel="stylesheet" href="/api/custom-style.css" />
         <script
           type="application/ld+json"
@@ -94,7 +89,7 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body className={space.className}>
+      <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           {children}
         </ThemeProvider>

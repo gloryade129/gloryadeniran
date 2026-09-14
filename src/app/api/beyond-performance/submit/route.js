@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { deriveSegment, getSegmentMetadata } from '@/lib/survey-segmentation';
-import { upsertSurveyEntry, markSurveyEmailSent } from '@/lib/supabase';
+import { upsertSurveyEntry, markSurveyEmailSent, getSurveyEntryByEmail } from '@/lib/supabase';
 import { buildSurveyFollowUpEmail } from '@/lib/survey-email-templates';
 import { sendEmail } from '@/lib/brevo';
 
@@ -97,7 +97,29 @@ export async function POST(req) {
       );
     }
 
-    // 2. Segment Computation
+    // 2. Check if a response has already been submitted for this email
+    const existingEntry = await getSurveyEntryByEmail(cleanEmail);
+    if (existingEntry) {
+      const seg = existingEntry.assigned_segment || 'GENERAL_GROWTH';
+      const meta = getSegmentMetadata(seg);
+      return NextResponse.json(
+        {
+          success: true,
+          isDuplicate: true,
+          alreadySubmitted: true,
+          message: 'You have already completed your reflection with this email address. Your response is securely saved.',
+          segment: seg,
+          segmentTitle: meta.title,
+          segmentSubtitle: meta.subtitle,
+          scriptureAnchor: meta.scriptureAnchor,
+          emailSent: Boolean(existingEntry.email_sent),
+          recordId: existingEntry.id || null,
+        },
+        { status: 200 }
+      );
+    }
+
+    // 3. Segment Computation
     const assigned_segment = deriveSegment({
       prayer_friction_points,
       prayer_reality,
@@ -107,7 +129,7 @@ export async function POST(req) {
 
     const segmentMeta = getSegmentMetadata(assigned_segment);
 
-    // 3. Store in Supabase / Redis
+    // 4. Store in Supabase / Redis
     const entryData = {
       full_name: full_name.trim(),
       email: cleanEmail,

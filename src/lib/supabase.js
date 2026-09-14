@@ -93,6 +93,61 @@ async function getFromRedis() {
 }
 
 /**
+ * Look up a survey entry by normalized email address
+ * Checks Supabase PostgREST first, then Upstash Redis
+ * @param {string} email
+ */
+export async function getSurveyEntryByEmail(email) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  if (!normalizedEmail) return null;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/prayer_survey_entries?email=eq.${encodeURIComponent(normalizedEmail)}&select=*&limit=1`, {
+        method: 'GET',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        cache: 'no-store',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data[0];
+        }
+      }
+    } catch (e) {
+      console.warn('[supabase.js] Error querying entry by email from Supabase:', e.message);
+    }
+  }
+
+  // Fallback check in Redis backup store
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  if (url && token) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['GET', `ga:prayer_surveys:email:${normalizedEmail}`]),
+      });
+      const data = await res.json();
+      if (data.result) {
+        return typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+      }
+    } catch (e) {
+      console.warn('[supabase.js] Error querying entry by email from Redis:', e.message);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Inserts or updates a prayer survey entry
  * Uses Supabase PostgREST API with onConflict upsert + Redis dual write
  * @param {Object} data - Survey submission data
