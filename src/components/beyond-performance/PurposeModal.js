@@ -2,10 +2,10 @@
 
 /**
  * Component: PurposeModal.js
- * 3-Slide Interactive Onboarding Modal:
+ * 3-Slide Verified Interactive Onboarding Modal:
  * - Slide 1: Glory Adeniran's (God's Virtue) heart & spiritual leading (Matthew 11:28)
  * - Slide 2: What this space is (safe, pressure-free, genuine fellowship)
- * - Slide 3: Reading Theme preference selection (Light vs Dark mode)
+ * - Slide 3: What to expect & privacy guarantee before beginning
  *
  * Strictly zero emojis. High contrast, large readable typography.
  */
@@ -18,8 +18,6 @@ import styles from './purpose-modal.module.css';
 export default function PurposeModal({
   isOpen,
   onClose,
-  currentTheme = 'dark',
-  onSelectTheme = () => {},
 }) {
   const [currentSlide, setCurrentSlide] = useState(1);
   const totalSlides = 3;
@@ -36,10 +34,6 @@ export default function PurposeModal({
     if (currentSlide > 1) {
       setCurrentSlide((prev) => prev - 1);
     }
-  };
-
-  const handleThemePick = (theme) => {
-    onSelectTheme(theme);
   };
 
   const slideVariants = {
@@ -66,7 +60,6 @@ export default function PurposeModal({
           <motion.div
             className={styles.modal}
             onClick={(e) => e.stopPropagation()}
-            data-modal-theme={currentTheme}
             initial={{ opacity: 0, scale: 0.96, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } }}
             exit={{ opacity: 0, scale: 0.96, y: 12, transition: { duration: 0.2, ease: 'easeIn' } }}
@@ -149,7 +142,7 @@ export default function PurposeModal({
                     <div className={styles.calloutCard}>
                       <span className={styles.calloutLabel}>THE CORE MESSAGE</span>
                       <p className={styles.calloutText}>
-                        You do not need to perform for God. He desires your honest heart, not an exhausting ritual.
+                        You do not need to perform for God. He desires your honest heart, not an exhausting religious ritual.
                       </p>
                     </div>
                   </motion.div>
@@ -169,7 +162,7 @@ export default function PurposeModal({
                     <h3 className={styles.slideTitle}>A Safe, Pressure-Free Space</h3>
 
                     <p className={styles.paragraphLarge}>
-                      This is not a survey to test or judge your spirituality. It is an opportunity to reflect openly on your walk.
+                      This is not a survey to test or grade your spirituality. It is a genuine opportunity to reflect openly on your walk with God.
                     </p>
 
                     <div className={styles.pillarsGrid}>
@@ -206,7 +199,7 @@ export default function PurposeModal({
                   </motion.div>
                 )}
 
-                {/* ─── SLIDE 3: CHOOSE YOUR READING THEME ─── */}
+                {/* ─── SLIDE 3: HOW IT WORKS & BEGIN ─── */}
                 {currentSlide === 3 && (
                   <motion.div
                     key="slide-3"
@@ -216,67 +209,40 @@ export default function PurposeModal({
                     exit="exit"
                     custom={1}
                   >
-                    <div className={styles.badgeTopic}>READING EXPERIENCE</div>
-                    <h3 className={styles.slideTitle}>Choose Your Preferred Theme</h3>
+                    <div className={styles.badgeTopic}>GETTING STARTED</div>
+                    <h3 className={styles.slideTitle}>Your Reflection Journey</h3>
 
                     <p className={styles.paragraphLarge}>
-                      Choose how you would like this survey to appear. Your selection is automatically remembered every time you return.
+                      The survey takes less than 3 minutes to complete across 4 simple, thoughtful steps.
                     </p>
 
-                    <div className={styles.themeSelectorGrid}>
-                      {/* Dark Mode Card */}
-                      <div
-                        className={`${styles.themeOptionCard} ${currentTheme === 'dark' ? styles.themeActive : ''}`}
-                        onClick={() => handleThemePick('dark')}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className={styles.themePreviewDark}>
-                          <div className={styles.themePreviewHeaderDark}>
-                            <span className={styles.themeDot} />
-                            <span className={styles.themeDot} />
-                          </div>
-                          <div className={styles.themePreviewLineDark} />
-                          <div className={styles.themePreviewLineDarkShort} />
-                        </div>
-                        <div className={styles.themeMeta}>
-                          <div className={styles.themeName}>
-                            Dark Theme {currentTheme === 'dark' ? '[ACTIVE]' : ''}
-                          </div>
-                          <div className={styles.themeDetail}>
-                            Deep obsidian matte, glowing cyan/emerald accents, easy on the eyes.
+                    <div className={styles.pillarsGrid}>
+                      <div className={styles.pillarItem}>
+                        <div className={styles.pillarIndex}>A</div>
+                        <div>
+                          <div className={styles.pillarTitle}>100% Confidential</div>
+                          <div className={styles.pillarDesc}>
+                            Your reflections and answers are strictly confidential. We never sell or share your information.
                           </div>
                         </div>
                       </div>
 
-                      {/* Light Mode Card */}
-                      <div
-                        className={`${styles.themeOptionCard} ${currentTheme === 'light' ? styles.themeActive : ''}`}
-                        onClick={() => handleThemePick('light')}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className={styles.themePreviewLight}>
-                          <div className={styles.themePreviewHeaderLight}>
-                            <span className={styles.themeDotLight} />
-                            <span className={styles.themeDotLight} />
-                          </div>
-                          <div className={styles.themePreviewLineLight} />
-                          <div className={styles.themePreviewLineLightShort} />
-                        </div>
-                        <div className={styles.themeMeta}>
-                          <div className={styles.themeName}>
-                            Light Theme {currentTheme === 'light' ? '[ACTIVE]' : ''}
-                          </div>
-                          <div className={styles.themeDetail}>
-                            Crisp white &amp; soft ivory background, deep royal navy text, high contrast.
+                      <div className={styles.pillarItem}>
+                        <div className={styles.pillarIndex}>B</div>
+                        <div>
+                          <div className={styles.pillarTitle}>Personalized Next Steps</div>
+                          <div className={styles.pillarDesc}>
+                            Upon completing the survey, an actionable reflection guide and curated Bible tracks will be dispatched to your email.
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className={styles.themeNote}>
-                      You can also switch themes at any time using the toggle in the header.
+                    <div className={styles.readyCard}>
+                      <div className={styles.readyTitle}>// READY TO BEGIN</div>
+                      <p className={styles.readyText}>
+                        Take a deep breath, leave all religious pretense behind, and reflect freely.
+                      </p>
                     </div>
                   </motion.div>
                 )}
@@ -317,7 +283,7 @@ export default function PurposeModal({
                   className={styles.shinyCta}
                   onClick={onClose}
                 >
-                  <span>Save Preference &amp; Begin Reflection &rarr;</span>
+                  <span>Begin My Reflection &rarr;</span>
                 </button>
               )}
             </div>
@@ -327,4 +293,5 @@ export default function PurposeModal({
     </AnimatePresence>
   );
 }
+
 

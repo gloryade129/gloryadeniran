@@ -20,7 +20,6 @@ import styles from './survey.module.css';
 
 const LOCAL_STORAGE_KEY = 'ga_beyond_performance_draft';
 const PURPOSE_MODAL_SHOWN_KEY = 'ga_purpose_modal_shown';
-const THEME_STORAGE_KEY = 'ga_survey_theme';
 const SUBMITTED_EMAIL_KEY = 'ga_beyond_performance_submitted_email';
 
 const INITIAL_STATE = {
@@ -81,7 +80,6 @@ const PREFERRED_FORMATS = [
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 export default function SurveyWizard() {
-  const [theme, setTheme] = useState('dark');
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(INITIAL_STATE);
   const [validationError, setValidationError] = useState('');
@@ -89,23 +87,6 @@ export default function SurveyWizard() {
   const [submissionResult, setSubmissionResult] = useState(null);
   const [showPurposeModal, setShowPurposeModal] = useState(false);
   const [alreadySubmittedEmail, setAlreadySubmittedEmail] = useState('');
-
-  // 1. Initialize Theme from localStorage
-  useEffect(() => {
-    try {
-      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        setTheme(savedTheme);
-      }
-    } catch (e) {}
-  }, []);
-
-  const handleSelectTheme = (newTheme) => {
-    setTheme(newTheme);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-    } catch (e) {}
-  };
 
   // 2. Check if user already submitted with an email on this browser
   useEffect(() => {
@@ -287,7 +268,7 @@ export default function SurveyWizard() {
     const namePart = formData.full_name ? formData.full_name.split(' ')[0] : 'Friend';
 
     return (
-      <div className={`${styles.pageWrapper} ${theme === 'light' ? styles.themeLight : styles.themeDark}`} data-theme={theme}>
+      <div className={styles.pageWrapper}>
         <div className={styles.card}>
           <div className={styles.completionCard}>
             <div className={styles.successBadge}>
@@ -318,13 +299,13 @@ export default function SurveyWizard() {
             </div>
 
             <div className={styles.hostNoteCard} style={{ textAlign: 'left', marginBottom: '24px' }}>
-              <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--surv-accent)', fontWeight: '700', marginBottom: '8px' }}>
+              <div style={{ fontFamily: 'var(--mono, monospace)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--lime, #0091FF)', fontWeight: '700', marginBottom: '8px' }}>
                 // YOUR RECOMMENDED PATHWAY
               </div>
-              <h3 style={{ fontSize: '20px', color: 'var(--surv-text-primary)', fontWeight: '700', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+              <h3 style={{ fontSize: '20px', color: 'var(--white, #FAFAFA)', fontWeight: '700', marginBottom: '8px', letterSpacing: '-0.02em' }}>
                 {submissionResult?.segmentTitle || 'Spiritual Renewal & Rest'}
               </h3>
-              <p style={{ fontSize: '15.5px', color: 'var(--surv-text-secondary)', margin: 0, lineHeight: 1.65 }}>
+              <p style={{ fontSize: '15.5px', color: 'var(--gray-1, #C8C7C2)', margin: 0, lineHeight: 1.65 }}>
                 {submissionResult?.segmentSubtitle || 'Tailored insights and YouVersion reading plans designed to move you from exhausting performance into sweet, genuine communion with God.'}
               </p>
             </div>
@@ -356,12 +337,10 @@ export default function SurveyWizard() {
   const progressPercent = step === 0 ? 0 : Math.round((step / 4) * 100);
 
   return (
-    <div className={`${styles.pageWrapper} ${theme === 'light' ? styles.themeLight : styles.themeDark}`} data-theme={theme}>
+    <div className={styles.pageWrapper}>
       <PurposeModal
         isOpen={showPurposeModal}
         onClose={() => setShowPurposeModal(false)}
-        currentTheme={theme}
-        onSelectTheme={handleSelectTheme}
       />
 
       {/* Header Bar */}
@@ -374,32 +353,14 @@ export default function SurveyWizard() {
           </div>
 
           <div className={styles.topActions}>
-            {/* Light / Dark Mode Toggle */}
-            <div className={styles.themeToggleGroup} role="group" aria-label="Theme preference">
-              <button
-                type="button"
-                className={`${styles.themeBtn} ${theme === 'dark' ? styles.themeBtnActive : ''}`}
-                onClick={() => handleSelectTheme('dark')}
-              >
-                Dark
-              </button>
-              <button
-                type="button"
-                className={`${styles.themeBtn} ${theme === 'light' ? styles.themeBtnActive : ''}`}
-                onClick={() => handleSelectTheme('light')}
-              >
-                Light
-              </button>
-            </div>
-
             <button
               type="button"
               className={styles.btnSecondary}
-              style={{ height: '36px', padding: '0 16px', fontSize: '12px' }}
+              style={{ height: '38px', padding: '0 18px', fontSize: '12px' }}
               onClick={() => setShowPurposeModal(true)}
             >
               <span className={styles.btnDot} />
-              <span>Why I Am Doing This</span>
+              <span>Why I Am Doing This (3 Slides)</span>
             </button>
           </div>
         </div>
