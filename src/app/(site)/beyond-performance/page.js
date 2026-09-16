@@ -23,12 +23,12 @@ export const metadata = {
     title: 'Beyond Performance: Redefining Prayer & Bible Connection',
     description: 'Break free from prayer burnout, stopwatch timing pressure, and spiritual guilt. Share your honest reflections and receive tailored study plans.',
     url: 'https://gloryadeniran.cv/beyond-performance',
-    siteName: 'Glory Adeniran Portfolio',
+    siteName: 'Glory Adeniran · God\'s Virtue',
     images: [
       {
-        url: '/images/Put_an_I_watch_to_202606282357.jpeg',
+        url: 'https://gloryadeniran.cv/images/gospel-hero-banner.jpg',
         width: 1200,
-        height: 630,
+        height: 675,
         alt: 'Beyond Performance: Redefining Prayer & Bible Connection · Glory Adeniran',
       },
     ],
@@ -39,7 +39,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Beyond Performance: Redefining Prayer & Bible Connection',
     description: 'Break free from prayer burnout and stopwatch timing pressure. Return to genuine fellowship with God.',
-    images: ['/images/Put_an_I_watch_to_202606282357.jpeg'],
+    images: ['https://gloryadeniran.cv/images/gospel-hero-banner.jpg'],
   },
   alternates: {
     canonical: 'https://gloryadeniran.cv/beyond-performance',

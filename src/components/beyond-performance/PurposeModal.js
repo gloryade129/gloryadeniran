@@ -122,6 +122,17 @@ export default function PurposeModal({
                     exit="exit"
                     custom={1}
                   >
+                    <div className={styles.modalGospelHero}>
+                      <Image
+                        src="/images/gospel-hero-banner.jpg"
+                        alt="Jesus Welcoming the Weary · Matthew 11:28"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 680px"
+                        style={{ objectFit: 'cover', objectPosition: 'center 25%' }}
+                        priority
+                      />
+                    </div>
+
                     <div className={styles.scriptureBanner}>
                       <div className={styles.scriptureText}>
                         "Come to me, all you who are weary and burdened, and I will give you rest."
@@ -158,6 +169,16 @@ export default function PurposeModal({
                     exit="exit"
                     custom={1}
                   >
+                    <div className={styles.modalGospelHero}>
+                      <Image
+                        src="/images/gospel-scripture-light.jpg"
+                        alt="Quiet Scripture Study & Prayer Communion"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 680px"
+                        style={{ objectFit: 'cover', objectPosition: 'center center' }}
+                      />
+                    </div>
+
                     <div className={styles.badgeTopic}>WHAT TO EXPECT</div>
                     <h3 className={styles.slideTitle}>A Safe, Pressure-Free Space</h3>
 

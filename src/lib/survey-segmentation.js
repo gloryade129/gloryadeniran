@@ -26,14 +26,14 @@ export const SEGMENT_METADATA = {
     ],
     youVersionTracks: [
       {
-        title: 'Resting in God’s Presence: Beyond the Clock',
-        description: 'A 5-day devotional on releasing spiritual performance anxiety.',
-        url: 'https://www.bible.com/reading-plans/14101-resting-in-gods-presence',
+        title: 'Rest For The Weary (Dr. Tony Evans)',
+        description: 'A dedicated devotional exploring Jesus’ invitation in Matthew 11:28 to lay down exhausting burdens.',
+        url: 'https://www.bible.com/reading-plans/14660',
       },
       {
-        title: 'Conversational Prayer: Honest and Simple',
-        description: 'Discovering the freedom of praying unfiltered thoughts with God.',
-        url: 'https://www.bible.com/reading-plans/22300-conversational-prayer',
+        title: 'Pray: 14 Daily Moments to Quiet Your Mind',
+        description: 'Simple daily reflections and guided prayers to release stopwatch pressure and rest in God’s peace.',
+        url: 'https://www.bible.com/reading-plans/39445',
       },
     ],
   },
@@ -51,14 +51,14 @@ export const SEGMENT_METADATA = {
     ],
     youVersionTracks: [
       {
-        title: 'When God Feels Distant',
-        description: 'Navigating spiritual dry seasons and rediscovering peace.',
-        url: 'https://www.bible.com/reading-plans/12204-when-god-feels-distant',
+        title: 'Silent Seasons: Finding God in Dry Times',
+        description: 'A 7-day devotional on navigating spiritual dryness and rediscovering peace when God feels distant.',
+        url: 'https://www.bible.com/reading-plans/17696',
       },
       {
-        title: 'Talking to Jesus Simply',
-        description: 'A beginner-friendly guide to building an unforced relationship with Christ.',
-        url: 'https://www.bible.com/reading-plans/15670-talking-to-jesus-simply',
+        title: 'Talking to Jesus: Conversational Prayer',
+        description: 'A practical, beginner-friendly guide to building an honest, unhurried relationship with Christ.',
+        url: 'https://www.bible.com/reading-plans/14603',
       },
     ],
   },
@@ -76,14 +76,14 @@ export const SEGMENT_METADATA = {
     ],
     youVersionTracks: [
       {
-        title: 'How to Read the Bible with Joy and Clarity',
-        description: 'Practical steps to understand context, themes, and life application.',
-        url: 'https://www.bible.com/reading-plans/19540-reading-scripture-with-clarity',
+        title: 'BibleProject: How to Read the Bible',
+        description: 'A 19-day visual series on understanding biblical design, literary styles, and real-life clarity.',
+        url: 'https://www.bible.com/reading-plans/29316',
       },
       {
-        title: 'First Steps in Scripture: The Gospel of John',
-        description: 'A guided journey through Jesus’ life, words, and heart.',
-        url: 'https://www.bible.com/reading-plans/10200-the-gospel-of-john',
+        title: '21 Days in the Gospel of John (Levi Lusko)',
+        description: 'A chapter-by-chapter discovery of Jesus’ life, words, and grace for everyday believers.',
+        url: 'https://www.bible.com/reading-plans/4351',
       },
     ],
   },
@@ -101,14 +101,14 @@ export const SEGMENT_METADATA = {
     ],
     youVersionTracks: [
       {
-        title: 'Practicing the Presence of God Daily',
-        description: 'Cultivating unbroken awareness and peace in God’s companionship.',
-        url: 'https://www.bible.com/reading-plans/18050-practicing-gods-presence',
+        title: 'Pray: 14 Daily Moments to Quiet Your Mind',
+        description: 'Cultivating unbroken awareness, stillness, and peace in God’s companionship.',
+        url: 'https://www.bible.com/reading-plans/39445',
       },
       {
-        title: 'Deeper Waters: Advanced Bible Meditation',
-        description: 'Moving from surface-level reading to transformative meditation.',
-        url: 'https://www.bible.com/reading-plans/21100-scripture-meditation',
+        title: 'Rest For The Weary (Dr. Tony Evans)',
+        description: 'Moving from religious routine into deeper spiritual rest and transformative communion.',
+        url: 'https://www.bible.com/reading-plans/14660',
       },
     ],
   },

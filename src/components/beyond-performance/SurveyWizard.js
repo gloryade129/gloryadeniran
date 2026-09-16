@@ -291,6 +291,22 @@ export default function SurveyWizard() {
               </div>
             )}
 
+            <div className={styles.gospelHeroCard} style={{ maxWidth: '580px', margin: '0 auto 24px' }}>
+              <div className={styles.gospelHeroImageWrap} style={{ height: '200px' }}>
+                <Image
+                  src="/images/gospel-hero-banner.jpg"
+                  alt="Resting in God's Grace · Matthew 11:28"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 580px"
+                  style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
+                />
+              </div>
+              <div className={styles.gospelHeroCaption}>
+                <span className={styles.gospelCaptionText}>"Come to me, all you who are weary and burdened, and I will give you rest."</span>
+                <span className={styles.gospelCaptionRef}>Matthew 11:28</span>
+              </div>
+            </div>
+
             <div className={styles.scriptureCompletion}>
               <p className={styles.scriptureCompletionText}>
                 "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus."
@@ -407,6 +423,24 @@ export default function SurveyWizard() {
               animate="animate"
               exit="exit"
             >
+              {/* Gospel Hero Visual Banner */}
+              <div className={styles.gospelHeroCard}>
+                <div className={styles.gospelHeroImageWrap}>
+                  <Image
+                    src="/images/gospel-hero-banner.jpg"
+                    alt="Jesus Welcoming the Weary · Beyond Performance"
+                    fill
+                    sizes="(max-width: 840px) 100vw, 760px"
+                    style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
+                    priority
+                  />
+                </div>
+                <div className={styles.gospelHeroCaption}>
+                  <span className={styles.gospelCaptionText}>"Come to me, all you who are weary and burdened, and I will give you rest."</span>
+                  <span className={styles.gospelCaptionRef}>Matthew 11:28</span>
+                </div>
+              </div>
+
               {/* Host Note with Glory's Picture */}
               <div className={styles.hostNoteCard}>
                 <div className={styles.hostHeader}>
@@ -713,6 +747,23 @@ export default function SurveyWizard() {
               <p className={styles.stepDescription}>
                 How you currently connect with the Scriptures and what formats would make reading enjoyable.
               </p>
+
+              {/* Scripture Communion Image Frame */}
+              <div className={styles.gospelHeroCard}>
+                <div className={styles.gospelHeroImageWrap} style={{ height: '190px' }}>
+                  <Image
+                    src="/images/gospel-scripture-light.jpg"
+                    alt="Quiet Scripture Study & Morning Meditation"
+                    fill
+                    sizes="(max-width: 840px) 100vw, 760px"
+                    style={{ objectFit: 'cover', objectPosition: 'center center' }}
+                  />
+                </div>
+                <div className={styles.gospelHeroCaption}>
+                  <span className={styles.gospelCaptionText}>"Your word is a lamp for my feet, a light on my path."</span>
+                  <span className={styles.gospelCaptionRef}>Psalm 119:105</span>
+                </div>
+              </div>
 
               {/* Bible Reading Status */}
               <div className={styles.fieldGroup}>

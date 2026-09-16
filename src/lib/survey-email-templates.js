@@ -2,7 +2,8 @@
  * lib/survey-email-templates.js
  * Generates responsive, elegant HTML confirmation and follow-up emails
  * tailored by spiritual segment. Strictly zero emojis.
- * Features Glory Adeniran (God's Virtue) with Christlike atmospheric styling.
+ * Features Glory Adeniran (God's Virtue) with Christlike atmospheric styling,
+ * gospel hero banner, host picture, and high-visibility white button text.
  */
 
 import { getSegmentMetadata } from './survey-segmentation.js';
@@ -41,14 +42,27 @@ export function buildSurveyFollowUpEmail(entry = {}) {
       max-width: 620px;
       margin: 0 auto;
       background-color: #0E0E10;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 4px;
       overflow: hidden;
     }
+    .hero-image-wrap {
+      width: 100%;
+      background-color: #080706;
+      text-align: center;
+      line-height: 0;
+    }
+    .hero-image {
+      width: 100%;
+      max-width: 620px;
+      height: auto;
+      display: block;
+      border-bottom: 2px solid #0091FF;
+    }
     .header-banner {
       background: #080706;
-      padding: 40px 32px 28px;
-      border-bottom: 2px solid #0091FF;
+      padding: 32px 32px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       text-align: left;
     }
     .brand-eyebrow {
@@ -90,7 +104,7 @@ export function buildSurveyFollowUpEmail(entry = {}) {
     }
     .scripture-card {
       background: rgba(0, 145, 255, 0.05);
-      border-left: 3px solid #0091FF;
+      border-left: 3.5px solid #0091FF;
       padding: 18px 20px;
       margin: 24px 0;
     }
@@ -111,7 +125,7 @@ export function buildSurveyFollowUpEmail(entry = {}) {
     .segment-card {
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-top: 2px solid #0091FF;
+      border-top: 3px solid #0091FF;
       padding: 24px;
       margin: 28px 0;
     }
@@ -156,61 +170,75 @@ export function buildSurveyFollowUpEmail(entry = {}) {
       margin-bottom: 8px;
     }
     .track-item {
-      background: rgba(0, 0, 0, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 14px 18px;
-      margin-bottom: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 16px 18px;
+      margin-bottom: 14px;
     }
     .track-title {
-      font-size: 14.5px;
+      font-size: 15px;
       font-weight: 600;
       color: #FFFFFF;
-      margin: 0 0 4px 0;
+      margin: 0 0 6px 0;
     }
     .track-desc {
       font-size: 13px;
       color: #9A9994;
-      margin: 0 0 10px 0;
+      margin: 0 0 12px 0;
+      line-height: 1.5;
     }
     .track-btn {
       display: inline-block;
-      font-size: 11.5px;
-      font-weight: 600;
-      color: #080706;
+      font-size: 12px;
+      font-weight: 700;
+      color: #FFFFFF !important;
       background-color: #0091FF;
-      padding: 8px 14px;
-      text-decoration: none;
+      padding: 10px 18px;
+      text-decoration: none !important;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      border-radius: 2px;
     }
     .whatsapp-card {
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 20px;
+      padding: 22px;
       text-align: center;
       margin: 28px 0;
     }
     .whatsapp-btn {
       display: inline-block;
       background: #0091FF;
-      color: #080706;
-      padding: 10px 22px;
-      font-size: 12.5px;
+      color: #FFFFFF !important;
+      padding: 12px 24px;
+      font-size: 13px;
       font-weight: 700;
-      text-decoration: none;
+      text-decoration: none !important;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-top: 10px;
+      margin-top: 12px;
+      border-radius: 2px;
     }
-    .signature-box {
-      margin-top: 36px;
-      padding-top: 24px;
+    .author-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 28px;
+      padding-top: 20px;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .author-photo {
+      width: 56px;
+      height: 56px;
+      border: 2px solid #0091FF;
+      border-radius: 2px;
+      object-fit: cover;
+      display: block;
     }
     .signoff {
       font-size: 13.5px;
       color: #9A9994;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     .author-name {
       font-size: 16px;
@@ -219,9 +247,12 @@ export function buildSurveyFollowUpEmail(entry = {}) {
       margin: 0;
     }
     .author-role {
-      font-size: 12.5px;
+      font-size: 12px;
       color: #0091FF;
       margin: 2px 0 0 0;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .footer {
       padding: 24px 32px;
@@ -233,9 +264,18 @@ export function buildSurveyFollowUpEmail(entry = {}) {
   </style>
 </head>
 <body>
-  <div style="padding: 24px 12px;">
+  <div style="padding: 24px 12px; background-color: #080706;">
     <div class="email-wrapper">
       
+      <!-- Gospel Hero Banner Image -->
+      <div class="hero-image-wrap">
+        <img
+          src="https://gloryadeniran.cv/images/gospel-hero-banner.jpg"
+          alt="Beyond Performance · Spiritual Rest in Christ"
+          class="hero-image"
+        />
+      </div>
+
       <!-- Header Banner -->
       <div class="header-banner">
         <div class="brand-eyebrow">Glory Adeniran (God's Virtue) · Beyond Performance</div>
@@ -273,7 +313,15 @@ export function buildSurveyFollowUpEmail(entry = {}) {
             <div class="track-item">
               <div class="track-title">${track.title}</div>
               <div class="track-desc">${track.description}</div>
-              <a href="${track.url}" class="track-btn" target="_blank" rel="noopener noreferrer">Open Plan in Bible App</a>
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-top: 6px;">
+                <tr>
+                  <td align="center" style="background-color: #0091FF; border-radius: 2px;">
+                    <a href="${track.url}" target="_blank" rel="noopener noreferrer" class="track-btn" style="display: inline-block; padding: 10px 18px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #FFFFFF !important; font-weight: 700; text-decoration: none !important; text-transform: uppercase; letter-spacing: 0.5px;">
+                      <span style="color: #FFFFFF !important; font-weight: 700;">Open Plan in Bible App &rarr;</span>
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
           `).join('')}
         </div>
@@ -282,7 +330,15 @@ export function buildSurveyFollowUpEmail(entry = {}) {
         <div class="whatsapp-card">
           <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #FFFFFF;">Need 1-on-1 Prayer, Encouragement, or Study Guidance?</p>
           <p style="margin: 0 0 12px 0; font-size: 13px; color: #9A9994;">I am always glad to pray with you or discuss questions about returning to peaceful communion with God.</p>
-          <a href="https://wa.me/2349168047236" class="whatsapp-btn" target="_blank">Connect with Glory on WhatsApp</a>
+          <table border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 12px auto 0;">
+            <tr>
+              <td align="center" style="background-color: #0091FF; border-radius: 2px;">
+                <a href="https://wa.me/2349168047236" target="_blank" class="whatsapp-btn" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; color: #FFFFFF !important; font-weight: 700; text-decoration: none !important; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <span style="color: #FFFFFF !important; font-weight: 700;">Connect with Glory on WhatsApp &rarr;</span>
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
 
         <!-- Philippians Anchor -->
@@ -291,12 +347,27 @@ export function buildSurveyFollowUpEmail(entry = {}) {
           <div class="scripture-ref">Philippians 4:6-7</div>
         </div>
 
-        <!-- Signature -->
-        <div class="signature-box">
-          <div class="signoff">With brotherly love and grace,</div>
-          <div class="author-name">Glory Adeniran (God's Virtue)</div>
-          <div class="author-role">Product Designer &amp; Creative Lead · gloryadeniran.cv</div>
-        </div>
+        <!-- Host Signature Box with Glory's Picture -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+          <tr>
+            <td width="64" valign="top" style="padding-right: 16px;">
+              <img
+                src="https://gloryadeniran.cv/images/Put_an_I_watch_to_202606282357.jpeg"
+                alt="Glory Adeniran (God's Virtue)"
+                width="60"
+                height="60"
+                style="display: block; border-radius: 2px; border: 2px solid #0091FF; object-fit: cover;"
+              />
+            </td>
+            <td valign="middle">
+              <div style="font-size: 13px; color: #9A9994; margin-bottom: 2px;">With brotherly love and grace,</div>
+              <div style="font-size: 16px; font-weight: 700; color: #FFFFFF; margin: 0;">Glory Adeniran (God's Virtue)</div>
+              <div style="font-size: 12px; color: #0091FF; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">
+                Product Designer &amp; Creative Lead · <a href="https://gloryadeniran.cv" style="color: #0091FF; text-decoration: none;">gloryadeniran.cv</a>
+              </div>
+            </td>
+          </tr>
+        </table>
 
       </div>
 
