@@ -1,42 +1,67 @@
 'use client';
-import React, { useState } from 'react';
-import { Download, FileSpreadsheet, Check, RefreshCw } from 'lucide-react';
-import { dataService } from '@/components/it-dept/services/dataService';
-export const CsvExportButton = ({ profiles, feedbacks, className = '', }) => {
-    const [isExporting, setIsExporting] = useState(false);
-    const [isExported, setIsExported] = useState(false);
-    const handleExport = () => {
-        if (isExporting)
-            return;
-        setIsExporting(true);
-        try {
-            dataService.exportCSV(profiles, feedbacks);
-            setIsExported(true);
-            setTimeout(() => {
-                setIsExported(false);
-            }, 2500);
-        }
-        catch (err) {
-            console.error('CSV Export failed:', err);
-        }
-        finally {
-            setIsExporting(false);
-        }
-    };
-    return (<button type="button" onClick={handleExport} disabled={isExporting} className={`px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 border transition-all duration-200 active:scale-95 disabled:opacity-50 ${isExported
-            ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-glow-sm-blue'
-            : 'bg-cyber-surface hover:bg-cyber-elevated border-white/10 hover:border-blue-500/50 text-gray-200 hover:text-white'} ${className}`} title="Export clean RFC 4180 CSV with UTF-8 BOM">
-      {isExporting ? (<>
-          <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-400"/>
-          <span>Generating CSV...</span>
-        </>) : isExported ? (<>
-          <Check className="w-3.5 h-3.5 text-blue-400"/>
-          <span>CSV Exported!</span>
-        </>) : (<>
-          <FileSpreadsheet className="w-3.5 h-3.5 text-blue-400"/>
-          <span>Export CSV</span>
-          <Download className="w-3 h-3 text-gray-400"/>
-        </>)}
-    </button>);
+import React from 'react';
+import { Download } from 'lucide-react';
+
+export const CsvExportButton = ({ profiles = [], feedbacks = [] }) => {
+  const handleExport = () => {
+    if (profiles.length === 0) {
+      alert('No student records available to export.');
+      return;
+    }
+
+    const headers = [
+      'Full Name',
+      'Matric No',
+      'Email',
+      'Phone',
+      'Birthday',
+      'Tech Track',
+      '100L Rating',
+      'Favorite Courses',
+      'Toughest Courses',
+      'Challenges',
+      'Committees',
+      'Suggestions 200L',
+      'Date Submitted'
+    ];
+
+    const rows = profiles.map(p => [
+      `"${p.fullName || ''}"`,
+      `"${p.matricNo || ''}"`,
+      `"${p.email || ''}"`,
+      `"${p.phone || ''}"`,
+      `"${p.birthday || ''}"`,
+      `"${p.techTrack || ''}"`,
+      p.academicRating100L || '',
+      `"${(p.favoriteCourses || []).join(', ')}"`,
+      `"${(p.toughestCourses || []).join(', ')}"`,
+      `"${(p.challenges100L || []).join('; ')}"`,
+      `"${(p.committees || []).join(', ')}"`,
+      `"${(p.suggestions200L || '').replace(/"/g, '""')}"`,
+      `"${p.createdAt || ''}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `IT_Dept_2025_2029_Directory_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleExport}
+      className="it-admin-btn"
+      title="Download student directory as CSV"
+    >
+      <Download size={13} />
+      <span>Export CSV</span>
+    </button>
+  );
 };
 export default CsvExportButton;
