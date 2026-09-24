@@ -1,6 +1,6 @@
 'use client';
-import React, { useState } from 'react';
-import { ArrowRight, ArrowLeft, Star, Shield, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { ArrowRight, ArrowLeft, Star, Shield } from 'lucide-react';
 
 const ACR_METRICS = [
   { field: 'acrRatingCommunication', label: 'Communication & Responsiveness', desc: 'Passing department updates and prompt replies to queries' },
@@ -9,16 +9,13 @@ const ACR_METRICS = [
   { field: 'acrRatingWelfare', label: 'Empathy & Peer Support', desc: 'Supporting student welfare and fostering class unity' },
 ];
 
-export const Step5ACRLeadership = ({ formData, onChange, onNext, onBack }) => {
-  const [errorMsg, setErrorMsg] = useState('');
-
+export const Step5ACRLeadership = ({ formData, onChange, onNext, onBack, showToast }) => {
   const handleContinue = () => {
     const unrated = ACR_METRICS.find(m => (formData[m.field] || 0) === 0);
     if (unrated) {
-      setErrorMsg(`Please select a rating for: ${unrated.label}`);
+      showToast?.(`Please select a rating for: ${unrated.label}`, 'error');
       return;
     }
-    setErrorMsg('');
     onNext();
   };
 
@@ -26,32 +23,25 @@ export const Step5ACRLeadership = ({ formData, onChange, onNext, onBack }) => {
     <div style={{ maxWidth: '640px', margin: '0 auto' }} className="it-animate-fade">
       <div style={{ marginBottom: '24px' }}>
         <span className="it-badge" style={{ marginBottom: '8px' }}>STEP 5 OF 7</span>
-        <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#FFFFFF', margin: '6px 0 8px', letterSpacing: '-0.02em' }}>
+        <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#EDEDED', margin: '6px 0 8px', letterSpacing: '-0.025em' }}>
           Assistant Class Rep (ACR) Review
         </h2>
-        <p style={{ fontSize: '0.9375rem', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: '0.9375rem', color: '#A1A1AA', margin: 0, lineHeight: 1.5 }}>
           Evaluate the Assistant Class Representative and provide constructive suggestions for 200 Level.
         </p>
       </div>
-
-      {errorMsg && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#FCA5A5', fontSize: '0.85rem', marginBottom: '20px' }}>
-          <AlertCircle size={18} style={{ flexShrink: 0 }} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
 
       <div className="it-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '22px', marginBottom: '24px' }}>
         {ACR_METRICS.map((m) => {
           const val = formData[m.field] || 0;
           return (
             <div key={m.field} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF' }}>{m.label}</h4>
-                  <p style={{ margin: '2px 0 8px', fontSize: '0.75rem', color: '#94A3B8' }}>{m.desc}</p>
+                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#EDEDED' }}>{m.label}</h4>
+                  <p style={{ margin: '2px 0 8px', fontSize: '0.75rem', color: '#71717A' }}>{m.desc}</p>
                 </div>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: val > 0 ? '#FBBF24' : '#64748B' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: val > 0 ? '#FBBF24' : '#52525B' }}>
                   {val > 0 ? `${val} / 5` : 'Tap star'}
                 </span>
               </div>
@@ -60,17 +50,20 @@ export const Step5ACRLeadership = ({ formData, onChange, onNext, onBack }) => {
                   <button
                     key={star}
                     type="button"
-                    onClick={() => {
-                      onChange(m.field, star);
-                      setErrorMsg('');
+                    onClick={() => onChange(m.field, star)}
+                    className={`it-star-btn ${val >= star ? 'active' : ''}`}
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '6px',
+                      background: val >= star ? 'rgba(251, 191, 36, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                      border: val >= star ? '1px solid rgba(251, 191, 36, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)',
                     }}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}
                   >
                     <Star
-                      size={26}
+                      size={20}
                       fill={val >= star ? '#FBBF24' : 'none'}
-                      color={val >= star ? '#FBBF24' : '#475569'}
-                      strokeWidth={2}
+                      color={val >= star ? '#FBBF24' : '#52525B'}
                     />
                   </button>
                 ))}
@@ -79,54 +72,74 @@ export const Step5ACRLeadership = ({ formData, onChange, onNext, onBack }) => {
           );
         })}
 
-        {/* Constructive Improvements */}
+        {/* Qualitative Comments */}
         <div>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
+            What did our leadership team do well in 100 Level?
+          </label>
+          <textarea
+            className="it-input"
+            rows={2}
+            placeholder="e.g. Prompt announcements, material sharing..."
+            value={formData.leadershipPraises || ''}
+            onChange={(e) => onChange('leadershipPraises', e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
             What critical areas should leadership improve in 200 Level?
           </label>
           <textarea
             className="it-input"
-            rows={3}
-            placeholder="Share honest, constructive feedback to help class leaders serve better..."
-            value={formData.leadershipCriticalAreas}
-            onChange={(e) => onChange('leadershipCriticalAreas', e.target.value)}
-            style={{ fontSize: '0.875rem', padding: '12px' }}
+            rows={2}
+            placeholder="e.g. More study groups, earlier timetable notifications..."
+            value={formData.leadershipImprovements || ''}
+            onChange={(e) => onChange('leadershipImprovements', e.target.value)}
           />
         </div>
 
         {/* Anonymity Toggle */}
         <div
-          onClick={() => onChange('isAnonymousLeadership', !formData.isAnonymousLeadership)}
+          onClick={() => onChange('isAnonymousFeedback', !formData.isAnonymousFeedback)}
           style={{
+            padding: '12px 14px',
+            borderRadius: '8px',
+            background: formData.isAnonymousFeedback ? 'rgba(62, 207, 142, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+            border: formData.isAnonymousFeedback ? '1px solid #3ECF8E' : '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            padding: '12px 14px',
-            borderRadius: '10px',
-            background: formData.isAnonymousLeadership ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            border: formData.isAnonymousLeadership ? '1px solid #2563EB' : '1px solid rgba(255, 255, 255, 0.08)',
+            justifyContent: 'space-between',
             cursor: 'pointer',
           }}
         >
-          <div style={{ width: '18px', height: '18px', borderRadius: '4px', border: '1px solid #3B82F6', background: formData.isAnonymousLeadership ? '#2563EB' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {formData.isAnonymousLeadership && <Star size={12} fill="#FFFFFF" color="#FFFFFF" />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Shield size={16} color={formData.isAnonymousFeedback ? '#3ECF8E' : '#71717A'} />
+            <div>
+              <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: formData.isAnonymousFeedback ? '#3ECF8E' : '#EDEDED' }}>
+                Submit Leadership Comments Anonymously
+              </p>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: '#71717A' }}>
+                Detaches your identity from these written review questions
+              </p>
+            </div>
           </div>
-          <div style={{ fontSize: '0.8125rem', color: '#E2E8F0' }}>
-            <span style={{ fontWeight: 600 }}>Submit leadership review anonymously</span>
-            <span style={{ display: 'block', fontSize: '0.72rem', color: '#94A3B8' }}>
-              Your ratings and text critique will be detached from your matric number in executive analytics.
-            </span>
-          </div>
+          <input
+            type="checkbox"
+            checked={Boolean(formData.isAnonymousFeedback)}
+            onChange={() => {}}
+            style={{ width: '16px', height: '16px', accentColor: '#3ECF8E' }}
+          />
         </div>
       </div>
 
       {/* Nav Actions */}
       <div className="it-nav-actions">
-        <button type="button" onClick={onBack} className="it-btn-secondary" style={{ minHeight: '44px' }}>
+        <button type="button" onClick={onBack} className="it-btn-secondary">
           <ArrowLeft size={16} />
           <span>Back</span>
         </button>
-        <button type="button" onClick={handleContinue} className="it-btn-primary" style={{ minHeight: '44px', minWidth: '150px' }}>
+        <button type="button" onClick={handleContinue} className="it-btn-primary" style={{ minWidth: '170px' }}>
           <span>Next: Volunteer Roles</span>
           <ArrowRight size={16} />
         </button>

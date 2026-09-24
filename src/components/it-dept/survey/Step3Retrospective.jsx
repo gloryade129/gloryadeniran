@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { ArrowRight, ArrowLeft, Star, BookOpen, AlertCircle, Plus, X } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Star, BookOpen, Plus, X } from 'lucide-react';
 
 const COMMON_CHALLENGES = [
   'Course slides & syllabus accessibility',
@@ -8,13 +8,12 @@ const COMMON_CHALLENGES = [
   'Practical lab access & equipment',
   'Large lecture theater sound & projector issues',
   'Past questions & tutorial coordination',
-  'Late announcements & schedule changes',
+  'Late announcements & venue changes',
 ];
 
-export const Step3Retrospective = ({ formData, onChange, onNext, onBack }) => {
+export const Step3Retrospective = ({ formData, onChange, onNext, onBack, showToast }) => {
   const [favoriteInput, setFavoriteInput] = useState('');
   const [toughestInput, setToughestInput] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
 
   const currentRating = formData.academicRating100L || 0;
 
@@ -47,10 +46,9 @@ export const Step3Retrospective = ({ formData, onChange, onNext, onBack }) => {
 
   const handleContinue = () => {
     if (currentRating === 0) {
-      setErrorMsg('Please tap a star to rate your overall 100-Level academic experience (1 to 5).');
+      showToast?.('Please tap a star to rate your overall 100-Level academic experience (1 to 5).', 'error');
       return;
     }
-    setErrorMsg('');
     onNext();
   };
 
@@ -58,165 +56,148 @@ export const Step3Retrospective = ({ formData, onChange, onNext, onBack }) => {
     <div style={{ maxWidth: '640px', margin: '0 auto' }} className="it-animate-fade">
       <div style={{ marginBottom: '24px' }}>
         <span className="it-badge" style={{ marginBottom: '8px' }}>STEP 3 OF 7</span>
-        <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#FFFFFF', margin: '6px 0 8px', letterSpacing: '-0.02em' }}>
-          100-Level Academic Retrospective
+        <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#EDEDED', margin: '6px 0 8px', letterSpacing: '-0.025em' }}>
+          100-Level Retrospective
         </h2>
-        <p style={{ fontSize: '0.9375rem', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
-          Reflect on your 100-level coursework, highlight your wins, and document key challenges.
+        <p style={{ fontSize: '0.9375rem', color: '#A1A1AA', margin: 0, lineHeight: 1.5 }}>
+          Reflect on your first year in the IT Department: highlight great courses and pinpoint areas for improvement.
         </p>
       </div>
 
-      {errorMsg && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#FCA5A5', fontSize: '0.85rem', marginBottom: '20px' }}>
-          <AlertCircle size={18} style={{ flexShrink: 0 }} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '28px' }}>
-        {/* Overall Rating */}
-        <div className="it-card" style={{ padding: '22px' }}>
-          <label style={{ display: 'block', fontSize: '0.9375rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
-            Overall 100-Level Experience *
+      <div className="it-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '24px' }}>
+        {/* 1. Overall Rating */}
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '10px' }}>
+            Overall 100-Level Academic Experience (Tap 1 to 5 Stars) *
           </label>
-          <p style={{ fontSize: '0.8125rem', color: '#94A3B8', margin: '0 0 14px' }}>
-            How would you rate your entire 100-level academic and social journey?
-          </p>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 type="button"
-                onClick={() => {
-                  onChange('academicRating100L', star);
-                  setErrorMsg('');
-                }}
+                onClick={() => onChange('academicRating100L', star)}
+                className={`it-star-btn ${currentRating >= star ? 'active' : ''}`}
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '6px',
-                  transition: 'transform 0.15s ease',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '8px',
+                  background: currentRating >= star ? 'rgba(251, 191, 36, 0.12)' : 'rgba(255, 255, 255, 0.04)',
+                  border: currentRating >= star ? '1px solid rgba(251, 191, 36, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.25)')}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                aria-label={`Rate ${star} star`}
               >
                 <Star
-                  size={32}
+                  size={24}
                   fill={currentRating >= star ? '#FBBF24' : 'none'}
-                  color={currentRating >= star ? '#FBBF24' : '#475569'}
-                  strokeWidth={2}
+                  color={currentRating >= star ? '#FBBF24' : '#52525B'}
                 />
               </button>
             ))}
-            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: currentRating > 0 ? '#FBBF24' : '#94A3B8', marginLeft: '6px' }}>
-              {currentRating === 0 ? 'Tap to rate (1 to 5)' : `${currentRating} of 5 Stars`}
+            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: currentRating > 0 ? '#FBBF24' : '#71717A', marginLeft: '6px' }}>
+              {currentRating > 0 ? `${currentRating} / 5 Stars` : 'Tap to rate'}
             </span>
           </div>
         </div>
 
-        {/* Favorite & Toughest Courses */}
-        <div className="it-card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {/* Favorite */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              Favorite / Most Rewarding Course(s)
-            </label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-              <input
-                type="text"
-                className="it-input"
-                placeholder="e.g. IFT 101, CSC 101, MTH 101..."
-                value={favoriteInput}
-                onChange={(e) => setFavoriteInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddCourse('favorite', favoriteInput);
-                  }
-                }}
-                style={{ padding: '10px 14px', fontSize: '0.875rem' }}
-              />
-              <button
-                type="button"
-                onClick={() => handleAddCourse('favorite', favoriteInput)}
-                className="it-btn-primary"
-                style={{ padding: '0 16px', minHeight: '42px' }}
-              >
-                <Plus size={16} />
-              </button>
-            </div>
+        {/* 2. Favorite Courses */}
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
+            Most Rewarding / Favorite Courses
+          </label>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <input
+              type="text"
+              placeholder="e.g. CSC111, MAT111, GNS111..."
+              className="it-input"
+              value={favoriteInput}
+              onChange={(e) => setFavoriteInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCourse('favorite', favoriteInput);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => handleAddCourse('favorite', favoriteInput)}
+              className="it-btn-secondary"
+              style={{ flexShrink: 0, padding: '0 16px' }}
+            >
+              <Plus size={16} />
+              <span>Add</span>
+            </button>
+          </div>
+          {(formData.favoriteCourses || []).length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {(formData.favoriteCourses || []).map((c) => (
-                <span key={c} className="it-chip it-chip-selected" style={{ fontSize: '0.8125rem', padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              {formData.favoriteCourses.map((c) => (
+                <span key={c} className="it-chip it-chip-selected" style={{ padding: '4px 10px', fontSize: '0.78rem' }}>
                   <span>{c}</span>
-                  <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveCourse('favorite', c)} />
+                  <X size={13} style={{ cursor: 'pointer', marginLeft: '4px' }} onClick={() => handleRemoveCourse('favorite', c)} />
                 </span>
               ))}
             </div>
-          </div>
-
-          {/* Toughest */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-              Toughest / Most Challenging Course(s)
-            </label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-              <input
-                type="text"
-                className="it-input"
-                placeholder="e.g. PHY 102, CHM 101, MTH 102..."
-                value={toughestInput}
-                onChange={(e) => setToughestInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddCourse('toughest', toughestInput);
-                  }
-                }}
-                style={{ padding: '10px 14px', fontSize: '0.875rem' }}
-              />
-              <button
-                type="button"
-                onClick={() => handleAddCourse('toughest', toughestInput)}
-                className="it-btn-primary"
-                style={{ padding: '0 16px', minHeight: '42px' }}
-              >
-                <Plus size={16} />
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {(formData.toughestCourses || []).map((c) => (
-                <span key={c} className="it-chip" style={{ fontSize: '0.8125rem', padding: '5px 10px', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#FCA5A5', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <span>{c}</span>
-                  <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveCourse('toughest', c)} />
-                </span>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Challenges */}
-        <div className="it-card" style={{ padding: '22px' }}>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-            Major 100-Level Challenges Experienced
+        {/* 3. Toughest Courses */}
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
+            Toughest / Most Challenging Courses
           </label>
-          <p style={{ fontSize: '0.8125rem', color: '#94A3B8', margin: '0 0 12px' }}>
-            Tap all that applied during your first year:
-          </p>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <input
+              type="text"
+              placeholder="e.g. PHY115, CHM111, MAT112..."
+              className="it-input"
+              value={toughestInput}
+              onChange={(e) => setToughestInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCourse('toughest', toughestInput);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => handleAddCourse('toughest', toughestInput)}
+              className="it-btn-secondary"
+              style={{ flexShrink: 0, padding: '0 16px' }}
+            >
+              <Plus size={16} />
+              <span>Add</span>
+            </button>
+          </div>
+          {(formData.toughestCourses || []).length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {formData.toughestCourses.map((c) => (
+                <span key={c} className="it-chip" style={{ padding: '4px 10px', fontSize: '0.78rem', background: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#FCA5A5' }}>
+                  <span>{c}</span>
+                  <X size={13} style={{ cursor: 'pointer', marginLeft: '4px' }} onClick={() => handleRemoveCourse('toughest', c)} />
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 4. Common Challenges */}
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '10px' }}>
+            Major 100-Level Academic Challenges (Select all that apply)
+          </label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {COMMON_CHALLENGES.map((item) => {
-              const isSelected = (formData.challenges100L || []).includes(item);
+            {COMMON_CHALLENGES.map((ch) => {
+              const isSelected = (formData.challenges100L || []).includes(ch);
               return (
                 <button
-                  key={item}
+                  key={ch}
                   type="button"
-                  onClick={() => toggleChallenge(item)}
+                  onClick={() => toggleChallenge(ch)}
                   className={`it-chip ${isSelected ? 'it-chip-selected' : ''}`}
-                  style={{ padding: '8px 12px', fontSize: '0.8125rem' }}
+                  style={{ textAlign: 'left' }}
                 >
-                  {item}
+                  <span>{ch}</span>
                 </button>
               );
             })}
@@ -226,12 +207,12 @@ export const Step3Retrospective = ({ formData, onChange, onNext, onBack }) => {
 
       {/* Nav Actions */}
       <div className="it-nav-actions">
-        <button type="button" onClick={onBack} className="it-btn-secondary" style={{ minHeight: '44px' }}>
+        <button type="button" onClick={onBack} className="it-btn-secondary">
           <ArrowLeft size={16} />
           <span>Back</span>
         </button>
-        <button type="button" onClick={handleContinue} className="it-btn-primary" style={{ minHeight: '44px', minWidth: '150px' }}>
-          <span>Next: Leadership Review</span>
+        <button type="button" onClick={handleContinue} className="it-btn-primary" style={{ minWidth: '160px' }}>
+          <span>Next: Class Rep Review</span>
           <ArrowRight size={16} />
         </button>
       </div>

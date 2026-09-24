@@ -6,8 +6,9 @@ export const Navbar = () => {
     <header
       className="sticky top-0 z-40 w-full"
       style={{
-        background: 'rgba(6, 9, 19, 0.92)',
+        background: 'rgba(10, 10, 12, 0.95)',
         backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
       }}
     >
@@ -27,10 +28,10 @@ export const Navbar = () => {
             src="/itsa-logo.png"
             alt="ITSA Logo"
             style={{
-              width: '34px',
-              height: '34px',
+              width: '32px',
+              height: '32px',
               borderRadius: '50%',
-              border: '1px solid #2563EB',
+              border: '1px solid rgba(62, 207, 142, 0.4)',
               objectFit: 'cover',
             }}
             onError={(e) => { e.target.style.display = 'none'; }}
@@ -39,9 +40,9 @@ export const Navbar = () => {
             <span
               style={{
                 fontWeight: 700,
-                fontSize: '0.92rem',
-                letterSpacing: '0.01em',
-                color: '#FFFFFF',
+                fontSize: '0.9rem',
+                letterSpacing: '-0.01em',
+                color: '#EDEDED',
                 display: 'block',
                 lineHeight: 1.2,
               }}
@@ -51,7 +52,7 @@ export const Navbar = () => {
             <span
               style={{
                 fontSize: '0.72rem',
-                color: '#94A3B8',
+                color: '#71717A',
                 fontFamily: 'JetBrains Mono, monospace',
               }}
             >
@@ -59,9 +60,10 @@ export const Navbar = () => {
             </span>
           </div>
         </div>
-        <div>
-          <span className="it-badge">2025–2029 SET</span>
-        </div>
+
+        <span className="it-badge">
+          2025–2029 SET
+        </span>
       </div>
     </header>
   );

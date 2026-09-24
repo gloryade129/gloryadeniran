@@ -7,6 +7,7 @@ import { FeedbackCardList } from './FeedbackCardList';
 import { CommitteeRoster } from './CommitteeRoster';
 import { BirthdayCalendar } from './BirthdayCalendar';
 import { CsvExportButton } from './CsvExportButton';
+import { ToastNotification } from '../ui/ToastNotification';
 
 const STORAGE_KEY_AUTH = 'it_dept_admin_auth_v1';
 const STORAGE_KEY_AUTH_COMPAT = 'it_portal_admin_auth';
@@ -24,6 +25,20 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState({ open: false, type: 'info', title: '', message: '' });
+
+  const showToast = useCallback((message, type = 'error', title = '') => {
+    setToast({
+      open: true,
+      type,
+      title: title || (type === 'error' ? 'Notice' : type === 'success' ? 'Success' : 'Information'),
+      message,
+    });
+  }, []);
+
+  const closeToast = useCallback(() => {
+    setToast(prev => ({ ...prev, open: false }));
+  }, []);
 
   // Daily digest trigger state
   const [isSendingDigest, setIsSendingDigest] = useState(false);
@@ -137,13 +152,12 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
         if (selectedStudent && (selectedStudent.id === student.id || selectedStudent.matricNo === student.matricNo)) {
           setSelectedStudent(null);
         }
-        setDigestStatus(`Record for ${student.fullName} (${student.matricNo}) successfully deleted.`);
-        setTimeout(() => setDigestStatus(null), 5000);
+        showToast(`Record for ${student.fullName} (${student.matricNo}) successfully deleted.`, 'success');
       } else {
-        alert(res.error || 'Failed to delete student response.');
+        showToast(res.error || 'Failed to delete student response.', 'error');
       }
     } catch (err) {
-      alert(err.message || 'Error deleting student.');
+      showToast(err.message || 'Error deleting student.', 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -211,6 +225,9 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
 
   return (
     <div className="it-admin-wrap it-animate-fade">
+      {/* Pop-up Toast Notification */}
+      <ToastNotification toast={toast} onClose={closeToast} />
+
       {/* Top Header */}
       <div className="it-admin-header">
         <div className="it-admin-header-flex">

@@ -303,3 +303,63 @@ export async function deleteStudentSubmission(studentId, matricNo) {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Checks if an email or matric number already exists in Supabase
+ */
+export async function checkDuplicateStudent(email, matricNo) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  const normalizedMatric = (matricNo || '').trim().toUpperCase();
+
+  if (!isSupabaseConfigured()) {
+    return { exists: false };
+  }
+
+  try {
+    if (normalizedEmail) {
+      const emailRes = await fetch(
+        `${supabaseUrl}/rest/v1/students_profile?email=ilike.${encodeURIComponent(normalizedEmail)}&select=id&limit=1`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          cache: 'no-store',
+        }
+      );
+      if (emailRes.ok) {
+        const rows = await emailRes.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          return { exists: true, field: 'email', message: 'A submission with this email address has already been recorded.' };
+        }
+      }
+    }
+
+    if (normalizedMatric) {
+      const matricRes = await fetch(
+        `${supabaseUrl}/rest/v1/students_profile?matric_no=ilike.${encodeURIComponent(normalizedMatric)}&select=id&limit=1`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          cache: 'no-store',
+        }
+      );
+      if (matricRes.ok) {
+        const rows = await matricRes.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          return { exists: true, field: 'matric', message: 'This matriculation number has already submitted the survey.' };
+        }
+      }
+    }
+
+    return { exists: false };
+  } catch (err) {
+    console.error('[it-dept-db] Duplicate check exception:', err);
+    return { exists: false };
+  }
+}
+

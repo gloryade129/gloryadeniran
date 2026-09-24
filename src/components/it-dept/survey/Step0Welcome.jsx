@@ -6,22 +6,19 @@ import { WelcomeMascot } from './WelcomeMascot';
 export const Step0Welcome = ({ onStart }) => {
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '12px 0' }} className="it-animate-fade">
-      {/* Animated Welcome Guy Mascot */}
-      <WelcomeMascot />
-
       {/* Header Emblem */}
-      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '26px' }}>
         <img
           src="/itsa-logo.png"
           alt="ITSA Emblem"
           style={{
-            width: '64px',
-            height: '64px',
+            width: '60px',
+            height: '60px',
             borderRadius: '50%',
             objectFit: 'cover',
             margin: '0 auto 12px',
-            border: '2px solid #2563EB',
-            boxShadow: '0 0 20px rgba(37, 99, 235, 0.35)',
+            border: '2px solid rgba(62, 207, 142, 0.4)',
+            boxShadow: '0 0 20px rgba(62, 207, 142, 0.15)',
           }}
           onError={(e) => { e.target.style.display = 'none'; }}
         />
@@ -30,9 +27,9 @@ export const Step0Welcome = ({ onStart }) => {
         </span>
         <h1
           style={{
-            fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+            fontSize: 'clamp(1.5rem, 5vw, 2.1rem)',
             fontWeight: 800,
-            letterSpacing: '-0.02em',
+            letterSpacing: '-0.025em',
             color: '#FFFFFF',
             margin: '8px 0 10px',
             lineHeight: 1.2,
@@ -43,7 +40,7 @@ export const Step0Welcome = ({ onStart }) => {
         <p
           style={{
             fontSize: '0.9375rem',
-            color: '#94A3B8',
+            color: '#A1A1AA',
             maxWidth: '480px',
             margin: '0 auto',
             lineHeight: 1.55,
@@ -59,7 +56,7 @@ export const Step0Welcome = ({ onStart }) => {
         style={{
           padding: '18px 20px',
           marginBottom: '20px',
-          borderLeft: '3px solid #2563EB',
+          borderLeft: '3px solid #3ECF8E',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
@@ -72,7 +69,7 @@ export const Step0Welcome = ({ onStart }) => {
               borderRadius: '8px',
               objectFit: 'cover',
               objectPosition: 'top',
-              border: '1px solid rgba(37, 99, 235, 0.5)',
+              border: '1px solid rgba(62, 207, 142, 0.4)',
             }}
             onError={(e) => { e.target.style.display = 'none'; }}
           />
@@ -80,20 +77,20 @@ export const Step0Welcome = ({ onStart }) => {
             <h2 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
               Class Leadership Welcome
             </h2>
-            <p style={{ fontSize: '0.75rem', color: '#3B82F6', margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>
+            <p style={{ fontSize: '0.75rem', color: '#3ECF8E', margin: 0, fontFamily: 'JetBrains Mono, monospace' }}>
               Glory Adeniran · Class Representative
             </p>
           </div>
         </div>
-        <p style={{ fontSize: '0.875rem', color: '#CBD5E1', lineHeight: 1.6, margin: '0 0 10px' }}>
+        <p style={{ fontSize: '0.875rem', color: '#D4D4D8', lineHeight: 1.6, margin: '0 0 10px' }}>
           "Welcome IT Scholars! Please take 2 minutes to fill out this form. We are updating our class directory, taking your candid feedback on our 100-level experience, and recruiting volunteers for class committees."
         </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: '#93C5FD', fontFamily: 'JetBrains Mono, monospace' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: '#3ECF8E', fontFamily: 'JetBrains Mono, monospace' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <CheckCircle2 size={13} color="#2563EB" /> 100% Student Voice
+            <CheckCircle2 size={13} color="#3ECF8E" /> 100% Student Voice
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <CheckCircle2 size={13} color="#2563EB" /> Confidential & Direct
+            <CheckCircle2 size={13} color="#3ECF8E" /> Confidential & Direct
           </span>
         </div>
       </div>
@@ -108,13 +105,13 @@ export const Step0Welcome = ({ onStart }) => {
         }}
       >
         <div className="it-card" style={{ padding: '12px', textAlign: 'center' }}>
-          <Clock size={16} color="#3B82F6" style={{ margin: '0 auto 4px' }} />
-          <p style={{ margin: 0, fontSize: '0.6875rem', color: '#94A3B8' }}>Time Estimate</p>
+          <Clock size={16} color="#3ECF8E" style={{ margin: '0 auto 4px' }} />
+          <p style={{ margin: 0, fontSize: '0.6875rem', color: '#71717A' }}>Time Estimate</p>
           <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: '#FFFFFF' }}>~2 Minutes</p>
         </div>
         <div className="it-card" style={{ padding: '12px', textAlign: 'center' }}>
-          <ShieldCheck size={16} color="#3B82F6" style={{ margin: '0 auto 4px' }} />
-          <p style={{ margin: 0, fontSize: '0.6875rem', color: '#94A3B8' }}>Leadership Review</p>
+          <ShieldCheck size={16} color="#3ECF8E" style={{ margin: '0 auto 4px' }} />
+          <p style={{ margin: 0, fontSize: '0.6875rem', color: '#71717A' }}>Leadership Review</p>
           <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: '#FFFFFF' }}>Optional Anonymous</p>
         </div>
       </div>
@@ -125,12 +122,15 @@ export const Step0Welcome = ({ onStart }) => {
           onClick={onStart}
           type="button"
           className="it-btn-primary"
-          style={{ width: '100%', maxWidth: '340px', padding: '14px 28px', fontSize: '1rem' }}
+          style={{ width: '100%', maxWidth: '340px', padding: '14px 28px', fontSize: '0.95rem' }}
         >
           <span>Begin Survey</span>
           <ArrowRight size={18} />
         </button>
       </div>
+
+      {/* Floating Welcome Mascot Pop-up (Detached from Hero, in bottom corner) */}
+      <WelcomeMascot />
     </div>
   );
 };

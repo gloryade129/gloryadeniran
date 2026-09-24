@@ -13,6 +13,7 @@ import { Step6VolunteerRoles } from './survey/Step6VolunteerRoles';
 import { Step7SupportChoice } from './survey/Step7SupportChoice';
 import { Step8PaymentCheckout } from './survey/Step8PaymentCheckout';
 import { Step5Celebration } from './survey/Step5Celebration';
+import { ToastNotification } from './ui/ToastNotification';
 import { INITIAL_SURVEY_STATE } from '@/components/it-dept/types/survey';
 import { dataService } from './services/dataService';
 
@@ -33,6 +34,20 @@ export const App = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState({ open: false, type: 'info', title: '', message: '' });
+
+  const showToast = useCallback((message, type = 'error', title = '') => {
+    setToast({
+      open: true,
+      type,
+      title: title || (type === 'error' ? 'Notice' : type === 'success' ? 'Success' : 'Information'),
+      message,
+    });
+  }, []);
+
+  const closeToast = useCallback(() => {
+    setToast(prev => ({ ...prev, open: false }));
+  }, []);
 
   // Save draft across steps before submission
   useEffect(() => {
@@ -65,43 +80,42 @@ export const App = () => {
   const handleReset = useCallback(() => {
     try {
       localStorage.removeItem(DRAFT_STORAGE_KEY);
+      localStorage.removeItem('it_dept_submitted_email');
+      localStorage.removeItem('it_dept_submitted_matric');
     } catch (e) {}
     setFormData(INITIAL_SURVEY_STATE);
     setCurrentStep(0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Submit student journey - only invoked when payment is complete OR user opts out of contribution
+  // Submit student journey - strictly triggered when payment is confirmed or opted out
   const handleSubmitJourney = useCallback(async (overrides = {}) => {
     setIsSubmitting(true);
     const payload = { ...formData, ...overrides };
     try {
       const res = await dataService.submitStudentJourney(payload);
       if (!res.success) {
-        alert(res.error || 'Submission failed. Please check your network and try again.');
+        showToast(res.error || 'Submission failed. Please check your network and try again.', 'error');
         setIsSubmitting(false);
         return false;
       }
       try {
-        if (payload.email) {
-          localStorage.setItem('it_dept_submitted_email', payload.email.trim().toLowerCase());
-        }
-        if (payload.matricNo) {
-          localStorage.setItem('it_dept_submitted_matric', payload.matricNo.trim().toUpperCase());
-        }
         localStorage.removeItem(DRAFT_STORAGE_KEY);
+        localStorage.removeItem('it_dept_submitted_email');
+        localStorage.removeItem('it_dept_submitted_matric');
       } catch (e) {}
       setIsSubmitting(false);
+      showToast('Survey submitted successfully! Welcome to 200 Level.', 'success');
       setCurrentStep(9); // Celebration Step
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return true;
     } catch (err) {
       console.error('Submission failed:', err);
-      alert(err.message || 'Submission failed. Please check your network and try again.');
+      showToast(err.message || 'Submission failed. Please check your network and try again.', 'error');
       setIsSubmitting(false);
       return false;
     }
-  }, [formData]);
+  }, [formData, showToast]);
 
   // Handle return from external Flutterwave redirect
   useEffect(() => {
@@ -154,17 +168,20 @@ export const App = () => {
       <CyberBackground />
       <Navbar />
 
-      {/* Progress Bar */}
+      {/* Global Floating Toast Notification */}
+      <ToastNotification toast={toast} onClose={closeToast} />
+
+      {/* Progress Bar - Supabase Style Minimalist Line */}
       {currentStep >= 1 && currentStep <= 8 && (
         <div
           style={{
             position: 'sticky',
             top: '60px',
             zIndex: 30,
-            background: 'rgba(6, 9, 19, 0.95)',
-            backdropFilter: 'blur(12px)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-            padding: '8px 16px',
+            background: 'rgba(10, 10, 12, 0.95)',
+            backdropFilter: 'blur(16px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '10px 16px',
           }}
         >
           <div
@@ -174,15 +191,15 @@ export const App = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              fontSize: '0.72rem',
+              fontSize: '0.75rem',
               fontFamily: 'JetBrains Mono, monospace',
-              marginBottom: '6px',
+              marginBottom: '8px',
             }}
           >
-            <span style={{ color: '#93C5FD' }}>
-              STEP {currentStep} OF {maxSurveyStep}: <span style={{ color: '#FFFFFF' }}>{stepTitles[currentStep]}</span>
+            <span style={{ color: '#3ECF8E', fontWeight: 600 }}>
+              STEP {currentStep} OF {maxSurveyStep}: <span style={{ color: '#EDEDED' }}>{stepTitles[currentStep]}</span>
             </span>
-            <span style={{ color: '#64748B' }}>{progressPercent}%</span>
+            <span style={{ color: '#71717A', fontWeight: 600 }}>{progressPercent}%</span>
           </div>
           <div style={{ maxWidth: '640px', margin: '0 auto' }}>
             <div className="it-progress-track">
@@ -195,7 +212,7 @@ export const App = () => {
       {/* Main Content Area */}
       <main
         style={{
-          maxWidth: '800px',
+          maxWidth: '760px',
           margin: '0 auto',
           padding: '24px 16px 40px',
           minHeight: 'calc(100vh - 140px)',
@@ -210,6 +227,7 @@ export const App = () => {
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            showToast={showToast}
           />
         )}
         {currentStep === 2 && (
@@ -218,6 +236,7 @@ export const App = () => {
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            showToast={showToast}
           />
         )}
         {currentStep === 3 && (
@@ -226,6 +245,7 @@ export const App = () => {
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            showToast={showToast}
           />
         )}
         {currentStep === 4 && (
@@ -234,6 +254,7 @@ export const App = () => {
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            showToast={showToast}
           />
         )}
         {currentStep === 5 && (
@@ -242,6 +263,7 @@ export const App = () => {
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            showToast={showToast}
           />
         )}
         {currentStep === 6 && (
@@ -250,6 +272,7 @@ export const App = () => {
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            showToast={showToast}
           />
         )}
         {currentStep === 7 && (
@@ -258,6 +281,7 @@ export const App = () => {
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            showToast={showToast}
             onCompleteWithoutPayment={() =>
               handleSubmitJourney({
                 supportAmount: 0,
@@ -273,6 +297,7 @@ export const App = () => {
             formData={formData}
             onPaymentSuccess={(paymentData) => handleSubmitJourney(paymentData)}
             onBack={handleBack}
+            showToast={showToast}
             isSubmitting={isSubmitting}
           />
         )}

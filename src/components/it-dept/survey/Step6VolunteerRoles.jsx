@@ -7,7 +7,7 @@ const ROLE_ICONS = {
   Palette, Film, Share2, BookOpen, Terminal, Heart, Calendar, Camera
 };
 
-export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack }) => {
+export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack, showToast }) => {
   const toggleRole = (name) => {
     const current = formData.volunteerRoles || [];
     if (current.includes(name)) {
@@ -21,10 +21,10 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack }) => {
     <div style={{ maxWidth: '660px', margin: '0 auto' }} className="it-animate-fade">
       <div style={{ marginBottom: '24px' }}>
         <span className="it-badge" style={{ marginBottom: '8px' }}>STEP 6 OF 7</span>
-        <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#FFFFFF', margin: '6px 0 8px', letterSpacing: '-0.02em' }}>
+        <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#EDEDED', margin: '6px 0 8px', letterSpacing: '-0.025em' }}>
           Department Volunteer Recruitment
         </h2>
-        <p style={{ fontSize: '0.9375rem', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: '0.9375rem', color: '#A1A1AA', margin: 0, lineHeight: 1.5 }}>
           Which department committee or talent role would you love to volunteer for to help our class excel?
         </p>
       </div>
@@ -45,19 +45,16 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  borderRadius: '12px',
-                  border: isSelected ? '2px solid #2563EB' : '1px solid rgba(255, 255, 255, 0.08)',
-                  background: isSelected ? 'rgba(37, 99, 235, 0.14)' : 'rgba(12, 18, 32, 0.75)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                   <div
                     style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: isSelected ? '#2563EB' : 'rgba(255, 255, 255, 0.06)',
-                      color: isSelected ? '#FFFFFF' : '#94A3B8',
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '8px',
+                      background: isSelected ? 'rgba(62, 207, 142, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                      color: isSelected ? '#3ECF8E' : '#A1A1AA',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -67,73 +64,58 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack }) => {
                     <IconComp size={18} />
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: isSelected ? '#93C5FD' : '#FFFFFF' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: isSelected ? '#3ECF8E' : '#EDEDED' }}>
                       {role.name}
-                    </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#94A3B8', lineHeight: 1.4 }}>
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#71717A' }}>
                       {role.desc}
                     </p>
                   </div>
                 </div>
+
                 <div
                   style={{
                     width: '20px',
                     height: '20px',
                     borderRadius: '50%',
-                    border: isSelected ? 'none' : '1px solid #475569',
-                    background: isSelected ? '#2563EB' : 'transparent',
+                    border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
+                    background: isSelected ? '#3ECF8E' : 'transparent',
+                    color: '#09090B',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                    marginLeft: '8px',
                   }}
                 >
-                  {isSelected && <Check size={12} color="#FFFFFF" />}
+                  {isSelected && <Check size={12} strokeWidth={3} />}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Custom role */}
+        {/* 200L Suggestions */}
         <div className="it-card" style={{ padding: '18px' }}>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-            Have another specialized skill or talent? (Optional)
-          </label>
-          <input
-            type="text"
-            className="it-input"
-            placeholder="e.g., 3D Animator, Sound Engineer, Public Speaking, Content Writing..."
-            value={formData.customVolunteerRole || ''}
-            onChange={(e) => onChange('customVolunteerRole', e.target.value)}
-            style={{ padding: '10px 14px', fontSize: '0.875rem' }}
-          />
-        </div>
-
-        {/* Ideas & Suggestions */}
-        <div className="it-card" style={{ padding: '18px' }}>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-            Suggestions or Ideas for our Class in 200 Level
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
+            Open Suggestions for 200 Level
           </label>
           <textarea
             className="it-input"
-            rows={3}
-            placeholder="Share events, tutorials, welfare, or tech projects ideas..."
-            value={formData.suggestions200L || ''}
-            onChange={(e) => onChange('suggestions200L', e.target.value)}
-            style={{ padding: '12px', fontSize: '0.875rem' }}
+            rows={2}
+            placeholder="Share any fresh ideas, events, hackathons, or study structures..."
+            value={formData.vision200L || ''}
+            onChange={(e) => onChange('vision200L', e.target.value)}
           />
         </div>
       </div>
 
       {/* Nav Actions */}
       <div className="it-nav-actions">
-        <button type="button" onClick={onBack} className="it-btn-secondary" style={{ minHeight: '44px' }}>
+        <button type="button" onClick={onBack} className="it-btn-secondary">
           <ArrowLeft size={16} />
           <span>Back</span>
         </button>
-        <button type="button" onClick={onNext} className="it-btn-primary" style={{ minHeight: '44px', minWidth: '150px' }}>
+        <button type="button" onClick={onNext} className="it-btn-primary" style={{ minWidth: '180px' }}>
           <span>Next: Leadership Support</span>
           <ArrowRight size={16} />
         </button>
