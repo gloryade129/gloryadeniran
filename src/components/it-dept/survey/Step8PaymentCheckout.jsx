@@ -248,7 +248,7 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, isSub
           <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: '10px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Bank Name:</span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF' }}>Palmpay / OPay / Commercial</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF' }}>Moniepoint MFB</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Account Name:</span>
@@ -257,13 +257,13 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, isSub
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '10px' }}>
               <div>
                 <span style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block' }}>Account Number:</span>
-                <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', fontFamily: 'monospace' }}>8082025129</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', fontFamily: 'monospace', letterSpacing: '0.05em' }}>9168047236</span>
               </div>
               <button
                 type="button"
-                onClick={() => handleCopyAccount('8082025129')}
+                onClick={() => handleCopyAccount('9168047236')}
                 className="it-admin-btn"
-                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                style={{ padding: '6px 14px', fontSize: '0.78rem' }}
               >
                 {copiedAccount ? <Check size={14} color="#34D399" /> : <Copy size={14} />}
                 <span>{copiedAccount ? 'Copied!' : 'Copy'}</span>
