@@ -282,7 +282,7 @@ export default function ProjectClient({ project }) {
                   onClick={handleShare}
                   title="Share Project & Asset Link"
                 >
-                  <span style={{ fontSize: '14px' }}>🔗</span> SHARE PROJECT
+                  <span style={{ fontSize: '14px' }}></span> SHARE PROJECT
                 </motion.button>
               </div>
             </header>
@@ -320,7 +320,7 @@ export default function ProjectClient({ project }) {
                       />
                     )}
                     <div className={styles.zoomOverlay}>
-                      <span className={styles.zoomIcon}>🔍 Click to expand & preview</span>
+                      <span className={styles.zoomIcon}>Click to expand & preview</span>
                     </div>
                   </div>
                 </motion.div>
@@ -423,7 +423,7 @@ export default function ProjectClient({ project }) {
                           className={`${styles.attachmentCard} card`}
                         >
                           <div className={styles.attachInfo}>
-                            <span className={styles.attachIcon}>📄</span>
+                            <span className={styles.attachIcon}></span>
                             <span className={styles.attachLabel}>{lnk.label}</span>
                           </div>
                           <span className={styles.attachArrow}>↗</span>
@@ -489,7 +489,7 @@ export default function ProjectClient({ project }) {
                   onClick={handleShare}
                   title="Share Direct Asset Link"
                 >
-                  🔗 SHARE
+                  SHARE
                 </button>
                 <button 
                   className={`${styles.slideshowBtn} ${isSlideshow ? styles.slideshowActive : ''}`} 

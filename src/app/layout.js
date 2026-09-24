@@ -1,5 +1,8 @@
-import { ThemeProvider } from "@/components/ThemeProvider";
+import "@once-ui-system/core/css/styles.css";
+import "@once-ui-system/core/css/tokens.css";
+import "@/resources/custom.css";
 import "./globals.css";
+import { Providers } from "@/components/once-ui/Providers";
 
 export const metadata = {
   metadataBase: new URL('https://gloryadeniran.cv'),
@@ -89,10 +92,20 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <body
+        data-theme="dark"
+        data-brand="blue"
+        data-accent="cyan"
+        data-neutral="slate"
+        data-border="rounded"
+        data-surface="translucent"
+        data-solid="contrast"
+        data-transition="all"
+        data-scaling="100"
+      >
+        <Providers>
           {children}
-        </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

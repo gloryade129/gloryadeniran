@@ -1,5 +1,5 @@
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
+import Header from "@/components/once-ui/Header";
+import Footer from "@/components/once-ui/Footer";
 import SmoothScroll from "@/components/SmoothScroll";
 import Preloader from "@/components/Preloader";
 import MusicPlayer from "@/components/MusicPlayer";
@@ -18,8 +18,8 @@ export default function SiteLayout({ children }) {
       <div className="bg-glow-2" aria-hidden="true" />
       
       <SmoothScroll>
-        <Navigation />
-        <main>
+        <Header />
+        <main style={{ minHeight: "80vh", paddingTop: "2rem", paddingBottom: "4rem" }}>
           <PageTransition>
             {children}
           </PageTransition>

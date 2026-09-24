@@ -67,7 +67,7 @@ export async function POST(request) {
       // ── Alert email to Glory ──────────────────────────────────────────────
       const alertHtml = `
         <div style="font-family: sans-serif; padding: 24px; background: #080706; color: #FAFAFA; max-width: 600px; margin: 0 auto; border: 1px solid #0091FF;">
-          <h2 style="color: #0091FF; border-bottom: 1px solid #2A2A2D; padding-bottom: 12px; margin-top: 0;">💼 New Project Inquiry</h2>
+          <h2 style="color: #0091FF; border-bottom: 1px solid #2A2A2D; padding-bottom: 12px; margin-top: 0;">New Project Inquiry</h2>
           <p><strong>From:</strong> ${name} &lt;${clientEmail}&gt;</p>
           ${message.phone ? `<p><strong>Phone (WhatsApp):</strong> <a href="https://wa.me/${message.phone.replace(/[^0-9]/g, '')}" style="color: #0091FF; text-decoration: none;">${message.phone}</a></p>` : ''}
           <p><strong>Message:</strong></p>
@@ -80,7 +80,7 @@ export async function POST(request) {
 
       const alertResult = await sendEmail({
         to: 'adeniranglory129@gmail.com',
-        subject: `💼 New Project Inquiry from ${name}`,
+        subject: `New Project Inquiry from ${name}`,
         htmlContent: alertHtml,
       });
       console.log('Alert email result:', alertResult);
@@ -131,10 +131,10 @@ export async function POST(request) {
     } else if (message.type === 'SONG_REQUEST') {
       await sendEmail({
         to: 'adeniranglory129@gmail.com',
-        subject: '🎵 New Song Suggestion',
+        subject: 'New Song Suggestion',
         htmlContent: `
           <div style="font-family: sans-serif; padding: 20px; background: #080706; color: #FAFAFA; max-width: 500px; border: 1px solid #0091FF;">
-            <h3 style="color: #0091FF; margin-top: 0;">🎵 Song Suggestion</h3>
+            <h3 style="color: #0091FF; margin-top: 0;">Song Suggestion</h3>
             <p style="font-size: 16px; font-style: italic; background: rgba(255,255,255,0.03); padding: 12px; border-left: 3px solid #0091FF;">
               "${message.content}"
             </p>

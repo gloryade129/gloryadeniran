@@ -9,7 +9,7 @@
 export async function sendEmail({ to, subject, htmlContent, sender }) {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
-    console.error('❌ BREVO_API_KEY is not set. Email not sent. Add it in Vercel → Settings → Environment Variables.');
+    console.error('[ERROR] BREVO_API_KEY is not set. Email not sent. Add it in Vercel → Settings → Environment Variables.');
     return null;
   }
 
@@ -34,14 +34,14 @@ export async function sendEmail({ to, subject, htmlContent, sender }) {
     const body = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Brevo API error:', JSON.stringify(body));
+      console.error('[ERROR] Brevo API error:', JSON.stringify(body));
       return null;
     }
 
-    console.log('✅ Email sent via Brevo. MessageId:', body.messageId);
+    console.log('[SUCCESS] Email sent via Brevo. MessageId:', body.messageId);
     return body;
   } catch (error) {
-    console.error('❌ Brevo network error:', error.message);
+    console.error('[ERROR] Brevo network error:', error.message);
     return null;
   }
 }

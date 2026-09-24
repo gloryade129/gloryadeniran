@@ -22,6 +22,11 @@ const nextConfig = {
       },
     ],
   },
+  sassOptions: {
+    compiler: 'modern',
+    silenceDeprecations: ['legacy-js-api'],
+  },
+  transpilePackages: ['@once-ui-system/core'],
 };
 
 export default nextConfig;

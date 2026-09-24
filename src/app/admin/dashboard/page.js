@@ -561,7 +561,7 @@ export default function Dashboard() {
                         setReplyText(`Yo ${clientName}! Glory here. ✦\n\nHyped that you reached out about cooking up some next-level ${project} magic! I just read your message:\n"${body}"\n\nI'm already brainstorming how we can make this project absolutely stand out. Let's chat on WhatsApp to iron out the details, or let me know a time that works for you to hop on a quick call!\n\nBest,\nGlory`);
                       }}
                     >
-                      🌟 Creative Hype
+                      Creative Hype
                     </button>
                     <button 
                       type="button" 
@@ -578,7 +578,7 @@ export default function Dashboard() {
                         setReplyText(`Dear ${clientName},\n\nThank you for reaching out. I have reviewed your inquiry regarding the ${project} design request.\n\nYour message details:\n"${body}"\n\nI am confident that we can deliver a premium, high-impact design solution tailored specifically to your goals. Please let me know your availability for a brief introductory call this week, or feel free to message me on WhatsApp to align further.\n\nSincerely,\nGlory Adeniran\nCreative Lead`);
                       }}
                     >
-                      💼 Professional
+                      Professional
                     </button>
                     <button 
                       type="button" 
@@ -594,7 +594,7 @@ export default function Dashboard() {
                         setReplyText(`Hi ${clientName},\n\nThanks for reaching out! Your ideas for the ${project} sound fantastic.\n\nLet's cut through the back-and-forth and jump on a quick 10-minute discovery call to align on details and pricing. \n\nYou can suggest a time that works best for you, or click this link to chat with me instantly on WhatsApp: https://wa.me/2349168047236\n\nLooking forward to working together!\n\nCheers,\nGlory`);
                       }}
                     >
-                      ⚡ Quick Call Invitation
+                      Quick Call Invitation
                     </button>
                   </div>
                 </div>
@@ -804,11 +804,11 @@ export default function Dashboard() {
                     {m.type === 'PROJECT_INQUIRY' && (
                       <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '16px', flexWrap: 'wrap' }}>
                         <button onClick={() => openReplyModal(m)} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <span>✉ Reply via Email</span>
+                          <span>Reply via Email</span>
                         </button>
                         {whatsappUrl && (
                           <a href={whatsappUrl} target="_blank" rel="noreferrer" className="btn-secondary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#25D366', borderColor: '#25D366' }}>
-                            <span>💬 Chat on WhatsApp</span>
+                            <span>Chat on WhatsApp</span>
                           </a>
                         )}
                       </div>
@@ -945,7 +945,7 @@ export default function Dashboard() {
                           )}
                           {msg.attachment && !msg.attachment.mimeType?.startsWith('image/') && !msg.attachment.mimeType?.startsWith('video/') && (
                             <div className={styles.chatAttachmentBubble} style={{ marginTop: '8px', fontSize: '11px', opacity: 0.8 }}>
-                              📎 {msg.attachment.name}
+                              {msg.attachment.name}
                             </div>
                           )}
                         </div>
@@ -968,7 +968,7 @@ export default function Dashboard() {
                   {attachedFile && (
                     <div className={styles.attachedPreviewBar}>
                       <span className="mono" style={{ fontSize: '11px', color: 'var(--lime)' }}>
-                        📎 ATTACHED: {attachedFile.name} {uploadingFile ? '(UPLOADING...)' : '(READY)'}
+                        ATTACHED: {attachedFile.name} {uploadingFile ? '(UPLOADING...)' : '(READY)'}
                       </span>
                       <button type="button" className={styles.removeAttachBtn} onClick={() => setAttachedFile(null)}>✕</button>
                     </div>
@@ -976,7 +976,7 @@ export default function Dashboard() {
                   {uploadingFile && !attachedFile && (
                     <div className={styles.attachedPreviewBar}>
                       <span className="mono" style={{ fontSize: '11px', color: 'var(--gray-2)' }}>
-                        ⚡ UPLOADING FILE TO BLOB STORAGE...
+                        UPLOADING FILE TO BLOB STORAGE...
                       </span>
                     </div>
                   )}
@@ -989,7 +989,7 @@ export default function Dashboard() {
                       disabled={chatLoading || uploadingFile}
                       title="Attach Image/Video"
                     >
-                      <span>📎</span>
+                      <span></span>
                     </button>
                     <input 
                       type="file" 

@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import styles from './MusicPlayer.module.css';
 
 const VIBES = [
-  { id: 'hits',      playlistId: '37i9dQZF1DXcBW7VeQL7yI', name: 'Christian Hits', mood: '🙌 Praise & Worship', color: '#C9E265' },
-  { id: 'gospel',    playlistId: '37i9dQZF1DXcb6CQIjdqKy', name: 'Gospel Hits',    mood: '🔥 Contemporary Gospel', color: '#ff7043' },
-  { id: 'lofi',      playlistId: '2I3NsbYB812N5f1nbTXfna', name: 'Lofi Worship',   mood: '🌙 Focus & Prayer',    color: '#80d4ff' },
-  { id: 'favorites', playlistId: '3skpbZ2neM3yA2RMwH6WcH', name: 'Gospel Favorites', mood: '🎹 Soulful Praise', color: '#e040fb' },
+  { id: 'hits',      playlistId: '37i9dQZF1DXcBW7VeQL7yI', name: 'Christian Hits', mood: 'Praise & Worship', color: '#C9E265' },
+  { id: 'gospel',    playlistId: '37i9dQZF1DXcb6CQIjdqKy', name: 'Gospel Hits',    mood: 'Contemporary Gospel', color: '#ff7043' },
+  { id: 'lofi',      playlistId: '2I3NsbYB812N5f1nbTXfna', name: 'Lofi Worship',   mood: 'Focus & Prayer',    color: '#80d4ff' },
+  { id: 'favorites', playlistId: '3skpbZ2neM3yA2RMwH6WcH', name: 'Gospel Favorites', mood: 'Soulful Praise', color: '#e040fb' },
 ];
 
 const SUGGESTIONS = [
