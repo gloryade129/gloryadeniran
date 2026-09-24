@@ -8,7 +8,6 @@ export const routes = {
   "/about": true,
   "/experience": true,
   "/contact": true,
-  "/it-dept": true,
 };
 
 export const display = {

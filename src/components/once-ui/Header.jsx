@@ -123,15 +123,6 @@ export const Header = () => {
                   selected={pathname === "/contact"}
                 />
               )}
-              <Line background="neutral-alpha-medium" vert maxHeight="24" />
-              {routes["/it-dept"] && (
-                <ToggleButton
-                  prefixIcon="cap"
-                  href="/it-dept"
-                  label="IT Portal"
-                  selected={pathname.startsWith("/it-dept")}
-                />
-              )}
             </Row>
           </Row>
         </Row>

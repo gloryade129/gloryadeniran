@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { CyberBackground } from './layout/CyberBackground';
 import { Navbar } from './layout/Navbar';
@@ -11,11 +10,9 @@ import { Step3Leadership } from './survey/Step3Leadership';
 import { Step4VisionCommittees } from './survey/Step4VisionCommittees';
 import { Step5Celebration } from './survey/Step5Celebration';
 import { INITIAL_SURVEY_STATE } from '@/components/it-dept/types/survey';
-import { AdminPinModal } from './admin/AdminPinModal';
-import { AdminDashboard } from './admin/AdminDashboard';
 import { dataService } from './services/dataService';
 
-const DRAFT_STORAGE_KEY = 'it_dept_survey_draft_v2';
+const DRAFT_STORAGE_KEY = 'it_dept_survey_draft_v3';
 
 export const App = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -32,38 +29,6 @@ export const App = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-
-  const checkIsAdminAuthenticated = useCallback(() => {
-    try {
-      return (
-        sessionStorage.getItem('it_dept_admin_auth_v1') === 'true' ||
-        sessionStorage.getItem('it_portal_admin_auth') === 'true'
-      );
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const handleOpenAdmin = useCallback(() => {
-    if (checkIsAdminAuthenticated()) {
-      setIsAdminOpen(true);
-      setIsPinModalOpen(false);
-    } else {
-      setIsPinModalOpen(true);
-    }
-  }, [checkIsAdminAuthenticated]);
-
-  const handlePinAuthenticated = useCallback(() => {
-    setIsPinModalOpen(false);
-    setIsAdminOpen(true);
-  }, []);
-
-  const handleExitAdmin = useCallback(() => {
-    setIsAdminOpen(false);
-    setIsPinModalOpen(false);
-  }, []);
 
   // Save draft
   useEffect(() => {
@@ -108,7 +73,7 @@ export const App = () => {
       const res = await dataService.submitStudentJourney(formData);
       if (!res.success) {
         if (res.error === 'MATRIC_EXISTS') {
-          alert('This matriculation number has already submitted the 200L transition journey.');
+          alert('This matriculation number has already submitted the survey.');
         } else {
           alert(res.error || 'Submission failed. Please check your network and try again.');
         }
@@ -127,11 +92,11 @@ export const App = () => {
 
   const stepTitles = [
     'Welcome',
-    'Identity & Profile',
-    '100L Retrospective',
-    'Leadership Review',
-    'Committees & Vision',
-    'Celebration & Pass',
+    'Profile',
+    'Retrospective',
+    'Leadership',
+    'Committees',
+    'Confirmation',
   ];
 
   const progressPercent = currentStep === 0 ? 0 : currentStep >= 5 ? 100 : Math.round((currentStep / 4) * 100);
@@ -139,25 +104,39 @@ export const App = () => {
   return (
     <div className="it-portal-wrap it-dept-portal">
       <CyberBackground />
-      <Navbar
-        onOpenAdmin={handleOpenAdmin}
-        isAdminActive={isAdminOpen}
-        onNavigateHome={() => {
-          handleExitAdmin();
-          setCurrentStep(0);
-        }}
-      />
+      <Navbar />
 
-      {/* Slender Top Progress Line */}
-      {!isAdminOpen && currentStep >= 1 && currentStep <= 4 && (
-        <div style={{ position: 'sticky', top: '64px', zIndex: 30, background: 'rgba(6, 9, 19, 0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', padding: '8px 20px' }}>
-          <div style={{ maxWidth: '680px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', marginBottom: '6px' }}>
+      {/* Progress Bar */}
+      {currentStep >= 1 && currentStep <= 4 && (
+        <div
+          style={{
+            position: 'sticky',
+            top: '60px',
+            zIndex: 30,
+            background: 'rgba(6, 9, 19, 0.95)',
+            backdropFilter: 'blur(12px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+            padding: '8px 16px',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: '640px',
+              margin: '0 auto',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '0.72rem',
+              fontFamily: 'JetBrains Mono, monospace',
+              marginBottom: '6px',
+            }}
+          >
             <span style={{ color: '#93C5FD' }}>
               STEP {currentStep} OF 4: <span style={{ color: '#FFFFFF' }}>{stepTitles[currentStep]}</span>
             </span>
             <span style={{ color: '#64748B' }}>{progressPercent}%</span>
           </div>
-          <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
             <div className="it-progress-track">
               <div className="it-progress-fill" style={{ width: `${progressPercent}%` }} />
             </div>
@@ -166,28 +145,25 @@ export const App = () => {
       )}
 
       {/* Main Content Area */}
-      <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 20px', minHeight: 'calc(100vh - 160px)', position: 'relative', zIndex: 10 }}>
-        {isAdminOpen ? (
-          <AdminDashboard onBackToSurvey={handleExitAdmin} onLock={() => setIsAdminOpen(false)} />
-        ) : (
-          <>
-            {currentStep === 0 && <Step0Welcome onStart={handleStart} />}
-            {currentStep === 1 && <Step1Identity formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
-            {currentStep === 2 && <Step2Retrospective formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
-            {currentStep === 3 && <Step3Leadership formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
-            {currentStep === 4 && <Step4VisionCommittees formData={formData} onChange={handleFieldChange} onSubmit={handleSubmitJourney} onBack={handleBack} isSubmitting={isSubmitting} />}
-            {currentStep === 5 && <Step5Celebration formData={formData} onReset={handleReset} />}
-          </>
-        )}
+      <main
+        style={{
+          maxWidth: '800px',
+          margin: '0 auto',
+          padding: '24px 16px 40px',
+          minHeight: 'calc(100vh - 140px)',
+          position: 'relative',
+          zIndex: 10,
+        }}
+      >
+        {currentStep === 0 && <Step0Welcome onStart={handleStart} />}
+        {currentStep === 1 && <Step1Identity formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
+        {currentStep === 2 && <Step2Retrospective formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
+        {currentStep === 3 && <Step3Leadership formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
+        {currentStep === 4 && <Step4VisionCommittees formData={formData} onChange={handleFieldChange} onSubmit={handleSubmitJourney} onBack={handleBack} isSubmitting={isSubmitting} />}
+        {currentStep === 5 && <Step5Celebration formData={formData} onReset={handleReset} />}
       </main>
 
       <Footer />
-
-      <AdminPinModal
-        isOpen={isPinModalOpen}
-        onClose={() => setIsPinModalOpen(false)}
-        onAuthenticated={handlePinAuthenticated}
-      />
     </div>
   );
 };
