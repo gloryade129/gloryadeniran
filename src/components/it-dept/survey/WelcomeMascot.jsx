@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Sparkles, X, MessageSquare, ChevronRight } from 'lucide-react';
+import { Sparkles, X, ChevronRight } from 'lucide-react';
 
 export const WelcomeMascot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -72,9 +72,9 @@ export const WelcomeMascot = () => {
             bottom: '24px',
             right: '24px',
             zIndex: 60,
-            background: 'rgba(24, 24, 27, 0.95)',
-            border: '1px solid rgba(62, 207, 142, 0.4)',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6), 0 0 16px rgba(62, 207, 142, 0.2)',
+            background: 'rgba(17, 21, 36, 0.95)',
+            border: '1px solid rgba(59, 130, 246, 0.4)',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6), 0 0 16px rgba(37, 99, 235, 0.25)',
             borderRadius: '9999px',
             padding: '8px 14px',
             display: 'flex',
@@ -94,8 +94,8 @@ export const WelcomeMascot = () => {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: '#3ECF8E',
-              boxShadow: '0 0 8px #3ECF8E',
+              background: '#3B82F6',
+              boxShadow: '0 0 8px #3B82F6',
             }}
           />
           <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#EDEDED' }}>
@@ -114,12 +114,12 @@ export const WelcomeMascot = () => {
             zIndex: 60,
             width: '340px',
             maxWidth: 'calc(100vw - 32px)',
-            background: 'rgba(18, 18, 20, 0.96)',
+            background: 'rgba(17, 21, 36, 0.96)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
+            border: '1px solid rgba(59, 130, 246, 0.35)',
             borderRadius: '16px',
-            boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(62, 207, 142, 0.15)',
+            boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(37, 99, 235, 0.2)',
             overflow: 'hidden',
             fontFamily: 'Montserrat, -apple-system, BlinkMacSystemFont, sans-serif',
           }}
@@ -142,15 +142,15 @@ export const WelcomeMascot = () => {
                   width: '7px',
                   height: '7px',
                   borderRadius: '50%',
-                  background: '#3ECF8E',
-                  boxShadow: '0 0 6px #3ECF8E',
+                  background: '#3B82F6',
+                  boxShadow: '0 0 6px #3B82F6',
                 }}
               />
               <span
                 style={{
                   fontSize: '0.72rem',
                   fontWeight: 700,
-                  color: '#3ECF8E',
+                  color: '#60A5FA',
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
                 }}
@@ -164,7 +164,7 @@ export const WelcomeMascot = () => {
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#71717A',
+                color: '#64748B',
                 cursor: 'pointer',
                 padding: '2px',
                 display: 'flex',
@@ -180,7 +180,7 @@ export const WelcomeMascot = () => {
 
           {/* Body */}
           <div style={{ padding: '16px 14px', textAlign: 'center' }}>
-            {/* Animated SVG Byte Avatar */}
+            {/* Animated SVG Byte Avatar with Blue Theme */}
             <div
               className="mascot-container"
               onClick={handleNextTip}
@@ -195,35 +195,35 @@ export const WelcomeMascot = () => {
             >
               <svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
                 {/* Mortarboard Hat */}
-                <path d="M50 14L84 27L50 40L16 27L50 14Z" fill="#1E293B" stroke="#3ECF8E" strokeWidth="2.5" />
-                <path d="M28 32V42C28 47 38 51 50 51C62 51 72 47 72 42V32" fill="#0F172A" stroke="#3ECF8E" strokeWidth="2" />
+                <path d="M50 14L84 27L50 40L16 27L50 14Z" fill="#1E293B" stroke="#3B82F6" strokeWidth="2.5" />
+                <path d="M28 32V42C28 47 38 51 50 51C62 51 72 47 72 42V32" fill="#0F172A" stroke="#3B82F6" strokeWidth="2" />
                 <path d="M78 30V48" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" />
                 <circle cx="78" cy="50" r="2.5" fill="#FBBF24" />
 
                 {/* Head Monitor */}
-                <rect x="22" y="44" width="56" height="42" rx="14" fill="#0C1220" stroke="#3ECF8E" strokeWidth="2.5" />
+                <rect x="22" y="44" width="56" height="42" rx="14" fill="#0A0E1A" stroke="#3B82F6" strokeWidth="2.5" />
 
-                {/* Blinking Cyber Eyes */}
+                {/* Blinking Cyber Eyes - Blue */}
                 <g className="mascot-eye">
-                  <ellipse cx="38" cy="62" rx="4.5" ry="6" fill="#3ECF8E" />
+                  <ellipse cx="38" cy="62" rx="4.5" ry="6" fill="#60A5FA" />
                   <circle cx="36.5" cy="59.5" r="1.5" fill="#FFFFFF" />
-                  <ellipse cx="62" cy="62" rx="4.5" ry="6" fill="#3ECF8E" />
+                  <ellipse cx="62" cy="62" rx="4.5" ry="6" fill="#60A5FA" />
                   <circle cx="60.5" cy="59.5" r="1.5" fill="#FFFFFF" />
                 </g>
 
                 {/* Smiling Mouth */}
-                <path d="M44 74C46.5 77 53.5 77 56 74" stroke="#3ECF8E" strokeWidth="2" strokeLinecap="round" />
+                <path d="M44 74C46.5 77 53.5 77 56 74" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round" />
 
                 {/* 200L Badge on screen */}
-                <rect x="41" y="80" width="18" height="5" rx="2.5" fill="rgba(62, 207, 142, 0.2)" />
-                <text x="50" y="84" fontSize="4.2" fill="#3ECF8E" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
+                <rect x="41" y="80" width="18" height="5" rx="2.5" fill="rgba(37, 99, 235, 0.25)" />
+                <text x="50" y="84" fontSize="4.2" fill="#93C5FD" fontWeight="bold" textAnchor="middle" fontFamily="monospace">
                   200L
                 </text>
 
                 {/* Waving Right Hand */}
                 <g className="mascot-waving-arm">
-                  <path d="M78 65C83 60 88 56 90 51" stroke="#3ECF8E" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="91" cy="49" r="3.5" fill="#3ECF8E" />
+                  <path d="M78 65C83 60 88 56 90 51" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="91" cy="49" r="3.5" fill="#3B82F6" />
                 </g>
               </svg>
             </div>
@@ -240,10 +240,10 @@ export const WelcomeMascot = () => {
                 cursor: 'pointer',
               }}
             >
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#E4E4E7', lineHeight: 1.45, fontWeight: 500 }}>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#E2E8F0', lineHeight: 1.45, fontWeight: 500 }}>
                 "{tips[quoteIndex]}"
               </p>
-              <span style={{ fontSize: '0.6875rem', color: '#71717A', marginTop: '4px', display: 'block' }}>
+              <span style={{ fontSize: '0.6875rem', color: '#64748B', marginTop: '4px', display: 'block' }}>
                 (Tap for another tip)
               </span>
             </div>
@@ -270,5 +270,4 @@ export const WelcomeMascot = () => {
     </>
   );
 };
-
 export default WelcomeMascot;

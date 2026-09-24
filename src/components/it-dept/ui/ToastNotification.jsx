@@ -17,18 +17,18 @@ export const ToastNotification = ({ toast, onClose }) => {
   const isError = toast.type === 'error';
   const isSuccess = toast.type === 'success';
 
-  const iconColor = isError ? '#F87171' : isSuccess ? '#3ECF8E' : '#38BDF8';
+  const iconColor = isError ? '#F87171' : isSuccess ? '#3B82F6' : '#60A5FA';
   const borderColor = isError
-    ? 'rgba(239, 68, 68, 0.35)'
+    ? 'rgba(239, 68, 68, 0.4)'
     : isSuccess
-    ? 'rgba(62, 207, 142, 0.35)'
-    : 'rgba(56, 189, 248, 0.35)';
+    ? 'rgba(37, 99, 235, 0.45)'
+    : 'rgba(59, 130, 246, 0.35)';
 
   const iconBg = isError
     ? 'rgba(239, 68, 68, 0.12)'
     : isSuccess
-    ? 'rgba(62, 207, 142, 0.12)'
-    : 'rgba(56, 189, 248, 0.12)';
+    ? 'rgba(37, 99, 235, 0.15)'
+    : 'rgba(59, 130, 246, 0.12)';
 
   const IconComp = isError ? AlertCircle : isSuccess ? CheckCircle2 : Info;
 
@@ -48,11 +48,11 @@ export const ToastNotification = ({ toast, onClose }) => {
     >
       <div
         style={{
-          background: 'rgba(18, 18, 20, 0.95)',
+          background: 'rgba(17, 21, 36, 0.96)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           border: `1px solid ${borderColor}`,
-          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.04)',
+          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(37, 99, 235, 0.15)',
           borderRadius: '12px',
           padding: '14px 16px',
           display: 'flex',
@@ -96,7 +96,7 @@ export const ToastNotification = ({ toast, onClose }) => {
             style={{
               margin: 0,
               fontSize: '0.84rem',
-              color: isError ? '#FCA5A5' : '#D4D4D8',
+              color: isError ? '#FCA5A5' : '#E2E8F0',
               lineHeight: 1.45,
               fontWeight: 500,
               wordBreak: 'break-word',
@@ -112,7 +112,7 @@ export const ToastNotification = ({ toast, onClose }) => {
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#71717A',
+            color: '#64748B',
             cursor: 'pointer',
             padding: '4px',
             borderRadius: '6px',
@@ -123,7 +123,7 @@ export const ToastNotification = ({ toast, onClose }) => {
             transition: 'color 0.15s ease',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#71717A')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#64748B')}
           aria-label="Dismiss notification"
         >
           <X size={16} />
@@ -132,5 +132,4 @@ export const ToastNotification = ({ toast, onClose }) => {
     </div>
   );
 };
-
 export default ToastNotification;

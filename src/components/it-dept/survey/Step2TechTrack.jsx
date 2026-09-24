@@ -21,7 +21,7 @@ export const Step2TechTrack = ({ formData, onChange, onNext, onBack, showToast }
         <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#EDEDED', margin: '6px 0 8px', letterSpacing: '-0.025em' }}>
           Tech Track & Career Focus
         </h2>
-        <p style={{ fontSize: '0.9375rem', color: '#A1A1AA', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: '0.9375rem', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
           Which area of computing and technology are you passionate about specializing in during 200 Level?
         </p>
       </div>
@@ -48,21 +48,21 @@ export const Step2TechTrack = ({ formData, onChange, onNext, onBack, showToast }
                     width: '38px',
                     height: '38px',
                     borderRadius: '8px',
-                    background: isSelected ? 'rgba(62, 207, 142, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    background: isSelected ? 'rgba(37, 99, 235, 0.25)' : 'rgba(255, 255, 255, 0.05)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: isSelected ? '#3ECF8E' : '#A1A1AA',
+                    color: isSelected ? '#60A5FA' : '#94A3B8',
                     flexShrink: 0,
                   }}
                 >
                   <IconComp size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: isSelected ? '#3ECF8E' : '#EDEDED' }}>
+                  <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: isSelected ? '#93C5FD' : '#EDEDED' }}>
                     {track.name}
                   </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#71717A' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#64748B' }}>
                     {track.desc}
                   </p>
                 </div>
@@ -74,8 +74,8 @@ export const Step2TechTrack = ({ formData, onChange, onNext, onBack, showToast }
                     width: '22px',
                     height: '22px',
                     borderRadius: '50%',
-                    background: '#3ECF8E',
-                    color: '#09090B',
+                    background: '#2563EB',
+                    color: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

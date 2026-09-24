@@ -72,7 +72,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
         <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#EDEDED', margin: '6px 0 8px', letterSpacing: '-0.025em' }}>
           Student Identity & Records
         </h2>
-        <p style={{ fontSize: '0.9375rem', color: '#A1A1AA', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: '0.9375rem', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
           Your directory details ensure smooth academic notifications, timetable releases, and class record verification.
         </p>
       </div>
@@ -81,7 +81,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
         {/* Full Name */}
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '8px' }}>
-            <User size={15} color="#3ECF8E" />
+            <User size={15} color="#3B82F6" />
             <span>Full Official Name *</span>
           </label>
           <input
@@ -97,7 +97,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
         <div className="it-grid-2" style={{ gap: '16px' }}>
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '8px' }}>
-              <Hash size={15} color="#3ECF8E" />
+              <Hash size={15} color="#3B82F6" />
               <span>Matriculation Number *</span>
             </label>
             <input
@@ -111,7 +111,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
           </div>
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '8px' }}>
-              <Phone size={15} color="#3ECF8E" />
+              <Phone size={15} color="#3B82F6" />
               <span>WhatsApp Phone *</span>
             </label>
             <input
@@ -127,8 +127,8 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
         {/* Email */}
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '8px' }}>
-            <Mail size={15} color="#3ECF8E" />
-            <span>Email Address * <span style={{ color: '#71717A', fontWeight: 400, fontSize: '0.75rem' }}>(For confirmation receipt)</span></span>
+            <Mail size={15} color="#3B82F6" />
+            <span>Email Address * <span style={{ color: '#64748B', fontWeight: 400, fontSize: '0.75rem' }}>(For confirmation receipt)</span></span>
           </label>
           <input
             type="email"
@@ -142,7 +142,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
         {/* Birthday */}
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '8px' }}>
-            <Calendar size={15} color="#3ECF8E" />
+            <Calendar size={15} color="#3B82F6" />
             <span>Birthday (Day & Month)</span>
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '12px' }}>
@@ -152,7 +152,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
               onChange={(e) => onChange('birthDay', Number(e.target.value))}
             >
               {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d} style={{ background: '#141416', color: '#EDEDED' }}>
+                <option key={d} value={d} style={{ background: '#0F1322', color: '#EDEDED' }}>
                   Day {d}
                 </option>
               ))}
@@ -163,7 +163,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
               onChange={(e) => onChange('birthMonth', Number(e.target.value))}
             >
               {MONTH_NAMES.map((m, idx) => (
-                <option key={m} value={idx + 1} style={{ background: '#141416', color: '#EDEDED' }}>
+                <option key={m} value={idx + 1} style={{ background: '#0F1322', color: '#EDEDED' }}>
                   {m}
                 </option>
               ))}

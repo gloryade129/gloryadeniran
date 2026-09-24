@@ -125,7 +125,7 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
         <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#EDEDED', margin: '6px 0 8px', letterSpacing: '-0.025em' }}>
           Leadership Support Checkout
         </h2>
-        <p style={{ fontSize: '0.9375rem', color: '#A1A1AA', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: '0.9375rem', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
           Your survey submission is finalized upon payment confirmation.
         </p>
       </div>
@@ -133,13 +133,13 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
       {/* Summary Box */}
       <div className="it-card" style={{ padding: '20px 24px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <span style={{ fontSize: '0.72rem', color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' }}>
+          <span style={{ fontSize: '0.72rem', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' }}>
             Contribution Pledge
           </span>
-          <h3 style={{ margin: '2px 0 0', fontSize: '1.4rem', fontWeight: 800, color: '#3ECF8E' }}>
+          <h3 style={{ margin: '2px 0 0', fontSize: '1.4rem', fontWeight: 800, color: '#60A5FA' }}>
             ₦{amount.toLocaleString()}
           </h3>
-          <span style={{ fontSize: '0.75rem', color: '#A1A1AA' }}>
+          <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
             {formData.fullName} ({formData.matricNo})
           </span>
         </div>
@@ -156,7 +156,7 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
           type="button"
           onClick={() => setSelectedMethod('bank_transfer')}
           className={`it-btn-secondary ${selectedMethod === 'bank_transfer' ? 'it-card-selected' : ''}`}
-          style={{ justifyContent: 'center', height: '48px', fontWeight: 600, color: selectedMethod === 'bank_transfer' ? '#3ECF8E' : '#EDEDED' }}
+          style={{ justifyContent: 'center', height: '48px', fontWeight: 600, color: selectedMethod === 'bank_transfer' ? '#60A5FA' : '#EDEDED' }}
         >
           <Building2 size={16} />
           <span>Direct Bank Transfer</span>
@@ -166,7 +166,7 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
           type="button"
           onClick={() => setSelectedMethod('flutterwave')}
           className={`it-btn-secondary ${selectedMethod === 'flutterwave' ? 'it-card-selected' : ''}`}
-          style={{ justifyContent: 'center', height: '48px', fontWeight: 600, color: selectedMethod === 'flutterwave' ? '#3ECF8E' : '#EDEDED' }}
+          style={{ justifyContent: 'center', height: '48px', fontWeight: 600, color: selectedMethod === 'flutterwave' ? '#60A5FA' : '#EDEDED' }}
         >
           <CreditCard size={16} />
           <span>Pay Online (Cards/USSD)</span>
@@ -177,24 +177,24 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
       {selectedMethod === 'bank_transfer' && (
         <div className="it-card" style={{ padding: '24px', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-            <Building2 size={18} color="#3ECF8E" />
+            <Building2 size={18} color="#3B82F6" />
             <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#FFFFFF' }}>
               Official Department Bank Account
             </h4>
           </div>
 
-          <div style={{ background: '#111113', borderRadius: '10px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '16px' }}>
+          <div style={{ background: '#0B0E19', borderRadius: '10px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '0.75rem', color: '#71717A' }}>Bank Name:</span>
+              <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Bank Name:</span>
               <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#EDEDED' }}>Moniepoint MFB</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '0.75rem', color: '#71717A' }}>Account Name:</span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#3ECF8E' }}>Adeniran Glory (Class Rep)</span>
+              <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Account Name:</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#60A5FA' }}>Adeniran Glory (Class Rep)</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '10px' }}>
               <div>
-                <span style={{ fontSize: '0.72rem', color: '#71717A', display: 'block' }}>Account Number:</span>
+                <span style={{ fontSize: '0.72rem', color: '#64748B', display: 'block' }}>Account Number:</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', fontFamily: 'monospace', letterSpacing: '0.05em' }}>9168047236</span>
               </div>
               <button
@@ -203,14 +203,14 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
                 className="it-btn-secondary"
                 style={{ padding: '6px 14px', fontSize: '0.78rem', minHeight: '34px' }}
               >
-                {copiedAccount ? <Check size={14} color="#3ECF8E" /> : <Copy size={14} />}
+                {copiedAccount ? <Check size={14} color="#3B82F6" /> : <Copy size={14} />}
                 <span>{copiedAccount ? 'Copied!' : 'Copy'}</span>
               </button>
             </div>
           </div>
 
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ display: 'block', fontSize: '0.8125rem', color: '#A1A1AA', marginBottom: '6px', fontWeight: 600 }}>
+            <label style={{ display: 'block', fontSize: '0.8125rem', color: '#94A3B8', marginBottom: '6px', fontWeight: 600 }}>
               Payment Reference or Sender Name (Optional):
             </label>
             <input
@@ -238,13 +238,13 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
       {/* Option 2: Flutterwave Online Card/USSD */}
       {selectedMethod === 'flutterwave' && (
         <div className="it-card" style={{ padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(62, 207, 142, 0.12)', color: '#3ECF8E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(37, 99, 235, 0.15)', color: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <CreditCard size={24} />
           </div>
           <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 700, color: '#EDEDED' }}>
             Instant Payment via Flutterwave
           </h4>
-          <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#A1A1AA', maxWidth: '420px', marginInline: 'auto' }}>
+          <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#94A3B8', maxWidth: '420px', marginInline: 'auto' }}>
             Pay securely with your ATM Card, Bank Account Transfer, or USSD code. Your survey is automatically finalized upon payment confirmation.
           </p>
 
@@ -259,8 +259,8 @@ export const Step8PaymentCheckout = ({ formData, onPaymentSuccess, onBack, showT
             <span>{isProcessing || isSubmitting ? 'Opening Payment Gateway...' : `Pay ₦${amount.toLocaleString()} Now`}</span>
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.72rem', color: '#71717A', marginTop: '14px' }}>
-            <ShieldCheck size={14} color="#3ECF8E" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.72rem', color: '#64748B', marginTop: '14px' }}>
+            <ShieldCheck size={14} color="#3B82F6" />
             <span>Protected by 256-bit bank encryption • Flutterwave Verified</span>
           </div>
         </div>
