@@ -40,7 +40,7 @@ export const AdminDashboard = ({ onBackToSurvey, onLock, }) => {
         else
             setIsRefreshing(true);
         setErrorMessage(null);
-        const pin = import.meta.env.VITE_ADMIN_PIN?.trim() || '2025';
+        const pin = (typeof window !== 'undefined' ? sessionStorage.getItem('it_dept_admin_pin') : null) || process.env.NEXT_PUBLIC_ADMIN_PIN || '2025';
         try {
             const data = await dataService.getAdminDashboardData(pin);
             setProfiles(data.profiles || []);

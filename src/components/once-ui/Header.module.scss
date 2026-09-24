@@ -1,4 +1,3 @@
-
 @use "./breakpoints.scss" as breakpoints;
 
 .mask {
@@ -12,7 +11,14 @@
 @media (max-width: breakpoints.$s) {
   .position {
     top: auto;
-    bottom: var(--static-space-24);
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    left: 0;
+    right: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding-left: 12px;
+    padding-right: 12px;
   }
   .mask {
     transform: rotate(180deg);

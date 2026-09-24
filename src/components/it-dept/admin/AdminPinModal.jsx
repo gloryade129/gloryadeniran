@@ -85,12 +85,13 @@ export const AdminPinModal = ({ isOpen, onClose, onAuthenticated, }) => {
     const verifyPin = useCallback((pinToTest) => {
         if (lockoutRemaining > 0)
             return;
-        const configuredPin = import.meta.env.VITE_ADMIN_PIN?.trim() || '2025';
+        const configuredPin = (typeof window !== 'undefined' && sessionStorage.getItem('it_dept_admin_pin')) || process.env.NEXT_PUBLIC_ADMIN_PIN || '2025';
         if (pinToTest.trim() === configuredPin) {
             setIsSuccess(true);
             setErrorMsg(null);
             try {
-                sessionStorage.setItem(STORAGE_KEY_AUTH, 'true');
+                sessionStorage.setItem('it_dept_admin_pin', pinToTest.trim());
+        sessionStorage.setItem(STORAGE_KEY_AUTH, 'true');
                 sessionStorage.setItem(STORAGE_KEY_AUTH_COMPAT, 'true');
                 sessionStorage.removeItem(STORAGE_KEY_LOCKOUT);
                 sessionStorage.setItem(STORAGE_KEY_ATTEMPTS, '0');

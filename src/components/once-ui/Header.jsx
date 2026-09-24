@@ -66,15 +66,18 @@ export const Header = () => {
           position: "fixed",
         }}
       >
-        <Row paddingLeft="12" fillWidth vertical="center" textVariant="body-default-s">
+        {/* Left: Location & Time (hidden on mobile) */}
+        <Row s={{ hide: true }} paddingLeft="12" fillWidth vertical="center" textVariant="body-default-s">
           {display.location && (
-            <Row s={{ hide: true }} gap="8" vertical="center" onBackground="neutral-weak">
+            <Row gap="8" vertical="center" onBackground="neutral-weak">
               <span>Nigeria</span>
               <Line background="neutral-alpha-weak" vert height="12" />
               <TimeDisplay timeZone={person.location || "Africa/Lagos"} />
             </Row>
           )}
         </Row>
+
+        {/* Center: Floating Dock (Mobile displays icons-only, Desktop displays icons + text) */}
         <Row fillWidth horizontal="center">
           <Row
             background="page"
@@ -88,47 +91,102 @@ export const Header = () => {
           >
             <Row gap="4" vertical="center" textVariant="body-default-s" suppressHydrationWarning>
               {routes["/"] && (
-                <ToggleButton prefixIcon="home" href="/" selected={pathname === "/"} label="Home" />
+                <ToggleButton prefixIcon="home" href="/" selected={pathname === "/"} />
               )}
               <Line background="neutral-alpha-medium" vert maxHeight="24" />
+
               {routes["/work"] && (
-                <ToggleButton
-                  prefixIcon="grid"
-                  href="/work"
-                  label={work.label}
-                  selected={pathname.startsWith("/work")}
-                />
+                <>
+                  <Row s={{ hide: true }}>
+                    <ToggleButton
+                      prefixIcon="grid"
+                      href="/work"
+                      label={work.label}
+                      selected={pathname.startsWith("/work")}
+                    />
+                  </Row>
+                  <Row hide s={{ hide: false }}>
+                    <ToggleButton
+                      prefixIcon="grid"
+                      href="/work"
+                      selected={pathname.startsWith("/work")}
+                    />
+                  </Row>
+                </>
               )}
+
               {routes["/about"] && (
-                <ToggleButton
-                  prefixIcon="person"
-                  href="/about"
-                  label={about.label}
-                  selected={pathname === "/about"}
-                />
+                <>
+                  <Row s={{ hide: true }}>
+                    <ToggleButton
+                      prefixIcon="person"
+                      href="/about"
+                      label={about.label}
+                      selected={pathname === "/about"}
+                    />
+                  </Row>
+                  <Row hide s={{ hide: false }}>
+                    <ToggleButton
+                      prefixIcon="person"
+                      href="/about"
+                      selected={pathname === "/about"}
+                    />
+                  </Row>
+                </>
               )}
+
               {routes["/experience"] && (
-                <ToggleButton
-                  prefixIcon="briefcase"
-                  href="/experience"
-                  label="Experience"
-                  selected={pathname === "/experience"}
-                />
+                <>
+                  <Row s={{ hide: true }}>
+                    <ToggleButton
+                      prefixIcon="briefcase"
+                      href="/experience"
+                      label="Experience"
+                      selected={pathname === "/experience"}
+                    />
+                  </Row>
+                  <Row hide s={{ hide: false }}>
+                    <ToggleButton
+                      prefixIcon="briefcase"
+                      href="/experience"
+                      selected={pathname === "/experience"}
+                    />
+                  </Row>
+                </>
               )}
+
               {routes["/contact"] && (
-                <ToggleButton
-                  prefixIcon="contact"
-                  href="/contact"
-                  label="Contact"
-                  selected={pathname === "/contact"}
-                />
+                <>
+                  <Row s={{ hide: true }}>
+                    <ToggleButton
+                      prefixIcon="contact"
+                      href="/contact"
+                      label="Contact"
+                      selected={pathname === "/contact"}
+                    />
+                  </Row>
+                  <Row hide s={{ hide: false }}>
+                    <ToggleButton
+                      prefixIcon="contact"
+                      href="/contact"
+                      selected={pathname === "/contact"}
+                    />
+                  </Row>
+                </>
+              )}
+
+              {display.themeSwitcher && (
+                <>
+                  <Line background="neutral-alpha-medium" vert maxHeight="24" />
+                  <ThemeToggle />
+                </>
               )}
             </Row>
           </Row>
         </Row>
-        <Row paddingRight="12" fillWidth vertical="center" horizontal="end">
-          {display.themeSwitcher && <ThemeToggle />}
-        </Row>
+
+        {/* Right: Hidden on mobile so it doesn't take flex space */}
+        <Row s={{ hide: true }} paddingRight="12" fillWidth vertical="center" horizontal="end" />
       </Row>
     </>
   );
