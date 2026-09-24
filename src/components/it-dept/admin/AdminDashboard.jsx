@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, BarChart3, MessageSquare, Users, Calendar, RefreshCw, Lock, ArrowLeft, Search, Database, Mail, Download, Send, X, CheckCircle2, Eye, Phone, Heart, Wallet, Star, ExternalLink } from 'lucide-react';
+import { Shield, BarChart3, MessageSquare, Users, Calendar, RefreshCw, Lock, ArrowLeft, Search, Database, Mail, Download, Send, X, CheckCircle2, Eye, Phone, Heart, Wallet, Star, ExternalLink, Trash2, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/components/it-dept/services/dataService';
 import { KpiOverview } from './KpiOverview';
 import { FeedbackCardList } from './FeedbackCardList';
@@ -22,6 +22,8 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
   const [lastRefreshed, setLastRefreshed] = useState('');
   const [directorySearch, setDirectorySearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Daily digest trigger state
   const [isSendingDigest, setIsSendingDigest] = useState(false);
@@ -121,6 +123,30 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
       successMessage: '',
       errorMessage: '',
     });
+  };
+
+  const handleDeleteStudent = async (student) => {
+    if (!student) return;
+    setIsDeleting(true);
+    try {
+      const pin = (typeof window !== 'undefined' ? sessionStorage.getItem('it_dept_admin_pin') : null) || '2025';
+      const res = await dataService.deleteStudentResponse(student.id, student.matricNo, pin);
+      if (res.success) {
+        setProfiles(prev => prev.filter(p => p.id !== student.id && p.matricNo !== student.matricNo));
+        setDeleteTarget(null);
+        if (selectedStudent && (selectedStudent.id === student.id || selectedStudent.matricNo === student.matricNo)) {
+          setSelectedStudent(null);
+        }
+        setDigestStatus(`Record for ${student.fullName} (${student.matricNo}) successfully deleted.`);
+        setTimeout(() => setDigestStatus(null), 5000);
+      } else {
+        alert(res.error || 'Failed to delete student response.');
+      }
+    } catch (err) {
+      alert(err.message || 'Error deleting student.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSendDirectEmail = async () => {
@@ -432,6 +458,15 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                           >
                             <Mail size={12} />
                             <span>Email</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(student)}
+                            className="it-admin-btn it-admin-btn-danger"
+                            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                            title="Delete this student response"
+                          >
+                            <Trash2 size={12} />
                           </button>
                         </div>
                       </td>
@@ -802,7 +837,16 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
               )}
 
               {/* Footer */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(selectedStudent)}
+                  className="it-admin-btn it-admin-btn-danger"
+                  style={{ minHeight: '38px', padding: '6px 14px', fontSize: '0.8125rem' }}
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Record</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setSelectedStudent(null)}
@@ -812,6 +856,82 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 70,
+            background: 'rgba(6, 9, 19, 0.88)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            className="it-card"
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              padding: '24px',
+              textAlign: 'center',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+            }}
+          >
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#EF4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}
+            >
+              <AlertTriangle size={24} />
+            </div>
+
+            <h3 style={{ margin: '0 0 8px', fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF' }}>
+              Delete Student Response?
+            </h3>
+
+            <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete the response for{' '}
+              <strong style={{ color: '#FFFFFF' }}>{deleteTarget.fullName}</strong> ({deleteTarget.matricNo})?
+              This will remove their profile and leadership feedback from the database.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                className="it-btn-secondary"
+                style={{ minHeight: '38px', padding: '6px 18px', fontSize: '0.8125rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteStudent(deleteTarget)}
+                disabled={isDeleting}
+                className="it-admin-btn it-admin-btn-danger"
+                style={{ minHeight: '38px', padding: '6px 20px', fontSize: '0.8125rem' }}
+              >
+                <Trash2 size={13} />
+                <span>{isDeleting ? 'Deleting...' : 'Yes, Delete'}</span>
+              </button>
             </div>
           </div>
         </div>

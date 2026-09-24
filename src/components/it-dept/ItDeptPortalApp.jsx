@@ -5,14 +5,18 @@ import { Navbar } from './layout/Navbar';
 import { Footer } from './layout/Footer';
 import { Step0Welcome } from './survey/Step0Welcome';
 import { Step1Identity } from './survey/Step1Identity';
-import { Step2Retrospective } from './survey/Step2Retrospective';
-import { Step3Leadership } from './survey/Step3Leadership';
-import { Step4VisionCommittees } from './survey/Step4VisionCommittees';
+import { Step2TechTrack } from './survey/Step2TechTrack';
+import { Step3Retrospective } from './survey/Step3Retrospective';
+import { Step4CRLeadership } from './survey/Step4CRLeadership';
+import { Step5ACRLeadership } from './survey/Step5ACRLeadership';
+import { Step6VolunteerRoles } from './survey/Step6VolunteerRoles';
+import { Step7SupportChoice } from './survey/Step7SupportChoice';
+import { Step8PaymentCheckout } from './survey/Step8PaymentCheckout';
 import { Step5Celebration } from './survey/Step5Celebration';
 import { INITIAL_SURVEY_STATE } from '@/components/it-dept/types/survey';
 import { dataService } from './services/dataService';
 
-const DRAFT_STORAGE_KEY = 'it_dept_survey_draft_v3';
+const DRAFT_STORAGE_KEY = 'it_dept_survey_draft_v4';
 
 export const App = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -30,9 +34,9 @@ export const App = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Save draft
+  // Save draft across steps before submission
   useEffect(() => {
-    if (currentStep > 0 && currentStep < 5) {
+    if (currentStep > 0 && currentStep < 9) {
       try {
         localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
       } catch (e) {}
@@ -49,7 +53,7 @@ export const App = () => {
   }, []);
 
   const handleNext = useCallback(() => {
-    setCurrentStep(prev => Math.min(prev + 1, 5));
+    setCurrentStep(prev => Math.min(prev + 1, 8));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -67,6 +71,7 @@ export const App = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Submit student journey - only invoked when payment is complete OR user opts out of contribution
   const handleSubmitJourney = useCallback(async (overrides = {}) => {
     setIsSubmitting(true);
     const payload = { ...formData, ...overrides };
@@ -87,7 +92,7 @@ export const App = () => {
         localStorage.removeItem(DRAFT_STORAGE_KEY);
       } catch (e) {}
       setIsSubmitting(false);
-      setCurrentStep(5);
+      setCurrentStep(9); // Celebration Step
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return true;
     } catch (err) {
@@ -98,16 +103,51 @@ export const App = () => {
     }
   }, [formData]);
 
+  // Handle return from external Flutterwave redirect
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment') || urlParams.get('status');
+    const txRef = urlParams.get('tx_ref') || urlParams.get('transaction_id');
+
+    if (paymentStatus === 'successful' || paymentStatus === 'completed') {
+      try {
+        const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft);
+          handleSubmitJourney({
+            ...parsed,
+            paymentStatus: 'completed',
+            paymentMethod: 'flutterwave',
+            paymentRef: txRef || `FLW-RETURN-${Date.now()}`
+          });
+        }
+      } catch (e) {
+        console.error('Auto-submitting after payment return error:', e);
+      }
+    }
+  }, [handleSubmitJourney]);
+
+  const maxSurveyStep = formData.supportLeadershipChoice === 'yes' ? 8 : 7;
   const stepTitles = [
     'Welcome',
-    'Profile',
-    'Retrospective',
-    'Leadership',
-    'Committees',
-    'Confirmation',
+    'Identity',
+    'Tech Track',
+    '100L Review',
+    'Class Rep Review',
+    'Assistant CR Review',
+    'Volunteer Roles',
+    'Support Leadership',
+    'Payment Checkout',
+    'Completed',
   ];
 
-  const progressPercent = currentStep === 0 ? 0 : currentStep >= 5 ? 100 : Math.round((currentStep / 4) * 100);
+  const progressPercent =
+    currentStep === 0
+      ? 0
+      : currentStep >= 9
+      ? 100
+      : Math.min(100, Math.round((currentStep / maxSurveyStep) * 100));
 
   return (
     <div className="it-portal-wrap it-dept-portal">
@@ -115,7 +155,7 @@ export const App = () => {
       <Navbar />
 
       {/* Progress Bar */}
-      {currentStep >= 1 && currentStep <= 4 && (
+      {currentStep >= 1 && currentStep <= 8 && (
         <div
           style={{
             position: 'sticky',
@@ -140,7 +180,7 @@ export const App = () => {
             }}
           >
             <span style={{ color: '#93C5FD' }}>
-              STEP {currentStep} OF 4: <span style={{ color: '#FFFFFF' }}>{stepTitles[currentStep]}</span>
+              STEP {currentStep} OF {maxSurveyStep}: <span style={{ color: '#FFFFFF' }}>{stepTitles[currentStep]}</span>
             </span>
             <span style={{ color: '#64748B' }}>{progressPercent}%</span>
           </div>
@@ -164,11 +204,79 @@ export const App = () => {
         }}
       >
         {currentStep === 0 && <Step0Welcome onStart={handleStart} />}
-        {currentStep === 1 && <Step1Identity formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
-        {currentStep === 2 && <Step2Retrospective formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
-        {currentStep === 3 && <Step3Leadership formData={formData} onChange={handleFieldChange} onNext={handleNext} onBack={handleBack} />}
-        {currentStep === 4 && <Step4VisionCommittees formData={formData} onChange={handleFieldChange} onSubmit={handleSubmitJourney} onBack={handleBack} isSubmitting={isSubmitting} />}
-        {currentStep === 5 && <Step5Celebration formData={formData} onReset={handleReset} />}
+        {currentStep === 1 && (
+          <Step1Identity
+            formData={formData}
+            onChange={handleFieldChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {currentStep === 2 && (
+          <Step2TechTrack
+            formData={formData}
+            onChange={handleFieldChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {currentStep === 3 && (
+          <Step3Retrospective
+            formData={formData}
+            onChange={handleFieldChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {currentStep === 4 && (
+          <Step4CRLeadership
+            formData={formData}
+            onChange={handleFieldChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {currentStep === 5 && (
+          <Step5ACRLeadership
+            formData={formData}
+            onChange={handleFieldChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {currentStep === 6 && (
+          <Step6VolunteerRoles
+            formData={formData}
+            onChange={handleFieldChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {currentStep === 7 && (
+          <Step7SupportChoice
+            formData={formData}
+            onChange={handleFieldChange}
+            onNext={handleNext}
+            onBack={handleBack}
+            onCompleteWithoutPayment={() =>
+              handleSubmitJourney({
+                supportAmount: 0,
+                paymentStatus: 'none',
+                paymentMethod: 'none',
+              })
+            }
+            isSubmitting={isSubmitting}
+          />
+        )}
+        {currentStep === 8 && (
+          <Step8PaymentCheckout
+            formData={formData}
+            onPaymentSuccess={(paymentData) => handleSubmitJourney(paymentData)}
+            onBack={handleBack}
+            isSubmitting={isSubmitting}
+          />
+        )}
+        {currentStep === 9 && <Step5Celebration formData={formData} onReset={handleReset} />}
       </main>
 
       <Footer />

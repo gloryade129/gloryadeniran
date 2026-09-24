@@ -1,21 +1,25 @@
 'use client';
 import React from 'react';
 import { ArrowRight, Clock, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { WelcomeMascot } from './WelcomeMascot';
 
 export const Step0Welcome = ({ onStart }) => {
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '12px 0' }} className="it-animate-fade">
+      {/* Animated Welcome Guy Mascot */}
+      <WelcomeMascot />
+
       {/* Header Emblem */}
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <img
           src="/itsa-logo.png"
           alt="ITSA Emblem"
           style={{
-            width: '72px',
-            height: '72px',
+            width: '64px',
+            height: '64px',
             borderRadius: '50%',
             objectFit: 'cover',
-            margin: '0 auto 14px',
+            margin: '0 auto 12px',
             border: '2px solid #2563EB',
             boxShadow: '0 0 20px rgba(37, 99, 235, 0.35)',
           }}

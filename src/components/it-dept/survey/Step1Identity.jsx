@@ -1,9 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { ArrowRight, ArrowLeft, AlertCircle, Code, Server, Cpu, Shield, Layout, Cloud, Smartphone, Compass } from 'lucide-react';
-import { TECH_TRACKS, MONTH_NAMES } from '@/components/it-dept/types/survey';
-
-const ICON_MAP = { Code, Server, Cpu, Shield, Layout, Cloud, Smartphone, Compass };
+import { ArrowRight, ArrowLeft, AlertCircle, User, Hash, Mail, Phone, Calendar } from 'lucide-react';
+import { MONTH_NAMES } from '@/components/it-dept/types/survey';
 
 export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
   const [errorMsg, setErrorMsg] = useState('');
@@ -12,7 +10,6 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
   const isMatricValid = /^[A-Z0-9/]{6,16}$/.test(formData.matricNo.trim().toUpperCase());
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim());
   const isPhoneValid = formData.phone.trim().length >= 10;
-  const isTechTrackValid = Boolean(formData.techTrack);
 
   const handleContinue = () => {
     if (!isNameValid) {
@@ -31,20 +28,16 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
       setErrorMsg('Please enter a valid WhatsApp phone number.');
       return;
     }
-    if (!isTechTrackValid) {
-      setErrorMsg('Please select your preferred Tech Track / Career Interest.');
-      return;
-    }
 
     try {
       const prevEmail = localStorage.getItem('it_dept_submitted_email');
       const prevMatric = localStorage.getItem('it_dept_submitted_matric');
       if (prevEmail && prevEmail === formData.email.trim().toLowerCase()) {
-        setErrorMsg('A submission with this email address has already been recorded on this device. Each student can only submit once.');
+        setErrorMsg('A submission with this email address has already been recorded. Each student can only submit once.');
         return;
       }
       if (prevMatric && prevMatric === formData.matricNo.trim().toUpperCase()) {
-        setErrorMsg('This matriculation number has already submitted the survey on this device.');
+        setErrorMsg('This matriculation number has already submitted the survey.');
         return;
       }
     } catch (e) {}
@@ -55,28 +48,29 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto' }} className="it-animate-fade">
-      <div style={{ marginBottom: '20px' }}>
-        <span className="it-badge" style={{ marginBottom: '6px' }}>STEP 1 OF 4</span>
-        <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 700, color: '#FFFFFF', margin: '4px 0 6px' }}>
-          Student Identity & Profile
+      <div style={{ marginBottom: '24px' }}>
+        <span className="it-badge" style={{ marginBottom: '8px' }}>STEP 1 OF 7</span>
+        <h2 style={{ fontSize: 'clamp(1.4rem, 4.5vw, 1.85rem)', fontWeight: 800, color: '#FFFFFF', margin: '6px 0 8px', letterSpacing: '-0.02em' }}>
+          Student Identity & Records
         </h2>
-        <p style={{ fontSize: '0.875rem', color: '#94A3B8', margin: 0 }}>
-          Your directory details ensure effective communication and records for the department.
+        <p style={{ fontSize: '0.9375rem', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
+          Your directory details ensure smooth academic notifications, timetable releases, and class record verification.
         </p>
       </div>
 
       {errorMsg && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#FCA5A5', fontSize: '0.8125rem', marginBottom: '16px' }}>
-          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#FCA5A5', fontSize: '0.85rem', marginBottom: '20px' }}>
+          <AlertCircle size={18} style={{ flexShrink: 0 }} />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      <div className="it-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+      <div className="it-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
         {/* Full Name */}
         <div>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-            Full Official Name *
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+            <User size={15} color="#60A5FA" />
+            <span>Full Official Name *</span>
           </label>
           <input
             type="text"
@@ -84,14 +78,16 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
             placeholder="e.g., Adeniran Glory Oluwatobiloba"
             value={formData.fullName}
             onChange={(e) => onChange('fullName', e.target.value)}
+            style={{ fontSize: '0.9375rem', padding: '12px 14px' }}
           />
         </div>
 
         {/* Matric & WhatsApp */}
-        <div className="it-grid-2">
+        <div className="it-grid-2" style={{ gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-              Matriculation Number *
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+              <Hash size={15} color="#60A5FA" />
+              <span>Matriculation Number *</span>
             </label>
             <input
               type="text"
@@ -99,12 +95,13 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
               placeholder="e.g., 24/52HA042"
               value={formData.matricNo}
               onChange={(e) => onChange('matricNo', e.target.value.toUpperCase())}
-              style={{ textTransform: 'uppercase', fontFamily: 'JetBrains Mono, monospace' }}
+              style={{ textTransform: 'uppercase', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.9375rem', padding: '12px 14px' }}
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-              WhatsApp Phone Number *
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+              <Phone size={15} color="#60A5FA" />
+              <span>WhatsApp Phone *</span>
             </label>
             <input
               type="tel"
@@ -112,38 +109,43 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
               placeholder="e.g., 08012345678"
               value={formData.phone}
               onChange={(e) => onChange('phone', e.target.value)}
+              style={{ fontSize: '0.9375rem', padding: '12px 14px' }}
             />
           </div>
         </div>
 
         {/* Email */}
         <div>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-            Email Address * <span style={{ color: '#64748B', fontWeight: 400 }}>(For confirmation receipt)</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+            <Mail size={15} color="#60A5FA" />
+            <span>Email Address * <span style={{ color: '#64748B', fontWeight: 400, fontSize: '0.75rem' }}>(For confirmation receipt)</span></span>
           </label>
           <input
             type="email"
             className="it-input"
-            placeholder="e.g., student@gmail.com"
+            placeholder="e.g., scholar@gmail.com"
             value={formData.email}
             onChange={(e) => onChange('email', e.target.value)}
+            style={{ fontSize: '0.9375rem', padding: '12px 14px' }}
           />
         </div>
 
         {/* Birthday */}
         <div>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
-            Birthday Celebration Day & Month
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+            <Calendar size={15} color="#60A5FA" />
+            <span>Birthday (Day & Month)</span>
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '12px' }}>
             <select
               className="it-input"
               value={formData.birthDay}
               onChange={(e) => onChange('birthDay', Number(e.target.value))}
+              style={{ fontSize: '0.9375rem', padding: '12px 14px' }}
             >
               {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                 <option key={d} value={d} style={{ background: '#0C1220' }}>
-                  {d}
+                  Day {d}
                 </option>
               ))}
             </select>
@@ -151,6 +153,7 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
               className="it-input"
               value={formData.birthMonth}
               onChange={(e) => onChange('birthMonth', Number(e.target.value))}
+              style={{ fontSize: '0.9375rem', padding: '12px 14px' }}
             >
               {MONTH_NAMES.map((m, idx) => (
                 <option key={m} value={idx + 1} style={{ background: '#0C1220' }}>
@@ -160,49 +163,16 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
             </select>
           </div>
         </div>
-
-        {/* Tech Track Selection */}
-        <div>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
-            Primary Tech Track / Career Interest *
-          </label>
-          <div className="it-grid-tracks">
-            {TECH_TRACKS.map((track) => {
-              const IconComp = ICON_MAP[track.icon] || Code;
-              const isSelected = formData.techTrack === track.name;
-              return (
-                <div
-                  key={track.id}
-                  onClick={() => onChange('techTrack', track.name)}
-                  className={`it-card-interactive ${isSelected ? 'it-card-selected' : ''}`}
-                  style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}
-                >
-                  <div style={{ padding: '8px', borderRadius: '8px', background: isSelected ? '#2563EB' : 'rgba(255, 255, 255, 0.05)', color: isSelected ? '#FFFFFF' : '#94A3B8', flexShrink: 0 }}>
-                    <IconComp size={16} />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: isSelected ? '#93C5FD' : '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {track.name.split(' (')[0]}
-                    </p>
-                    <p style={{ margin: 0, fontSize: '0.6875rem', color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {track.desc}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* Nav Actions */}
       <div className="it-nav-actions">
-        <button type="button" onClick={onBack} className="it-btn-secondary">
+        <button type="button" onClick={onBack} className="it-btn-secondary" style={{ minHeight: '44px' }}>
           <ArrowLeft size={16} />
           <span>Back</span>
         </button>
-        <button type="button" onClick={handleContinue} className="it-btn-primary">
-          <span>Continue</span>
+        <button type="button" onClick={handleContinue} className="it-btn-primary" style={{ minHeight: '44px', minWidth: '150px' }}>
+          <span>Next: Tech Track</span>
           <ArrowRight size={16} />
         </button>
       </div>

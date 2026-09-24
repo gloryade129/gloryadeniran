@@ -257,3 +257,49 @@ export async function updatePaymentStatus(paymentRef, status = 'completed') {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Deletes a student profile and associated feedback from Supabase
+ */
+export async function deleteStudentSubmission(studentId, matricNo) {
+  if (!isSupabaseConfigured()) {
+    return { success: true, isDemo: true };
+  }
+
+  try {
+    // 1. Delete associated feedback if student_id is set
+    if (studentId) {
+      await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?student_id=eq.${encodeURIComponent(studentId)}`, {
+        method: 'DELETE',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      });
+    }
+
+    // 2. Delete student profile by id or matric_no
+    const query = studentId
+      ? `id=eq.${encodeURIComponent(studentId)}`
+      : `matric_no=ilike.${encodeURIComponent((matricNo || '').trim().toUpperCase())}`;
+
+    const res = await fetch(`${supabaseUrl}/rest/v1/students_profile?${query}`, {
+      method: 'DELETE',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('[it-dept-db] Delete error:', errText);
+      return { success: false, error: errText };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('[it-dept-db] Exception deleting student:', err);
+    return { success: false, error: err.message };
+  }
+}

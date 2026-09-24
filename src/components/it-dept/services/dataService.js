@@ -205,7 +205,27 @@ export class DataService {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
+    }
+  }
+
+  async deleteStudentResponse(studentId, matricNo, pin = '2025') {
+    try {
+      const res = await fetch('/api/it-dept/admin/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${pin}`,
+        },
+        body: JSON.stringify({ studentId, matricNo }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete student response.');
+      }
+      return { success: true };
+    } catch (err) {
+      console.error('Delete error:', err);
+      return { success: false, error: err.message };
     }
   }
 }

@@ -114,13 +114,13 @@ export const Step5Celebration = ({ formData, onReset }) => {
           </div>
         )}
 
-        {(formData.committees || []).length > 0 && (
+        {(formData.volunteerRoles || formData.committees || []).length > 0 && (
           <div style={{ marginTop: '4px' }}>
             <span style={{ fontSize: '0.6875rem', color: '#64748B', display: 'block', marginBottom: '6px' }}>
-              Committees Joined
+              Volunteer Roles Selected
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {formData.committees.map((comm) => (
+              {(formData.volunteerRoles || formData.committees || []).map((comm) => (
                 <span
                   key={comm}
                   className="it-chip it-chip-selected"
@@ -132,18 +132,30 @@ export const Step5Celebration = ({ formData, onReset }) => {
             </div>
           </div>
         )}
+
+        {Number(formData.supportAmount || 0) > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <CheckCircle2 size={16} color="#34D399" style={{ flexShrink: 0 }} />
+            <div>
+              <span style={{ fontSize: '0.6875rem', color: '#64748B', display: 'block' }}>Leadership Contribution</span>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#34D399' }}>
+                ₦{Number(formData.supportAmount).toLocaleString()} ({formData.paymentMethod === 'bank_transfer' ? 'Direct Bank Transfer' : 'Online Payment Verified'})
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Reset */}
+      {/* Done / Return */}
       <div>
         <button
           type="button"
           onClick={onReset}
           className="it-btn-secondary"
-          style={{ fontSize: '0.8125rem', padding: '10px 18px' }}
+          style={{ fontSize: '0.85rem', padding: '10px 22px' }}
         >
           <RotateCcw size={14} />
-          <span>Submit Another Response</span>
+          <span>Return to Home</span>
         </button>
       </div>
     </div>
