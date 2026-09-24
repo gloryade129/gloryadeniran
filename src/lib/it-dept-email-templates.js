@@ -1,11 +1,12 @@
-﻿/**
+/**
  * src/lib/it-dept-email-templates.js
  * HTML Email templates for Information Technology Department 2025-2029 Set.
  * Branded with ITSA Royal Blue, Space Grotesk styling, and zero emojis.
  */
 
-export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack, committees }) {
-  const commList = committees && committees.length > 0 ? committees.join(', ') : 'None selected';
+export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack, committees, volunteerRoles, supportAmount, paymentStatus }) {
+  const volRoles = volunteerRoles && volunteerRoles.length > 0 ? volunteerRoles.join(', ') : (committees && committees.length > 0 ? committees.join(', ') : 'None selected');
+  const hasContribution = Number(supportAmount) > 0;
 
   return `
 <!DOCTYPE html>
@@ -22,9 +23,6 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
     .body { padding: 32px 28px; }
     .greeting { font-size: 16px; font-weight: 600; color: #FFFFFF; margin-bottom: 16px; }
     .card { background: #101929; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .card-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 13px; }
-    .card-label { color: #94A3B8; }
-    .card-value { color: #FFFFFF; font-weight: 600; font-family: monospace; }
     .note-box { background: rgba(37, 99, 235, 0.08); border-left: 3px solid #2563EB; padding: 16px; margin: 24px 0; font-size: 13px; color: #CBD5E1; }
     .footer { padding: 24px 28px; background: #080D1A; border-top: 1px solid rgba(255, 255, 255, 0.06); font-size: 12px; color: #64748B; }
   </style>
@@ -40,7 +38,7 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
       <div class="body">
         <div class="greeting">Hello ${studentName},</div>
         <p style="margin: 0 0 16px 0;">
-          Congratulations on advancing to 200 Level! Your transition retrospective, leadership feedback, and committee preferences have been officially received by class leadership.
+          Congratulations on advancing to 200 Level! Your transition retrospective, leadership feedback, volunteer role selections, and leadership support have been officially received by class leadership.
         </p>
 
         <div class="card">
@@ -57,9 +55,15 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
               <td style="padding: 6px 0; color: #FFFFFF; font-size: 13px; text-align: right;">${techTrack || 'General Computing'}</td>
             </tr>
             <tr>
-              <td style="padding: 6px 0; color: #94A3B8; font-size: 13px;">Selected Committees:</td>
-              <td style="padding: 6px 0; color: #FFFFFF; font-size: 13px; text-align: right;">${commList}</td>
+              <td style="padding: 6px 0; color: #94A3B8; font-size: 13px;">Volunteered Role(s):</td>
+              <td style="padding: 6px 0; color: #FFFFFF; font-size: 13px; text-align: right;">${volRoles}</td>
             </tr>
+            ${hasContribution ? `
+            <tr>
+              <td style="padding: 6px 0; color: #94A3B8; font-size: 13px;">Leadership Support:</td>
+              <td style="padding: 6px 0; color: #38BDF8; font-size: 13px; text-align: right; font-weight: bold;">₦${Number(supportAmount).toLocaleString()} (${paymentStatus || 'pledged'})</td>
+            </tr>
+            ` : ''}
           </table>
         </div>
 
@@ -69,7 +73,7 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
         </div>
 
         <p style="font-size: 13px; color: #94A3B8; margin-bottom: 0;">
-          Your digital 200L Scholar Pass is active. Please stay engaged on our official class platforms for upcoming timetable releases, tutorial group pairings, and committee kickoff meetings.
+          Your transition details are active. Please stay engaged on our official class platforms for upcoming timetable releases, tutorial pairings, and committee kickoff meetings.
         </p>
       </div>
       <div class="footer">
@@ -83,9 +87,10 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
   `;
 }
 
-export function buildAdminAlertEmail({ studentName, studentEmail, matricNo, phone, techTrack, committees, academicRating100L, challenges, suggestions }) {
-  const commList = committees && committees.length > 0 ? committees.join(', ') : 'None';
+export function buildAdminAlertEmail({ studentName, studentEmail, matricNo, phone, techTrack, committees, volunteerRoles, supportChoice, supportAmount, paymentStatus, paymentRef, supportNote, academicRating100L, challenges, suggestions }) {
+  const volRoles = volunteerRoles && volunteerRoles.length > 0 ? volunteerRoles.join(', ') : (committees && committees.length > 0 ? committees.join(', ') : 'None');
   const challengeList = challenges && challenges.length > 0 ? challenges.join(', ') : 'None specified';
+  const hasSupport = Number(supportAmount) > 0 || supportChoice === 'yes' || supportChoice === 'support_yes';
 
   return `
 <!DOCTYPE html>
@@ -118,7 +123,10 @@ export function buildAdminAlertEmail({ studentName, studentEmail, matricNo, phon
         <tr><td class="label">Phone:</td><td class="val">${phone}</td></tr>
         <tr><td class="label">100L Rating:</td><td class="val">${academicRating100L}/5</td></tr>
         <tr><td class="label">Tech Track:</td><td class="val">${techTrack}</td></tr>
-        <tr><td class="label">Committees:</td><td class="val">${commList}</td></tr>
+        <tr><td class="label">Volunteer Role(s):</td><td class="val">${volRoles}</td></tr>
+        <tr><td class="label">Leadership Support:</td><td class="val" style="color: #60A5FA;">${hasSupport ? `₦${Number(supportAmount || 0).toLocaleString()} (${paymentStatus || 'pledged'})` : 'No financial support'}</td></tr>
+        ${paymentRef ? `<tr><td class="label">Payment Ref:</td><td class="val" style="font-family: monospace;">${paymentRef}</td></tr>` : ''}
+        ${supportNote ? `<tr><td class="label">Support Note:</td><td class="val" style="font-style: italic;">"${supportNote}"</td></tr>` : ''}
         <tr><td class="label">Key Challenges:</td><td class="val">${challengeList}</td></tr>
         <tr><td class="label">200L Suggestions:</td><td class="val">${suggestions || 'None provided'}</td></tr>
       </table>

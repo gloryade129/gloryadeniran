@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { saveStudentSubmission } from '@/lib/it-dept-db';
 import { buildStudentConfirmationEmail, buildAdminAlertEmail } from '@/lib/it-dept-email-templates';
 import { sendEmail } from '@/lib/brevo';
@@ -42,6 +42,9 @@ export async function POST(req) {
         matricNo: data.matricNo,
         techTrack: data.techTrack,
         committees: data.committees,
+        volunteerRoles: data.volunteerRoles || data.committees || [],
+        supportAmount: data.supportAmount,
+        paymentStatus: data.paymentStatus,
       });
 
       promises.push(
@@ -62,6 +65,12 @@ export async function POST(req) {
       phone: data.phone,
       techTrack: data.techTrack,
       committees: data.committees,
+      volunteerRoles: data.volunteerRoles || data.committees || [],
+      supportChoice: data.supportLeadershipChoice,
+      supportAmount: data.supportAmount,
+      paymentStatus: data.paymentStatus,
+      paymentRef: data.paymentRef,
+      supportNote: data.supportNote,
       academicRating100L: data.academicRating100L || 5,
       challenges: data.challenges100L,
       suggestions: data.suggestions200L,

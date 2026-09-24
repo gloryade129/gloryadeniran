@@ -70,30 +70,67 @@ export function computeAdminKpiMetrics(profiles, feedbacks) {
         return {
             totalSubmissions: 0,
             averageOverallRating: 0,
+            avgAcademicRating: 0,
             crCompositeScore: 0,
             acrCompositeScore: 0,
+            crCommunicationAvg: 0,
+            crMaterialsAvg: 0,
+            crAvailabilityAvg: 0,
+            crWelfareAvg: 0,
+            acrCommunicationAvg: 0,
+            acrMaterialsAvg: 0,
+            acrAvailabilityAvg: 0,
+            acrWelfareAvg: 0,
             topTechTracks: [],
+            topTechTrack: { name: 'N/A', count: 0 },
             topCommittees: [],
+            topCommittee: { name: 'N/A', count: 0 },
             ratingDistribution: [1, 2, 3, 4, 5].map(r => ({ rating: r, count: 0 })),
+            totalFundsPledged: 0,
+            totalFundsCollected: 0,
+            supportersCount: 0,
+            volunteersCount: 0,
         };
     }
     // 100L Academic retrospective average
-    const totalAcademicRating = profiles.reduce((sum, p) => sum + (p.academicRating100L || 0), 0);
+    const totalAcademicRating = profiles.reduce((sum, p) => sum + (Number(p.academicRating100L) || 0), 0);
     const averageOverallRating = Number((totalAcademicRating / totalSubmissions).toFixed(2));
+    const avgAcademicRating = averageOverallRating;
+
     // Leadership scores computation
-    let crSum = 0;
-    let acrSum = 0;
+    let crCommSum = 0, crMatSum = 0, crAvailSum = 0, crWelfSum = 0;
+    let acrCommSum = 0, acrMatSum = 0, acrAvailSum = 0, acrWelfSum = 0;
     const feedbackCount = feedbacks.length;
     if (feedbackCount > 0) {
         feedbacks.forEach(f => {
-            const crAvg = (f.crCommunication + f.crMaterials + f.crAvailability + f.crWelfare) / 4;
-            const acrAvg = (f.acrCommunication + f.acrMaterials + f.acrAvailability + f.acrWelfare) / 4;
-            crSum += crAvg;
-            acrSum += acrAvg;
+            crCommSum += Number(f.crCommunication) || 0;
+            crMatSum += Number(f.crMaterials) || 0;
+            crAvailSum += Number(f.crAvailability) || 0;
+            crWelfSum += Number(f.crWelfare) || 0;
+
+            acrCommSum += Number(f.acrCommunication) || 0;
+            acrMatSum += Number(f.acrMaterials) || 0;
+            acrAvailSum += Number(f.acrAvailability) || 0;
+            acrWelfSum += Number(f.acrWelfare) || 0;
         });
     }
-    const crCompositeScore = feedbackCount > 0 ? Number((crSum / feedbackCount).toFixed(2)) : 0;
-    const acrCompositeScore = feedbackCount > 0 ? Number((acrSum / feedbackCount).toFixed(2)) : 0;
+
+    const crCommunicationAvg = feedbackCount > 0 ? Number((crCommSum / feedbackCount).toFixed(2)) : 0;
+    const crMaterialsAvg = feedbackCount > 0 ? Number((crMatSum / feedbackCount).toFixed(2)) : 0;
+    const crAvailabilityAvg = feedbackCount > 0 ? Number((crAvailSum / feedbackCount).toFixed(2)) : 0;
+    const crWelfareAvg = feedbackCount > 0 ? Number((crWelfSum / feedbackCount).toFixed(2)) : 0;
+    const crCompositeScore = feedbackCount > 0 
+        ? Number(((crCommunicationAvg + crMaterialsAvg + crAvailabilityAvg + crWelfareAvg) / 4).toFixed(2)) 
+        : 0;
+
+    const acrCommunicationAvg = feedbackCount > 0 ? Number((acrCommSum / feedbackCount).toFixed(2)) : 0;
+    const acrMaterialsAvg = feedbackCount > 0 ? Number((acrMatSum / feedbackCount).toFixed(2)) : 0;
+    const acrAvailabilityAvg = feedbackCount > 0 ? Number((acrAvailSum / feedbackCount).toFixed(2)) : 0;
+    const acrWelfareAvg = feedbackCount > 0 ? Number((acrWelfSum / feedbackCount).toFixed(2)) : 0;
+    const acrCompositeScore = feedbackCount > 0 
+        ? Number(((acrCommunicationAvg + acrMaterialsAvg + acrAvailabilityAvg + acrWelfareAvg) / 4).toFixed(2)) 
+        : 0;
+
     // Tech track distribution
     const trackMap = {};
     profiles.forEach(p => {
@@ -103,29 +140,59 @@ export function computeAdminKpiMetrics(profiles, feedbacks) {
     });
     const topTechTracks = Object.entries(trackMap)
         .map(([track, count]) => ({
-        track,
-        count,
-        percentage: Number(((count / totalSubmissions) * 100).toFixed(1)),
-    }))
+            track,
+            count,
+            percentage: Number(((count / totalSubmissions) * 100).toFixed(1)),
+        }))
         .sort((a, b) => b.count - a.count);
-    // Committee sign-up demand
+    const topTechTrack = topTechTracks[0] 
+        ? { name: topTechTracks[0].track, count: topTechTracks[0].count }
+        : { name: 'N/A', count: 0 };
+
+    // Committee / Volunteer sign-up demand
     const committeeMap = {};
     profiles.forEach(p => {
-        p.committees?.forEach(c => {
+        const list = p.volunteerRoles || p.committees || [];
+        list.forEach(c => {
             committeeMap[c] = (committeeMap[c] || 0) + 1;
         });
     });
     const topCommittees = Object.entries(committeeMap)
         .map(([committee, count]) => ({
-        committee,
-        count,
-        percentage: Number(((count / totalSubmissions) * 100).toFixed(1)),
-    }))
+            committee,
+            count,
+            percentage: Number(((count / totalSubmissions) * 100).toFixed(1)),
+        }))
         .sort((a, b) => b.count - a.count);
+    const topCommittee = topCommittees[0]
+        ? { name: topCommittees[0].committee, count: topCommittees[0].count }
+        : { name: 'N/A', count: 0 };
+
+    // Voluntary Leadership Support & Contributions
+    let totalFundsPledged = 0;
+    let totalFundsCollected = 0;
+    let supportersCount = 0;
+    let volunteersCount = 0;
+
+    profiles.forEach(p => {
+        const amt = Number(p.supportAmount) || 0;
+        if (amt > 0 || p.supportChoice === 'yes' || p.supportChoice === 'support_yes') {
+            supportersCount++;
+            totalFundsPledged += amt;
+            if (p.paymentStatus === 'completed') {
+                totalFundsCollected += amt;
+            }
+        }
+        const roles = p.volunteerRoles || p.committees || [];
+        if (roles.length > 0) {
+            volunteersCount++;
+        }
+    });
+
     // Rating distribution (1-5 stars)
     const distCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     profiles.forEach(p => {
-        const r = Math.round(p.academicRating100L);
+        const r = Math.round(Number(p.academicRating100L) || 0);
         if (r >= 1 && r <= 5)
             distCounts[r]++;
     });
@@ -133,14 +200,30 @@ export function computeAdminKpiMetrics(profiles, feedbacks) {
         rating,
         count: distCounts[rating] || 0,
     }));
+
     return {
         totalSubmissions,
         averageOverallRating,
+        avgAcademicRating,
         crCompositeScore,
         acrCompositeScore,
+        crCommunicationAvg,
+        crMaterialsAvg,
+        crAvailabilityAvg,
+        crWelfareAvg,
+        acrCommunicationAvg,
+        acrMaterialsAvg,
+        acrAvailabilityAvg,
+        acrWelfareAvg,
         topTechTracks,
+        topTechTrack,
         topCommittees,
+        topCommittee,
         ratingDistribution,
+        totalFundsPledged,
+        totalFundsCollected,
+        supportersCount,
+        volunteersCount,
     };
 }
 // ---------------------------------------------------------------------------

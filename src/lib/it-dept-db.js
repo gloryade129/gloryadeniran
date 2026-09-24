@@ -67,6 +67,12 @@ export async function saveStudentSubmission(data) {
       toughest_courses: data.toughestCourses || [],
       challenges_100l: data.challenges100L || [],
       committees: data.committees || [],
+      volunteer_roles: data.volunteerRoles || [],
+      support_choice: data.supportLeadershipChoice || 'no',
+      support_amount: Number(data.supportAmount) || 0,
+      payment_status: data.paymentStatus || 'unpaid',
+      payment_ref: data.paymentRef || '',
+      support_note: data.supportNote || '',
       suggestions_200l: data.suggestions200L || '',
     };
 
@@ -162,6 +168,12 @@ export async function getAdminData() {
       toughestCourses: p.toughest_courses || [],
       challenges100L: p.challenges_100l || [],
       committees: p.committees || [],
+      volunteerRoles: p.volunteer_roles || [],
+      supportChoice: p.support_choice || 'no',
+      supportAmount: Number(p.support_amount) || 0,
+      paymentStatus: p.payment_status || 'unpaid',
+      paymentRef: p.payment_ref || '',
+      supportNote: p.support_note || '',
       suggestions200L: p.suggestions_200l || '',
       createdAt: p.created_at,
     }));
@@ -190,5 +202,27 @@ export async function getAdminData() {
   } catch (err) {
     console.error('[it-dept-db] Error fetching admin data:', err);
     return { profiles: [], feedbacks: [], isDemo: true };
+  }
+}
+
+/**
+ * Updates payment status of a student profile by payment_ref
+ */
+export async function updatePaymentStatus(paymentRef, status = 'completed') {
+  if (!isSupabaseConfigured() || !paymentRef) return { success: false };
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/students_profile?payment_ref=eq.${encodeURIComponent(paymentRef)}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ payment_status: status }),
+    });
+    return { success: res.ok };
+  } catch (err) {
+    console.error('[it-dept-db] Error updating payment status:', err);
+    return { success: false, error: err.message };
   }
 }

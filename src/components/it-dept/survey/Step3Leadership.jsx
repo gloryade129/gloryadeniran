@@ -75,7 +75,7 @@ export const Step3Leadership = ({ formData, onChange, onNext, onBack }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {METRICS.map((m) => {
               const field = `crRating${m.key}`;
-              const score = formData[field] || 5;
+              const score = formData[field] || 0;
               return (
                 <div key={m.key} className="it-rating-row">
                   <span style={{ fontSize: '0.8125rem', color: '#CBD5E1' }}>{m.label}</span>
@@ -85,10 +85,10 @@ export const Step3Leadership = ({ formData, onChange, onNext, onBack }) => {
                         key={star}
                         type="button"
                         onClick={() => onChange(field, star)}
-                        className={`it-star-btn ${score >= star ? 'active' : ''}`}
+                        className={`it-star-btn ${score > 0 && score >= star ? 'active' : ''}`}
                         aria-label={`${star} Stars`}
                       >
-                        <Star size={20} fill={score >= star ? '#3B82F6' : 'none'} color={score >= star ? '#3B82F6' : '#475569'} />
+                        <Star size={20} fill={score > 0 && score >= star ? '#3B82F6' : 'none'} color={score > 0 && score >= star ? '#3B82F6' : '#475569'} />
                       </button>
                     ))}
                   </div>
@@ -106,7 +106,7 @@ export const Step3Leadership = ({ formData, onChange, onNext, onBack }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {METRICS.map((m) => {
               const field = `acrRating${m.key}`;
-              const score = formData[field] || 5;
+              const score = formData[field] || 0;
               return (
                 <div key={m.key} className="it-rating-row">
                   <span style={{ fontSize: '0.8125rem', color: '#CBD5E1' }}>{m.label}</span>
@@ -116,10 +116,10 @@ export const Step3Leadership = ({ formData, onChange, onNext, onBack }) => {
                         key={star}
                         type="button"
                         onClick={() => onChange(field, star)}
-                        className={`it-star-btn ${score >= star ? 'active' : ''}`}
+                        className={`it-star-btn ${score > 0 && score >= star ? 'active' : ''}`}
                         aria-label={`${star} Stars`}
                       >
-                        <Star size={20} fill={score >= star ? '#3B82F6' : 'none'} color={score >= star ? '#3B82F6' : '#475569'} />
+                        <Star size={20} fill={score > 0 && score >= star ? '#3B82F6' : 'none'} color={score > 0 && score >= star ? '#3B82F6' : '#475569'} />
                       </button>
                     ))}
                   </div>

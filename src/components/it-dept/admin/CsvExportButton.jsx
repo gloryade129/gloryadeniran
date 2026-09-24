@@ -19,8 +19,12 @@ export const CsvExportButton = ({ profiles = [], feedbacks = [] }) => {
       '100L Rating',
       'Favorite Courses',
       'Toughest Courses',
-      'Challenges',
-      'Committees',
+      'Volunteer Roles',
+      'Support Choice',
+      'Support Amount (NGN)',
+      'Payment Status',
+      'Payment Ref',
+      'Support Note',
       'Suggestions 200L',
       'Date Submitted'
     ];
@@ -35,8 +39,12 @@ export const CsvExportButton = ({ profiles = [], feedbacks = [] }) => {
       p.academicRating100L || '',
       `"${(p.favoriteCourses || []).join(', ')}"`,
       `"${(p.toughestCourses || []).join(', ')}"`,
-      `"${(p.challenges100L || []).join('; ')}"`,
-      `"${(p.committees || []).join(', ')}"`,
+      `"${(p.volunteerRoles || []).join(', ')}"`,
+      `"${p.supportChoice || 'no'}"`,
+      p.supportAmount || 0,
+      `"${p.paymentStatus || 'unpaid'}"`,
+      `"${p.paymentRef || ''}"`,
+      `"${(p.supportNote || '').replace(/"/g, '""')}"`,
       `"${(p.suggestions200L || '').replace(/"/g, '""')}"`,
       `"${p.createdAt || ''}"`
     ]);

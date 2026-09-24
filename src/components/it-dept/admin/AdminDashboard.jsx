@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, BarChart3, MessageSquare, Users, Calendar, RefreshCw, Lock, ArrowLeft, Search, Database, Mail, Download, Send, X, CheckCircle2 } from 'lucide-react';
+import { Shield, BarChart3, MessageSquare, Users, Calendar, RefreshCw, Lock, ArrowLeft, Search, Database, Mail, Download, Send, X, CheckCircle2, Eye, Phone, Heart, Wallet, Star, ExternalLink } from 'lucide-react';
 import { dataService } from '@/components/it-dept/services/dataService';
 import { KpiOverview } from './KpiOverview';
 import { FeedbackCardList } from './FeedbackCardList';
@@ -21,6 +21,7 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
   const [errorMessage, setErrorMessage] = useState(null);
   const [lastRefreshed, setLastRefreshed] = useState('');
   const [directorySearch, setDirectorySearch] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   // Daily digest trigger state
   const [isSendingDigest, setIsSendingDigest] = useState(false);
@@ -357,15 +358,36 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                   <th>Email</th>
                   <th>Tech Track</th>
                   <th>Birthday</th>
-                  <th>Committees</th>
-                  <th>Direct Contact</th>
+                  <th>Volunteer Role(s)</th>
+                  <th>Support (₦)</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredDirectory.length > 0 ? (
                   filteredDirectory.map((student, idx) => (
                     <tr key={student.id || idx}>
-                      <td style={{ fontWeight: 600, color: '#FFFFFF' }}>{student.fullName}</td>
+                      <td style={{ fontWeight: 600, color: '#FFFFFF' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStudent(student)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#FFFFFF',
+                            fontWeight: 600,
+                            padding: 0,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <span>{student.fullName}</span>
+                          <Eye size={11} color="#60A5FA" />
+                        </button>
+                      </td>
                       <td style={{ fontFamily: 'monospace', color: '#93C5FD' }}>{student.matricNo}</td>
                       <td>{student.phone}</td>
                       <td>{student.email || '—'}</td>
@@ -376,26 +398,48 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                       </td>
                       <td>{student.birthday || `${student.birthDay}/${student.birthMonth}`}</td>
                       <td>
-                        {(student.committees || []).length > 0
-                          ? student.committees.join(', ')
+                        {(student.volunteerRoles || student.committees || []).length > 0
+                          ? (student.volunteerRoles || student.committees).join(', ')
                           : 'None'}
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEmailModal(student)}
-                          className="it-admin-btn"
-                          style={{ padding: '4px 10px', fontSize: '0.72rem' }}
-                        >
-                          <Mail size={12} />
-                          <span>Email</span>
-                        </button>
+                        {student.supportAmount > 0 ? (
+                          <span className="it-chip it-chip-selected" style={{ fontSize: '0.72rem', padding: '3px 8px' }}>
+                            ₦{Number(student.supportAmount).toLocaleString()} ({student.paymentStatus || 'pledged'})
+                          </span>
+                        ) : (
+                          <span style={{ color: '#64748B' }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudent(student)}
+                            className="it-admin-btn it-admin-btn-primary"
+                            style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+                            title="View full survey response"
+                          >
+                            <Eye size={12} />
+                            <span>View</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEmailModal(student)}
+                            className="it-admin-btn"
+                            style={{ padding: '4px 10px', fontSize: '0.72rem' }}
+                            title="Send email"
+                          >
+                            <Mail size={12} />
+                            <span>Email</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#64748B' }}>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: '#64748B' }}>
                       No student records found matching "{directorySearch}".
                     </td>
                   </tr>
@@ -489,6 +533,283 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                 >
                   <Send size={14} />
                   <span>{emailModal.isSending ? 'Sending...' : 'Send Message'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Single Student Response Modal */}
+      {selectedStudent && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 60,
+            background: 'rgba(6, 9, 19, 0.85)',
+            backdropFilter: 'blur(14px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            className="it-card"
+            style={{
+              width: '100%',
+              maxWidth: '640px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '24px',
+              position: 'relative',
+              borderRadius: '16px',
+            }}
+          >
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => setSelectedStudent(null)}
+              style={{
+                position: 'absolute',
+                top: '18px',
+                right: '18px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                color: '#94A3B8',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                padding: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            {/* Header info */}
+            <div style={{ marginBottom: '18px', paddingRight: '40px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>
+                  {selectedStudent.fullName}
+                </h3>
+                <span className="it-chip it-chip-selected" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                  {selectedStudent.techTrack || 'Computing'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.8125rem', color: '#93C5FD' }}>
+                <span style={{ fontFamily: 'monospace' }}>{selectedStudent.matricNo}</span>
+                <span style={{ color: '#475569' }}>•</span>
+                <span style={{ color: '#94A3B8' }}>{selectedStudent.birthday || `${selectedStudent.birthDay}/${selectedStudent.birthMonth}`}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Direct Contact Links */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {selectedStudent.phone && (
+                  <a
+                    href={`https://wa.me/${selectedStudent.phone.replace(/\D/g, '').startsWith('0') ? '234' + selectedStudent.phone.replace(/\D/g, '').slice(1) : selectedStudent.phone.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="it-admin-btn"
+                    style={{ background: 'rgba(34, 197, 94, 0.15)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#4ADE80' }}
+                  >
+                    <Phone size={13} />
+                    <span>WhatsApp ({selectedStudent.phone})</span>
+                  </a>
+                )}
+                {selectedStudent.email && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const st = selectedStudent;
+                      setSelectedStudent(null);
+                      handleOpenEmailModal(st);
+                    }}
+                    className="it-admin-btn it-admin-btn-primary"
+                  >
+                    <Mail size={13} />
+                    <span>Send Email ({selectedStudent.email})</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Leadership Support & Financial Contribution Card */}
+              <div
+                style={{
+                  background: 'rgba(37, 99, 235, 0.08)',
+                  border: '1px solid rgba(37, 99, 235, 0.25)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <Wallet size={16} color="#60A5FA" />
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
+                    Department Leadership Support
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', fontSize: '0.8125rem' }}>
+                  <div>
+                    <span style={{ color: '#94A3B8', fontSize: '0.72rem', display: 'block' }}>Contribution:</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: selectedStudent.supportAmount > 0 ? '#60A5FA' : '#94A3B8' }}>
+                      {selectedStudent.supportAmount > 0 ? `₦${Number(selectedStudent.supportAmount).toLocaleString()}` : 'No Financial Support'}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94A3B8', fontSize: '0.72rem', display: 'block' }}>Payment Status:</span>
+                    <span
+                      className="it-chip"
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '2px 8px',
+                        background: selectedStudent.paymentStatus === 'completed' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+                        color: selectedStudent.paymentStatus === 'completed' ? '#4ADE80' : '#FDE047',
+                        borderColor: selectedStudent.paymentStatus === 'completed' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
+                      }}
+                    >
+                      {selectedStudent.paymentStatus || 'pledged / pending'}
+                    </span>
+                  </div>
+                  {selectedStudent.paymentRef && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <span style={{ color: '#94A3B8', fontSize: '0.72rem', display: 'block' }}>Reference:</span>
+                      <span style={{ fontFamily: 'monospace', color: '#CBD5E1', fontSize: '0.75rem' }}>{selectedStudent.paymentRef}</span>
+                    </div>
+                  )}
+                  {selectedStudent.supportNote && (
+                    <div style={{ gridColumn: '1 / -1', marginTop: '4px' }}>
+                      <span style={{ color: '#94A3B8', fontSize: '0.72rem', display: 'block' }}>Student Support Note:</span>
+                      <p style={{ margin: '2px 0 0', fontStyle: 'italic', color: '#E2E8F0', fontSize: '0.8125rem' }}>
+                        "{selectedStudent.supportNote}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Volunteer Roles */}
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <Heart size={16} color="#EC4899" />
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
+                    Volunteered Role(s) for 200L
+                  </span>
+                </div>
+                {(selectedStudent.volunteerRoles || selectedStudent.committees || []).length > 0 ? (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {(selectedStudent.volunteerRoles || selectedStudent.committees).map((role, rIdx) => (
+                      <span key={rIdx} className="it-chip it-chip-selected" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '0.8125rem', color: '#64748B' }}>No volunteer roles selected.</span>
+                )}
+              </div>
+
+              {/* 100L Academic Review */}
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
+                    100L Academic Retrospective
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Star size={14} fill="#FBBF24" color="#FBBF24" />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF' }}>
+                      {selectedStudent.academicRating100L || 'N/A'} / 5.0
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8125rem' }}>
+                  {selectedStudent.favoriteCourses?.length > 0 && (
+                    <div>
+                      <span style={{ color: '#94A3B8', fontSize: '0.72rem', display: 'block', marginBottom: '2px' }}>Favorite Course(s):</span>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {selectedStudent.favoriteCourses.map((c, i) => (
+                          <span key={i} className="it-chip" style={{ fontSize: '0.72rem', padding: '2px 8px', color: '#60A5FA' }}>
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedStudent.toughestCourses?.length > 0 && (
+                    <div>
+                      <span style={{ color: '#94A3B8', fontSize: '0.72rem', display: 'block', marginBottom: '2px' }}>Toughest Course(s):</span>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {selectedStudent.toughestCourses.map((c, i) => (
+                          <span key={i} className="it-chip" style={{ fontSize: '0.72rem', padding: '2px 8px', color: '#F87171' }}>
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedStudent.challenges100L?.length > 0 && (
+                    <div>
+                      <span style={{ color: '#94A3B8', fontSize: '0.72rem', display: 'block', marginBottom: '2px' }}>Challenges Faced:</span>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {selectedStudent.challenges100L.map((c, i) => (
+                          <span key={i} className="it-chip" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 200L Suggestions */}
+              {selectedStudent.suggestions200L && (
+                <div
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    padding: '14px',
+                  }}
+                >
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                    Student Suggestions for 200 Level:
+                  </span>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#E2E8F0', lineHeight: 1.5 }}>
+                    "{selectedStudent.suggestions200L}"
+                  </p>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudent(null)}
+                  className="it-btn-secondary"
+                  style={{ minHeight: '38px', padding: '6px 18px', fontSize: '0.8125rem' }}
+                >
+                  Close
                 </button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- Information Technology Department (2025â€“2029 Set: 100L -> 200L Transition)
 -- Database Architecture & Schema Migration: supabase_schema.sql
 -- ============================================================================
@@ -29,12 +29,28 @@ CREATE TABLE IF NOT EXISTS students_profile (
     
     -- 200-Level Committee Sign-ups & Vision
     committees TEXT[] NOT NULL DEFAULT '{}'::text[],
+    volunteer_roles TEXT[] NOT NULL DEFAULT '{}'::text[],
+    
+    -- Department Leadership Support & Voluntary Contributions
+    support_choice VARCHAR(20) NOT NULL DEFAULT 'no',
+    support_amount NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    payment_status VARCHAR(30) NOT NULL DEFAULT 'unpaid',
+    payment_ref VARCHAR(100) DEFAULT '',
+    support_note TEXT DEFAULT '',
     suggestions_200l TEXT DEFAULT '',
     
     -- Timestamps
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Idempotent column migrations for existing instances:
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS volunteer_roles TEXT[] NOT NULL DEFAULT '{}'::text[];
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS support_choice VARCHAR(20) NOT NULL DEFAULT 'no';
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS support_amount NUMERIC(10, 2) NOT NULL DEFAULT 0;
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS payment_status VARCHAR(30) NOT NULL DEFAULT 'unpaid';
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS payment_ref VARCHAR(100) DEFAULT '';
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS support_note TEXT DEFAULT '';
 
 -- Case-insensitive & trimmed unique index on matric_no to prevent duplicates
 CREATE UNIQUE INDEX IF NOT EXISTS idx_students_profile_matric_unique 

@@ -1,23 +1,87 @@
 'use client';
-import React from 'react';
-import { ArrowLeft, Check, Sparkles, BookOpen, Laptop, HeartHandshake, Palette, Trophy } from 'lucide-react';
-import { CLASS_COMMITTEES } from '@/components/it-dept/types/survey';
+import React, { useState } from 'react';
+import { ArrowLeft, Check, Sparkles, Palette, Film, Share2, BookOpen, Laptop, HeartHandshake, Trophy, Camera, Heart, CreditCard, ShieldCheck } from 'lucide-react';
+import { VOLUNTEER_ROLES } from '@/components/it-dept/types/survey';
 
-const COMMITTEE_ICON_MAP = {
+const ROLE_ICONS = {
+  Palette,
+  Film,
+  Share2,
   BookOpen,
   Laptop,
   HeartHandshake,
-  Palette,
   Trophy,
+  Camera,
 };
 
+const CONTRIBUTION_PRESETS = [1000, 2000, 3000, 5000, 10000];
+
 export const Step4VisionCommittees = ({ formData, onChange, onSubmit, onBack, isSubmitting }) => {
-  const toggleCommittee = (commName) => {
-    const current = formData.committees || [];
-    if (current.includes(commName)) {
-      onChange('committees', current.filter(c => c !== commName));
+  const [customAmount, setCustomAmount] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  const toggleRole = (roleName) => {
+    const current = formData.volunteerRoles || [];
+    if (current.includes(roleName)) {
+      onChange('volunteerRoles', current.filter((r) => r !== roleName));
     } else {
-      onChange('committees', [...current, commName]);
+      onChange('volunteerRoles', [...current, roleName]);
+    }
+  };
+
+  const handleSelectPreset = (amt) => {
+    onChange('supportAmount', amt);
+    setCustomAmount('');
+  };
+
+  const handleCustomAmountChange = (val) => {
+    const numeric = Number(val.replace(/\D/g, '')) || 0;
+    setCustomAmount(val);
+    onChange('supportAmount', numeric);
+  };
+
+  const handleFinalSubmit = async () => {
+    // If student chose Flutterwave payment and amount > 0
+    if (formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0 && formData.paymentMethod === 'flutterwave') {
+      setIsProcessingPayment(true);
+      try {
+        const res = await fetch('/api/it-dept/flutterwave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: formData.supportAmount,
+            email: formData.email,
+            name: formData.fullName,
+            phone: formData.phone,
+            matricNo: formData.matricNo,
+            note: formData.supportNote,
+          }),
+        });
+        const flwData = await res.json();
+        if (flwData.success && flwData.paymentLink) {
+          // Save survey draft before redirecting to Flutterwave checkout
+          onChange('paymentStatus', 'pending_flutterwave');
+          onChange('paymentRef', flwData.txRef || '');
+          await onSubmit();
+          window.location.href = flwData.paymentLink;
+          return;
+        } else {
+          // If Flutterwave keys not active, gracefully record pledge and submit
+          onChange('paymentStatus', 'pledged');
+          await onSubmit();
+        }
+      } catch (e) {
+        console.warn('Flutterwave redirect fallback:', e);
+        onChange('paymentStatus', 'pledged');
+        await onSubmit();
+      } finally {
+        setIsProcessingPayment(false);
+      }
+    } else {
+      if (formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0) {
+        onChange('paymentStatus', 'pledged');
+      }
+      await onSubmit();
     }
   };
 
@@ -26,53 +90,241 @@ export const Step4VisionCommittees = ({ formData, onChange, onSubmit, onBack, is
       <div style={{ marginBottom: '20px' }}>
         <span className="it-badge" style={{ marginBottom: '6px' }}>STEP 4 OF 4</span>
         <h2 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 700, color: '#FFFFFF', margin: '4px 0 6px' }}>
-          Committees & Class Vision
+          Volunteering & Leadership Support
         </h2>
         <p style={{ fontSize: '0.875rem', color: '#94A3B8', margin: 0 }}>
-          Sign up for class committees to contribute your skills and share suggestions for our set.
+          Choose your creative volunteering roles and optionally support class leadership initiatives.
         </p>
       </div>
 
-      <div className="it-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px', marginBottom: '20px' }}>
-        <div>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
-            Select Committee Interests (Join 1 or more)
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+        {/* SECTION 1: CREATIVE VOLUNTEER ROLES */}
+        <div className="it-card" style={{ padding: '20px' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
+            Which role(s) do you choose to volunteer for?
           </label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {CLASS_COMMITTEES.map((comm) => {
-              const isSelected = (formData.committees || []).includes(comm.name);
-              const IconComp = COMMITTEE_ICON_MAP[comm.icon] || Sparkles;
+          <p style={{ fontSize: '0.75rem', color: '#94A3B8', margin: '0 0 14px' }}>
+            Select one or more specialized roles where you would love to contribute your talents to the department:
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {VOLUNTEER_ROLES.map((role) => {
+              const isSelected = (formData.volunteerRoles || []).includes(role.name);
+              const IconComp = ROLE_ICONS[role.icon] || Sparkles;
+
               return (
                 <div
-                  key={comm.id}
-                  onClick={() => toggleCommittee(comm.name)}
+                  key={role.id}
+                  onClick={() => toggleRole(role.name)}
                   className={`it-card-interactive ${isSelected ? 'it-card-selected' : ''}`}
-                  style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  style={{
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ padding: '8px', borderRadius: '8px', background: isSelected ? '#2563EB' : 'rgba(255, 255, 255, 0.05)', color: isSelected ? '#FFFFFF' : '#94A3B8', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                    <div
+                      style={{
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: isSelected ? '#2563EB' : 'rgba(255, 255, 255, 0.05)',
+                        color: isSelected ? '#FFFFFF' : '#94A3B8',
+                        flexShrink: 0,
+                      }}
+                    >
                       <IconComp size={16} />
                     </div>
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: isSelected ? '#93C5FD' : '#FFFFFF' }}>
-                        {comm.name}
+                        {role.name}
                       </p>
-                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748B' }}>
-                        {comm.desc}
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748B', lineHeight: 1.4 }}>
+                        {role.desc}
                       </p>
                     </div>
                   </div>
-                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isSelected ? 'none' : '1px solid #475569', background: isSelected ? '#2563EB' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      border: isSelected ? 'none' : '1px solid #475569',
+                      background: isSelected ? '#2563EB' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      marginLeft: '8px',
+                    }}
+                  >
                     {isSelected && <Check size={12} color="#FFFFFF" />}
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Custom volunteer input */}
+          <div style={{ marginTop: '12px' }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', marginBottom: '4px' }}>
+              Other specialized skill or role (Optional):
+            </label>
+            <input
+              type="text"
+              className="it-input"
+              placeholder="e.g. 3D Animator, Sound Engineer, Public Speaker..."
+              value={formData.customVolunteerRole || ''}
+              onChange={(e) => onChange('customVolunteerRole', e.target.value)}
+              style={{ padding: '8px 12px', fontSize: '0.8125rem' }}
+            />
+          </div>
         </div>
 
-        {/* Suggestions */}
-        <div>
+        {/* SECTION 2: CONTRIBUTION & LEADERSHIP SUPPORT PLATFORM */}
+        <div className="it-card" style={{ padding: '20px', border: '1px solid rgba(37, 99, 235, 0.3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6' }}>
+              <Heart size={16} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#FFFFFF' }}>
+              Department Leadership Support
+            </h3>
+          </div>
+
+          <p style={{ fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.5, margin: '0 0 14px' }}>
+            Would you love to support the department leadership (the Class Representative and the Assistant Class Representative) in funding semester welfare, tutorial resources, emergency assistance, and set logistics?
+          </p>
+
+          {/* Yes / No Choices */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+            <div
+              onClick={() => onChange('supportLeadershipChoice', 'yes')}
+              className={`it-card-interactive ${formData.supportLeadershipChoice === 'yes' ? 'it-card-selected' : ''}`}
+              style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}
+            >
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: formData.supportLeadershipChoice === 'yes' ? '5px solid #2563EB' : '1px solid #64748B', background: '#FFFFFF' }} />
+              <div>
+                <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: formData.supportLeadershipChoice === 'yes' ? '#93C5FD' : '#FFFFFF' }}>
+                  Yes, I'd love to contribute
+                </p>
+                <p style={{ margin: 0, fontSize: '0.6875rem', color: '#64748B' }}>
+                  Voluntary support for class leadership
+                </p>
+              </div>
+            </div>
+
+            <div
+              onClick={() => {
+                onChange('supportLeadershipChoice', 'no');
+                onChange('supportAmount', 0);
+              }}
+              className={`it-card-interactive ${formData.supportLeadershipChoice === 'no' ? 'it-card-selected' : ''}`}
+              style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}
+            >
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: formData.supportLeadershipChoice === 'no' ? '5px solid #2563EB' : '1px solid #64748B', background: '#FFFFFF' }} />
+              <div>
+                <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: formData.supportLeadershipChoice === 'no' ? '#93C5FD' : '#FFFFFF' }}>
+                  Not now, active participation
+                </p>
+                <p style={{ margin: 0, fontSize: '0.6875rem', color: '#64748B' }}>
+                  Support through team involvement
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* When YES is selected */}
+          {formData.supportLeadershipChoice === 'yes' && (
+            <div style={{ padding: '14px', borderRadius: '10px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.25)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#93C5FD', marginBottom: '6px' }}>
+                  Select Contribution Amount (₦)
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                  {CONTRIBUTION_PRESETS.map((amt) => {
+                    const isSelected = formData.supportAmount === amt && !customAmount;
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleSelectPreset(amt)}
+                        className={`it-chip ${isSelected ? 'it-chip-selected' : ''}`}
+                        style={{ padding: '6px 14px', fontSize: '0.8125rem', fontWeight: 600 }}
+                      >
+                        ₦{amt.toLocaleString()}
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  placeholder="Or enter custom amount in ₦ (e.g. 2500)..."
+                  className="it-input"
+                  style={{ padding: '8px 12px', fontSize: '0.8125rem' }}
+                  value={customAmount}
+                  onChange={(e) => handleCustomAmountChange(e.target.value)}
+                />
+              </div>
+
+              {/* Payment Method Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#93C5FD', marginBottom: '6px' }}>
+                  Contribution Method
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                  <div
+                    onClick={() => onChange('paymentMethod', 'flutterwave')}
+                    className={`it-card-interactive ${formData.paymentMethod === 'flutterwave' ? 'it-card-selected' : ''}`}
+                    style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}
+                  >
+                    <CreditCard size={14} color="#60A5FA" />
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 600, color: '#FFFFFF' }}>Pay Online (Flutterwave)</p>
+                      <p style={{ margin: 0, fontSize: '0.6875rem', color: '#94A3B8' }}>Cards, Bank Transfer, USSD</p>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => onChange('paymentMethod', 'pledge')}
+                    className={`it-card-interactive ${formData.paymentMethod === 'pledge' ? 'it-card-selected' : ''}`}
+                    style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}
+                  >
+                    <Check size={14} color="#34D399" />
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 600, color: '#FFFFFF' }}>Pledge & Transfer Later</p>
+                      <p style={{ margin: 0, fontSize: '0.6875rem', color: '#94A3B8' }}>Record voluntary pledge</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Encouragement note */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8', marginBottom: '4px' }}>
+                  Note to Class Rep & ACR (Optional):
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. For tutorial halls and class welfare..."
+                  className="it-input"
+                  style={{ padding: '8px 12px', fontSize: '0.8125rem' }}
+                  value={formData.supportNote || ''}
+                  onChange={(e) => onChange('supportNote', e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.6875rem', color: '#94A3B8' }}>
+                <ShieldCheck size={13} color="#3B82F6" />
+                <span>Integrated with Flutterwave API for secure payment processing.</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SECTION 3: SUGGESTIONS */}
+        <div className="it-card" style={{ padding: '20px' }}>
           <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '6px' }}>
             Suggestions or Ideas for our Class
           </label>
@@ -88,19 +340,26 @@ export const Step4VisionCommittees = ({ formData, onChange, onSubmit, onBack, is
 
       {/* Nav Actions */}
       <div className="it-nav-actions">
-        <button type="button" onClick={onBack} disabled={isSubmitting} className="it-btn-secondary">
+        <button type="button" onClick={onBack} disabled={isSubmitting || isProcessingPayment} className="it-btn-secondary">
           <ArrowLeft size={16} />
           <span>Back</span>
         </button>
         <button
           type="button"
-          onClick={onSubmit}
-          disabled={isSubmitting}
+          onClick={handleFinalSubmit}
+          disabled={isSubmitting || isProcessingPayment}
           className="it-btn-primary"
           style={{ minWidth: '180px' }}
         >
-          {isSubmitting ? (
-            <span>Submitting...</span>
+          {isProcessingPayment ? (
+            <span>Connecting Flutterwave...</span>
+          ) : isSubmitting ? (
+            <span>Submitting Survey...</span>
+          ) : formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0 && formData.paymentMethod === 'flutterwave' ? (
+            <>
+              <span>Pay ₦{Number(formData.supportAmount).toLocaleString()} & Submit</span>
+              <CreditCard size={16} />
+            </>
           ) : (
             <>
               <span>Submit Survey</span>

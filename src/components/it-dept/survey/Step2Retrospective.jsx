@@ -84,19 +84,19 @@ export const Step2Retrospective = ({ formData, onChange, onNext, onBack }) => {
                   key={star}
                   type="button"
                   onClick={() => onChange('academicRating100L', star)}
-                  className={`it-star-btn ${(formData.academicRating100L || 5) >= star ? 'active' : ''}`}
+                  className={`it-star-btn ${(formData.academicRating100L || 0) >= star && formData.academicRating100L > 0 ? 'active' : ''}`}
                   aria-label={`${star} Stars`}
                 >
                   <Star
                     size={28}
-                    fill={(formData.academicRating100L || 5) >= star ? '#3B82F6' : 'none'}
-                    color={(formData.academicRating100L || 5) >= star ? '#3B82F6' : '#475569'}
+                    fill={(formData.academicRating100L || 0) >= star && formData.academicRating100L > 0 ? '#3B82F6' : 'none'}
+                    color={(formData.academicRating100L || 0) >= star && formData.academicRating100L > 0 ? '#3B82F6' : '#475569'}
                   />
                 </button>
               ))}
             </div>
             <span style={{ fontSize: '0.8125rem', color: '#94A3B8', marginLeft: '6px', fontFamily: 'JetBrains Mono, monospace' }}>
-              {formData.academicRating100L || 5} of 5 Stars
+              {formData.academicRating100L > 0 ? `${formData.academicRating100L} of 5 Stars` : 'Tap to rate (1 to 5)'}
             </span>
           </div>
         </div>

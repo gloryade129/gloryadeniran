@@ -1,6 +1,6 @@
 'use client';
 import React, { useMemo } from 'react';
-import { Users, Award, BookOpen, Star, TrendingUp, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Users, Award, BookOpen, Star, TrendingUp, Sparkles, CheckCircle2, Wallet, HeartHandshake } from 'lucide-react';
 import { CLASS_COMMITTEES } from '@/components/it-dept/types/survey';
 import { computeAdminKpiMetrics } from './adminUtils';
 
@@ -44,7 +44,7 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* 4 Primary KPI Cards */}
+      {/* Primary KPI Cards Grid */}
       <div className="it-admin-kpi-grid">
         {/* Turnout */}
         <div className="it-admin-kpi-card">
@@ -99,6 +99,59 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
           </span>
         </div>
 
+        {/* Leadership Support & Contributions */}
+        <div className="it-admin-kpi-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>
+              Leadership Support
+            </span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6' }}>
+              <Wallet size={16} />
+            </div>
+          </div>
+          <div className="it-admin-kpi-val" style={{ marginBottom: '6px', color: '#60A5FA' }}>
+            ₦{Number(kpis.totalFundsPledged || 0).toLocaleString()}
+          </div>
+          <div style={{ fontSize: '0.6875rem', color: '#94A3B8', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span>{kpis.supportersCount || 0} student supporters</span>
+            <span style={{ color: '#38BDF8', fontWeight: 600 }}>
+              ₦{Number(kpis.totalFundsCollected || 0).toLocaleString()} paid
+            </span>
+          </div>
+          <div className="it-progress-track" style={{ height: '5px' }}>
+            <div
+              className="it-progress-fill"
+              style={{
+                width: `${kpis.totalFundsPledged > 0 ? Math.min(100, Math.round((kpis.totalFundsCollected / kpis.totalFundsPledged) * 100)) : 0}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Volunteer Talent Pool */}
+        <div className="it-admin-kpi-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase' }}>
+              Volunteer Talent Pool
+            </span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6' }}>
+              <HeartHandshake size={16} />
+            </div>
+          </div>
+          <div className="it-admin-kpi-val" style={{ marginBottom: '6px' }}>
+            {kpis.volunteersCount || 0}
+            <span style={{ fontSize: '0.8125rem', color: '#64748B', fontWeight: 400, marginLeft: '6px' }}>
+              talents
+            </span>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#60A5FA', margin: '2px 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            Top: {kpis.topCommittee?.name?.split(' (')[0] || 'Design / Tutorials'}
+          </div>
+          <span style={{ fontSize: '0.6875rem', color: '#94A3B8' }}>
+            Ready across 8 creative teams
+          </span>
+        </div>
+
         {/* 100L Academic Rating */}
         <div className="it-admin-kpi-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -113,10 +166,10 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
             {kpis.avgAcademicRating > 0 ? `${kpis.avgAcademicRating} / 5.0` : 'N/A'}
           </div>
           <div className="it-progress-track" style={{ height: '5px', marginBottom: '6px' }}>
-            <div className="it-progress-fill" style={{ width: `${Math.round((kpis.avgAcademicRating / 5) * 100)}%` }} />
+            <div className="it-progress-fill" style={{ width: `${Math.round(((kpis.avgAcademicRating || 0) / 5) * 100)}%` }} />
           </div>
           <span style={{ fontSize: '0.6875rem', color: '#94A3B8' }}>
-            Average across {profiles.length} student submissions
+            Cohort average retrospective
           </span>
         </div>
 
@@ -137,7 +190,7 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
             {kpis.topTechTrack?.count || 0} scholars enrolled
           </p>
           <div style={{ marginTop: '6px', fontSize: '0.6875rem', color: '#94A3B8' }}>
-            Top Committee: <span style={{ color: '#E2E8F0', fontWeight: 600 }}>{kpis.topCommittee?.name?.split(' ')[0] || 'Academic'}</span>
+            {kpis.topTechTracks?.[1] ? `Next: ${kpis.topTechTracks[1].track.split(' (')[0]}` : 'IT 2025-2029'}
           </div>
         </div>
       </div>
