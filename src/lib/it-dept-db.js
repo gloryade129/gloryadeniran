@@ -25,6 +25,7 @@ export function isSupabaseConfigured() {
  */
 export async function saveStudentSubmission(data) {
   const normalizedMatric = (data.matricNo || '').trim().toUpperCase();
+  const normalizedEmail = (data.email || '').trim().toLowerCase();
 
   if (!isSupabaseConfigured()) {
     console.warn('[it-dept-db] Supabase credentials not set in environment. Storing locally.');
@@ -32,31 +33,55 @@ export async function saveStudentSubmission(data) {
   }
 
   try {
-    // 1. Check for existing matric
-    const checkRes = await fetch(
-      `${supabaseUrl}/rest/v1/students_profile?matric_no=ilike.${encodeURIComponent(normalizedMatric)}&select=id&limit=1`,
-      {
-        method: 'GET',
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        cache: 'no-store',
-      }
-    );
+    // 1. Check for existing email (Single submission enforcement via email)
+    if (normalizedEmail) {
+      const emailCheckRes = await fetch(
+        `${supabaseUrl}/rest/v1/students_profile?email=ilike.${encodeURIComponent(normalizedEmail)}&select=id&limit=1`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          cache: 'no-store',
+        }
+      );
 
-    if (checkRes.ok) {
-      const existing = await checkRes.json();
-      if (Array.isArray(existing) && existing.length > 0) {
-        return { success: false, error: 'MATRIC_EXISTS' };
+      if (emailCheckRes.ok) {
+        const existingEmail = await emailCheckRes.json();
+        if (Array.isArray(existingEmail) && existingEmail.length > 0) {
+          return { success: false, error: 'EMAIL_EXISTS' };
+        }
       }
     }
 
-    // 2. Insert Student Profile
+    // 2. Check for existing matric
+    if (normalizedMatric) {
+      const matricCheckRes = await fetch(
+        `${supabaseUrl}/rest/v1/students_profile?matric_no=ilike.${encodeURIComponent(normalizedMatric)}&select=id&limit=1`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          cache: 'no-store',
+        }
+      );
+
+      if (matricCheckRes.ok) {
+        const existingMatric = await matricCheckRes.json();
+        if (Array.isArray(existingMatric) && existingMatric.length > 0) {
+          return { success: false, error: 'MATRIC_EXISTS' };
+        }
+      }
+    }
+
+    // 3. Insert Student Profile
     const profileRecord = {
       full_name: data.fullName?.trim(),
       matric_no: normalizedMatric,
-      email: data.email?.trim() || '',
+      email: normalizedEmail,
       phone: data.phone?.trim(),
       birthday: `${data.birthDay} Month ${data.birthMonth}`,
       birth_day: Number(data.birthDay),
@@ -90,6 +115,12 @@ export async function saveStudentSubmission(data) {
     if (!profileRes.ok) {
       const errText = await profileRes.text();
       console.error('[it-dept-db] Profile insert error:', errText);
+      if (errText.includes('email') || errText.includes('idx_students_profile_email')) {
+        return { success: false, error: 'EMAIL_EXISTS' };
+      }
+      if (errText.includes('matric_no') || errText.includes('idx_students_profile_matric')) {
+        return { success: false, error: 'MATRIC_EXISTS' };
+      }
       return { success: false, error: errText };
     }
 

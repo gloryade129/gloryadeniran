@@ -49,9 +49,9 @@ export class DataService {
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 409) {
-          return { success: false, error: 'MATRIC_EXISTS' };
+          return { success: false, error: data.error || 'A submission with this email or matric number has already been recorded.' };
         }
-        throw new Error(data.error || 'Submission failed');
+        return { success: false, error: data.error || 'Submission failed. Please try again.' };
       }
 
       const monthName = MONTH_NAMES[formData.birthMonth - 1] || `Month ${formData.birthMonth}`;

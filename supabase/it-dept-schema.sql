@@ -56,6 +56,10 @@ ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS support_note TEXT DEFAULT 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_students_profile_matric_unique 
     ON students_profile (UPPER(TRIM(matric_no)));
 
+-- Case-insensitive & trimmed unique index on email to prevent duplicate submissions by email
+CREATE UNIQUE INDEX IF NOT EXISTS idx_students_profile_email_unique 
+    ON students_profile (LOWER(TRIM(email))) WHERE email <> '';
+
 -- Performance indexes for analytics and calendar filtering
 CREATE INDEX IF NOT EXISTS idx_students_profile_tech_track 
     ON students_profile (tech_track);

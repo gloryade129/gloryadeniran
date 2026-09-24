@@ -41,9 +41,10 @@ export const Step4VisionCommittees = ({ formData, onChange, onSubmit, onBack, is
   };
 
   const handleFinalSubmit = async () => {
-    // If student chose Flutterwave payment and amount > 0
-    if (formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0 && formData.paymentMethod === 'flutterwave') {
+    // If student chose voluntary contribution and amount > 0
+    if (formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0) {
       setIsProcessingPayment(true);
+      onChange('paymentMethod', 'flutterwave');
       try {
         const res = await fetch('/api/it-dept/flutterwave', {
           method: 'POST',
@@ -59,28 +60,34 @@ export const Step4VisionCommittees = ({ formData, onChange, onSubmit, onBack, is
         });
         const flwData = await res.json();
         if (flwData.success && flwData.paymentLink) {
-          // Save survey draft before redirecting to Flutterwave checkout
           onChange('paymentStatus', 'pending_flutterwave');
           onChange('paymentRef', flwData.txRef || '');
-          await onSubmit();
+          await onSubmit({
+            paymentMethod: 'flutterwave',
+            paymentStatus: 'pending_flutterwave',
+            paymentRef: flwData.txRef || '',
+          });
           window.location.href = flwData.paymentLink;
           return;
         } else {
-          // If Flutterwave keys not active, gracefully record pledge and submit
-          onChange('paymentStatus', 'pledged');
-          await onSubmit();
+          // Fallback if keys are pending
+          onChange('paymentStatus', 'pending');
+          await onSubmit({
+            paymentMethod: 'flutterwave',
+            paymentStatus: 'pending',
+          });
         }
       } catch (e) {
-        console.warn('Flutterwave redirect fallback:', e);
-        onChange('paymentStatus', 'pledged');
-        await onSubmit();
+        console.warn('Flutterwave checkout fallback:', e);
+        onChange('paymentStatus', 'pending');
+        await onSubmit({
+          paymentMethod: 'flutterwave',
+          paymentStatus: 'pending',
+        });
       } finally {
         setIsProcessingPayment(false);
       }
     } else {
-      if (formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0) {
-        onChange('paymentStatus', 'pledged');
-      }
       await onSubmit();
     }
   };
@@ -268,35 +275,40 @@ export const Step4VisionCommittees = ({ formData, onChange, onSubmit, onBack, is
                 />
               </div>
 
-              {/* Payment Method Selector */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#93C5FD', marginBottom: '6px' }}>
-                  Contribution Method
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
-                  <div
-                    onClick={() => onChange('paymentMethod', 'flutterwave')}
-                    className={`it-card-interactive ${formData.paymentMethod === 'flutterwave' ? 'it-card-selected' : ''}`}
-                    style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}
-                  >
-                    <CreditCard size={14} color="#60A5FA" />
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 600, color: '#FFFFFF' }}>Pay Online (Flutterwave)</p>
-                      <p style={{ margin: 0, fontSize: '0.6875rem', color: '#94A3B8' }}>Cards, Bank Transfer, USSD</p>
-                    </div>
-                  </div>
-
-                  <div
-                    onClick={() => onChange('paymentMethod', 'pledge')}
-                    className={`it-card-interactive ${formData.paymentMethod === 'pledge' ? 'it-card-selected' : ''}`}
-                    style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}
-                  >
-                    <Check size={14} color="#34D399" />
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 600, color: '#FFFFFF' }}>Pledge & Transfer Later</p>
-                      <p style={{ margin: 0, fontSize: '0.6875rem', color: '#94A3B8' }}>Record voluntary pledge</p>
-                    </div>
-                  </div>
+              {/* Payment Processing Note: Flutterwave */}
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  border: '1px solid rgba(37, 99, 235, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: 'rgba(37, 99, 235, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#60A5FA',
+                    flexShrink: 0,
+                  }}
+                >
+                  <CreditCard size={18} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: '#FFFFFF' }}>
+                    Pay Online via Flutterwave
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#93C5FD' }}>
+                    Instant, secure payment with ATM Cards, Bank Transfer, or USSD
+                  </p>
                 </div>
               </div>
 
@@ -355,7 +367,7 @@ export const Step4VisionCommittees = ({ formData, onChange, onSubmit, onBack, is
             <span>Connecting Flutterwave...</span>
           ) : isSubmitting ? (
             <span>Submitting Survey...</span>
-          ) : formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0 && formData.paymentMethod === 'flutterwave' ? (
+          ) : formData.supportLeadershipChoice === 'yes' && (formData.supportAmount || 0) > 0 ? (
             <>
               <span>Pay ₦{Number(formData.supportAmount).toLocaleString()} & Submit</span>
               <CreditCard size={16} />

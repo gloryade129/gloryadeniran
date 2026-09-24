@@ -20,9 +20,15 @@ export async function POST(req) {
     // 1. Save to Database
     const dbResult = await saveStudentSubmission(data);
     if (!dbResult.success) {
+      if (dbResult.error === 'EMAIL_EXISTS') {
+        return NextResponse.json(
+          { error: 'A submission with this email address has already been recorded. Each student can only submit once.' },
+          { status: 409 }
+        );
+      }
       if (dbResult.error === 'MATRIC_EXISTS') {
         return NextResponse.json(
-          { error: 'This matriculation number has already completed the 200L transition journey.' },
+          { error: 'This matriculation number has already completed the 200L transition journey. Each student can only submit once.' },
           { status: 409 }
         );
       }

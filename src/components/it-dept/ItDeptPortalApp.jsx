@@ -67,26 +67,34 @@ export const App = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const handleSubmitJourney = useCallback(async () => {
+  const handleSubmitJourney = useCallback(async (overrides = {}) => {
     setIsSubmitting(true);
+    const payload = { ...formData, ...overrides };
     try {
-      const res = await dataService.submitStudentJourney(formData);
+      const res = await dataService.submitStudentJourney(payload);
       if (!res.success) {
-        if (res.error === 'MATRIC_EXISTS') {
-          alert('This matriculation number has already submitted the survey.');
-        } else {
-          alert(res.error || 'Submission failed. Please check your network and try again.');
-        }
+        alert(res.error || 'Submission failed. Please check your network and try again.');
         setIsSubmitting(false);
-        return;
+        return false;
       }
+      try {
+        if (payload.email) {
+          localStorage.setItem('it_dept_submitted_email', payload.email.trim().toLowerCase());
+        }
+        if (payload.matricNo) {
+          localStorage.setItem('it_dept_submitted_matric', payload.matricNo.trim().toUpperCase());
+        }
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch (e) {}
       setIsSubmitting(false);
       setCurrentStep(5);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
     } catch (err) {
       console.error('Submission failed:', err);
+      alert(err.message || 'Submission failed. Please check your network and try again.');
       setIsSubmitting(false);
-      setCurrentStep(5);
+      return false;
     }
   }, [formData]);
 

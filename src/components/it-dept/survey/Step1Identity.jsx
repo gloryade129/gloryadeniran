@@ -35,6 +35,20 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack }) => {
       setErrorMsg('Please select your preferred Tech Track / Career Interest.');
       return;
     }
+
+    try {
+      const prevEmail = localStorage.getItem('it_dept_submitted_email');
+      const prevMatric = localStorage.getItem('it_dept_submitted_matric');
+      if (prevEmail && prevEmail === formData.email.trim().toLowerCase()) {
+        setErrorMsg('A submission with this email address has already been recorded on this device. Each student can only submit once.');
+        return;
+      }
+      if (prevMatric && prevMatric === formData.matricNo.trim().toUpperCase()) {
+        setErrorMsg('This matriculation number has already submitted the survey on this device.');
+        return;
+      }
+    } catch (e) {}
+
     setErrorMsg('');
     onNext();
   };
