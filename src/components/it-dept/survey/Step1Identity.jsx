@@ -4,7 +4,7 @@ import { ArrowRight, ArrowLeft, User, Hash, Mail, Phone, Calendar, Loader2, User
 import { MONTH_NAMES } from '@/components/it-dept/types/survey';
 import { dataService } from '../services/dataService';
 
-export const Step1Identity = ({ formData, onChange, onNext, onBack, onReturningStudent, showToast }) => {
+export const Step1Identity = ({ formData, onChange, onNext, onBack, onReturningStudent, onViewCompleted, showToast }) => {
   const [isChecking, setIsChecking] = useState(false);
   const [matchedStudentRecord, setMatchedStudentRecord] = useState(null);
 
@@ -194,8 +194,8 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, onReturningS
           style={{
             padding: '16px 18px',
             marginBottom: '20px',
-            border: '1.5px solid #2563EB',
-            background: 'rgba(37, 99, 235, 0.12)',
+            border: matchedStudentRecord.hasCompletedAll ? '1.5px solid #10B981' : '1.5px solid #2563EB',
+            background: matchedStudentRecord.hasCompletedAll ? 'rgba(16, 185, 129, 0.1)' : 'rgba(37, 99, 235, 0.12)',
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
@@ -207,11 +207,11 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, onReturningS
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
-                background: 'rgba(37, 99, 235, 0.25)',
+                background: matchedStudentRecord.hasCompletedAll ? 'rgba(16, 185, 129, 0.25)' : 'rgba(37, 99, 235, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#60A5FA',
+                color: matchedStudentRecord.hasCompletedAll ? '#34D399' : '#60A5FA',
                 flexShrink: 0,
               }}
             >
@@ -219,35 +219,79 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, onReturningS
             </div>
             <div>
               <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF' }}>
-                Previous Submission Found for {matchedStudentRecord.fullName || formData.fullName}
+                {matchedStudentRecord.hasCompletedAll
+                  ? `Survey Already Completed for ${matchedStudentRecord.fullName || formData.fullName}`
+                  : `Previous Submission Found for ${matchedStudentRecord.fullName || formData.fullName}`}
               </h4>
-              <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#93C5FD', fontFamily: 'JetBrains Mono, monospace' }}>
+              <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: matchedStudentRecord.hasCompletedAll ? '#6EE7B7' : '#93C5FD', fontFamily: 'JetBrains Mono, monospace' }}>
                 Matric: {matchedStudentRecord.matricNo || formData.matricNo}
               </p>
             </div>
           </div>
 
           <p style={{ margin: 0, fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.5 }}>
-            You previously submitted your student directory details. You don't need to refill earlier steps—jump straight to answering the newly added questions (Glory CR & Esther ACR continuation)!
+            {matchedStudentRecord.hasCompletedAll
+              ? 'Your submission, including all leadership continuation questions, has already been safely recorded and secured in our database. No duplicate submission is needed!'
+              : "You previously submitted your student directory details. You don't need to refill earlier steps—jump straight to answering the newly added questions (Glory CR & Esther ACR continuation)!"}
           </p>
 
-          <button
-            type="button"
-            onClick={() => onReturningStudent?.(matchedStudentRecord)}
-            className="it-btn-primary"
-            style={{
-              padding: '10px 18px',
-              fontSize: '0.85rem',
-              alignSelf: 'flex-start',
-              background: '#2563EB',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <UserCheck size={16} />
-            <span>Jump to New Leadership Questions →</span>
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+            {matchedStudentRecord.hasCompletedAll ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onViewCompleted?.(matchedStudentRecord)}
+                  className="it-btn-primary"
+                  style={{
+                    padding: '10px 18px',
+                    fontSize: '0.85rem',
+                    alignSelf: 'flex-start',
+                    background: '#2563EB',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <UserCheck size={16} />
+                  <span>View My 200L Pass & Submission Details →</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onReturningStudent?.(matchedStudentRecord)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#60A5FA',
+                    fontSize: '0.75rem',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start',
+                    padding: '2px 0',
+                  }}
+                >
+                  Want to modify an answer? Open edit mode
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onReturningStudent?.(matchedStudentRecord)}
+                className="it-btn-primary"
+                style={{
+                  padding: '10px 18px',
+                  fontSize: '0.85rem',
+                  alignSelf: 'flex-start',
+                  background: '#2563EB',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <UserCheck size={16} />
+                <span>Jump to New Leadership Questions →</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 

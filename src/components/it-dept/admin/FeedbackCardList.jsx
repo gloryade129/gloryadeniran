@@ -58,18 +58,20 @@ export const FeedbackCardList = ({ feedbacks = [], profiles = [] }) => {
       const acrRecommendContinue = f.acrRecommendContinue || matchedProfile?.acrRecommendContinue || '';
       const acrRecommendReason = (f.acrRecommendReason || matchedProfile?.acrRecommendReason || '').trim();
 
-      const crComm = Number(f.crCommunication) || 5;
-      const crMat = Number(f.crMaterials) || 5;
-      const crAvail = Number(f.crAvailability) || 5;
-      const crWelf = Number(f.crWelfare) || 5;
+      const crComm = Number(f.crCommunication) || 0;
+      const crMat = Number(f.crMaterials) || 0;
+      const crAvail = Number(f.crAvailability) || 0;
+      const crWelf = Number(f.crWelfare) || 0;
 
-      const acrComm = Number(f.acrCommunication) || 5;
-      const acrMat = Number(f.acrMaterials) || 5;
-      const acrAvail = Number(f.acrAvailability) || 5;
-      const acrWelf = Number(f.acrWelfare) || 5;
+      const acrComm = Number(f.acrCommunication) || 0;
+      const acrMat = Number(f.acrMaterials) || 0;
+      const acrAvail = Number(f.acrAvailability) || 0;
+      const acrWelf = Number(f.acrWelfare) || 0;
 
-      const sumScores = crComm + crMat + crAvail + crWelf + acrComm + acrMat + acrAvail + acrWelf;
-      const computedScore = Math.round((sumScores / 8) * 100) / 100;
+      const nonZeroRatings = [crComm, crMat, crAvail, crWelf, acrComm, acrMat, acrAvail, acrWelf].filter(r => r > 0);
+      const computedScore = nonZeroRatings.length > 0
+        ? Math.round((nonZeroRatings.reduce((a, b) => a + b, 0) / nonZeroRatings.length) * 10) / 10
+        : 0;
       const score = Number(f.overallScore) > 0 ? Number(f.overallScore) : computedScore;
 
       const hasAnyComment = Boolean(

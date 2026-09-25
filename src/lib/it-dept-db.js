@@ -87,7 +87,7 @@ export async function saveStudentSubmission(data) {
       birth_day: Number(data.birthDay),
       birth_month: Number(data.birthMonth),
       tech_track: data.techTrack,
-      academic_rating_100l: Number(data.academicRating100L) || 5,
+      academic_rating_100l: Number(data.academicRating100L) || 0,
       favorite_courses: data.favoriteCourses || [],
       toughest_courses: data.toughestCourses || [],
       challenges_100l: data.challenges100L || [],
@@ -163,14 +163,14 @@ export async function saveStudentSubmission(data) {
     const feedbackRecord = {
       student_id: isAnonymous ? null : profileId,
       is_anonymous: isAnonymous,
-      cr_communication: Number(data.crRatingCommunication) || 5,
-      cr_materials: Number(data.crRatingMaterials) || 5,
-      cr_availability: Number(data.crRatingAvailability) || 5,
-      cr_welfare: Number(data.crRatingWelfare) || 5,
-      acr_communication: Number(data.acrRatingCommunication) || 5,
-      acr_materials: Number(data.acrRatingMaterials) || 5,
-      acr_availability: Number(data.acrRatingAvailability) || 5,
-      acr_welfare: Number(data.acrRatingWelfare) || 5,
+      cr_communication: Number(data.crRatingCommunication) || 0,
+      cr_materials: Number(data.crRatingMaterials) || 0,
+      cr_availability: Number(data.crRatingAvailability) || 0,
+      cr_welfare: Number(data.crRatingWelfare) || 0,
+      acr_communication: Number(data.acrRatingCommunication) || 0,
+      acr_materials: Number(data.acrRatingMaterials) || 0,
+      acr_availability: Number(data.acrRatingAvailability) || 0,
+      acr_welfare: Number(data.acrRatingWelfare) || 0,
       well_done: wellDoneVal,
       critical_areas: criticalAreasVal,
       cr_recommend_continue: data.crRecommendContinue || '',
@@ -251,7 +251,7 @@ export async function getAdminData() {
       birthDay: p.birth_day,
       birthMonth: p.birth_month,
       techTrack: p.tech_track,
-      academicRating100L: p.academic_rating_100l,
+      academicRating100L: Number(p.academic_rating_100l) || 0,
       favoriteCourses: p.favorite_courses || [],
       toughestCourses: p.toughest_courses || [],
       challenges100L: p.challenges_100l || [],
@@ -296,27 +296,47 @@ export async function getAdminData() {
         ''
       ).trim();
 
-      const crRecommendContinue = f.cr_recommend_continue || matchedProfile?.crRecommendContinue || '';
-      const crRecommendReason = f.cr_recommend_reason || matchedProfile?.crRecommendReason || '';
-      const acrRecommendContinue = f.acr_recommend_continue || matchedProfile?.acrRecommendContinue || '';
-      const acrRecommendReason = f.acr_recommend_reason || matchedProfile?.acrRecommendReason || '';
+      let crRecommendContinue = f.cr_recommend_continue || matchedProfile?.crRecommendContinue || '';
+      let crRecommendReason = f.cr_recommend_reason || matchedProfile?.crRecommendReason || '';
+      let acrRecommendContinue = f.acr_recommend_continue || matchedProfile?.acrRecommendContinue || '';
+      let acrRecommendReason = f.acr_recommend_reason || matchedProfile?.acrRecommendReason || '';
+
+      // Fallback regex extraction if embedded in critical_areas or suggestions_200l
+      if (!crRecommendContinue) {
+        const textSource = `${criticalAreas} ${matchedProfile?.suggestions200L || ''}`;
+        const crMatch = textSource.match(/\[CR Continue:\s*([A-Za-z]+)\](?:\s*Reason:\s*([^\[\n\r]+))?/i);
+        if (crMatch) {
+          crRecommendContinue = crMatch[1].toLowerCase();
+          if (!crRecommendReason && crMatch[2]) crRecommendReason = crMatch[2].trim();
+        }
+      }
+      if (!acrRecommendContinue) {
+        const textSource = `${criticalAreas} ${matchedProfile?.suggestions200L || ''}`;
+        const acrMatch = textSource.match(/\[ACR Esther Continue:\s*([A-Za-z]+)\](?:\s*Reason:\s*([^\[\n\r]+))?/i);
+        if (acrMatch) {
+          acrRecommendContinue = acrMatch[1].toLowerCase();
+          if (!acrRecommendReason && acrMatch[2]) acrRecommendReason = acrMatch[2].trim();
+        }
+      }
 
       const suggestions200L = matchedProfile?.suggestions200L || '';
       const supportNote = matchedProfile?.supportNote || '';
       const challenges100L = matchedProfile?.challenges100L || [];
 
-      // Compute overall score average across all 8 metrics if not already stored
-      const crComm = Number(f.cr_communication) || 5;
-      const crMat = Number(f.cr_materials) || 5;
-      const crAvail = Number(f.cr_availability) || 5;
-      const crWelf = Number(f.cr_welfare) || 5;
-      const acrComm = Number(f.acr_communication) || 5;
-      const acrMat = Number(f.acr_materials) || 5;
-      const acrAvail = Number(f.acr_availability) || 5;
-      const acrWelf = Number(f.acr_welfare) || 5;
+      // Compute overall score average across non-zero ratings
+      const crComm = Number(f.cr_communication) || 0;
+      const crMat = Number(f.cr_materials) || 0;
+      const crAvail = Number(f.cr_availability) || 0;
+      const crWelf = Number(f.cr_welfare) || 0;
+      const acrComm = Number(f.acr_communication) || 0;
+      const acrMat = Number(f.acr_materials) || 0;
+      const acrAvail = Number(f.acr_availability) || 0;
+      const acrWelf = Number(f.acr_welfare) || 0;
 
-      const sumScores = crComm + crMat + crAvail + crWelf + acrComm + acrMat + acrAvail + acrWelf;
-      const computedOverall = Math.round((sumScores / 8) * 100) / 100;
+      const nonZeroRatings = [crComm, crMat, crAvail, crWelf, acrComm, acrMat, acrAvail, acrWelf].filter(r => r > 0);
+      const computedOverall = nonZeroRatings.length > 0
+        ? Math.round((nonZeroRatings.reduce((a, b) => a + b, 0) / nonZeroRatings.length) * 100) / 100
+        : 0;
       const finalScore = Number(f.overall_score) > 0 ? Number(f.overall_score) : computedOverall;
 
       return {
@@ -542,10 +562,39 @@ export async function lookupStudentByMatric(matricNo, email) {
       }
     }
 
+    // Determine if student has already completed all questions (including continuation questions)
+    let crCont = profile.cr_recommend_continue || feedback?.cr_recommend_continue || '';
+    let crRsn = profile.cr_recommend_reason || feedback?.cr_recommend_reason || '';
+    let acrCont = profile.acr_recommend_continue || feedback?.acr_recommend_continue || '';
+    let acrRsn = profile.acr_recommend_reason || feedback?.acr_recommend_reason || '';
+
+    // Check fallback text embeds
+    const embeddedText = `${profile.suggestions_200l || ''} ${feedback?.critical_areas || ''}`;
+    if (!crCont) {
+      const crM = embeddedText.match(/\[CR Continue:\s*([A-Za-z]+)\](?:\s*Reason:\s*([^\[\n\r]+))?/i);
+      if (crM) {
+        crCont = crM[1].toLowerCase();
+        if (!crRsn && crM[2]) crRsn = crM[2].trim();
+      }
+    }
+    if (!acrCont) {
+      const acrM = embeddedText.match(/\[ACR Esther Continue:\s*([A-Za-z]+)\](?:\s*Reason:\s*([^\[\n\r]+))?/i);
+      if (acrM) {
+        acrCont = acrM[1].toLowerCase();
+        if (!acrRsn && acrM[2]) acrRsn = acrM[2].trim();
+      }
+    }
+
+    const hasCompletedAll = Boolean(crCont && crCont.trim());
+
     return {
       found: true,
+      hasCompletedAll,
+      feedbackId: feedback?.id || null,
       student: {
         profileId: profile.id,
+        feedbackId: feedback?.id || null,
+        hasCompletedAll,
         fullName: profile.full_name,
         matricNo: profile.matric_no,
         email: profile.email || '',
@@ -553,7 +602,7 @@ export async function lookupStudentByMatric(matricNo, email) {
         birthDay: profile.birth_day || 1,
         birthMonth: profile.birth_month || 1,
         techTrack: profile.tech_track || '',
-        academicRating100L: profile.academic_rating_100l || 5,
+        academicRating100L: Number(profile.academic_rating_100l) || 0,
         favoriteCourses: profile.favorite_courses || [],
         toughestCourses: profile.toughest_courses || [],
         challenges100L: profile.challenges_100l || [],
@@ -566,18 +615,18 @@ export async function lookupStudentByMatric(matricNo, email) {
         supportNote: profile.support_note || '',
         suggestions200L: profile.suggestions_200l || '',
         vision200L: profile.suggestions_200l || '',
-        crRecommendContinue: profile.cr_recommend_continue || feedback?.cr_recommend_continue || '',
-        crRecommendReason: profile.cr_recommend_reason || feedback?.cr_recommend_reason || '',
-        acrRecommendContinue: profile.acr_recommend_continue || feedback?.acr_recommend_continue || '',
-        acrRecommendReason: profile.acr_recommend_reason || feedback?.acr_recommend_reason || '',
-        crRatingCommunication: feedback?.cr_communication || 5,
-        crRatingMaterials: feedback?.cr_materials || 5,
-        crRatingAvailability: feedback?.cr_availability || 5,
-        crRatingWelfare: feedback?.cr_welfare || 5,
-        acrRatingCommunication: feedback?.acr_communication || 5,
-        acrRatingMaterials: feedback?.acr_materials || 5,
-        acrRatingAvailability: feedback?.acr_availability || 5,
-        acrRatingWelfare: feedback?.acr_welfare || 5,
+        crRecommendContinue: crCont,
+        crRecommendReason: crRsn,
+        acrRecommendContinue: acrCont,
+        acrRecommendReason: acrRsn,
+        crRatingCommunication: Number(feedback?.cr_communication) || 0,
+        crRatingMaterials: Number(feedback?.cr_materials) || 0,
+        crRatingAvailability: Number(feedback?.cr_availability) || 0,
+        crRatingWelfare: Number(feedback?.cr_welfare) || 0,
+        acrRatingCommunication: Number(feedback?.acr_communication) || 0,
+        acrRatingMaterials: Number(feedback?.acr_materials) || 0,
+        acrRatingAvailability: Number(feedback?.acr_availability) || 0,
+        acrRatingWelfare: Number(feedback?.acr_welfare) || 0,
         leadershipWellDone: feedback?.well_done || '',
         leadershipPraises: feedback?.well_done || '',
         leadershipCriticalAreas: feedback?.critical_areas || '',
@@ -660,14 +709,14 @@ export async function updateStudentSubmission(data) {
     const criticalAreasVal = (data.leadershipCriticalAreas || data.leadershipImprovements || data.criticalAreas || '').trim();
 
     const feedbackUpdates = {
-      cr_communication: Number(data.crRatingCommunication) || 5,
-      cr_materials: Number(data.crRatingMaterials) || 5,
-      cr_availability: Number(data.crRatingAvailability) || 5,
-      cr_welfare: Number(data.crRatingWelfare) || 5,
-      acr_communication: Number(data.acrRatingCommunication) || 5,
-      acr_materials: Number(data.acrRatingMaterials) || 5,
-      acr_availability: Number(data.acrRatingAvailability) || 5,
-      acr_welfare: Number(data.acrRatingWelfare) || 5,
+      cr_communication: Number(data.crRatingCommunication) || 0,
+      cr_materials: Number(data.crRatingMaterials) || 0,
+      cr_availability: Number(data.crRatingAvailability) || 0,
+      cr_welfare: Number(data.crRatingWelfare) || 0,
+      acr_communication: Number(data.acrRatingCommunication) || 0,
+      acr_materials: Number(data.acrRatingMaterials) || 0,
+      acr_availability: Number(data.acrRatingAvailability) || 0,
+      acr_welfare: Number(data.acrRatingWelfare) || 0,
       well_done: wellDoneVal,
       critical_areas: criticalAreasVal,
       cr_recommend_continue: data.crRecommendContinue || '',
@@ -676,65 +725,69 @@ export async function updateStudentSubmission(data) {
       acr_recommend_reason: data.acrRecommendReason || '',
     };
 
-    if (profileId) {
-      // Check if feedback already exists for this student_id
+    let targetFeedbackId = data.feedbackId;
+
+    if (!targetFeedbackId && profileId) {
+      // Find existing feedback row by student_id
       const checkFbRes = await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?student_id=eq.${encodeURIComponent(profileId)}&select=id&limit=1`, {
         headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
         cache: 'no-store',
       });
-
       if (checkFbRes.ok) {
-        const existingFb = await checkFbRes.json();
-        if (Array.isArray(existingFb) && existingFb.length > 0) {
-          // Update existing feedback
-          const fbId = existingFb[0].id;
-          let fbPatchRes = await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?id=eq.${encodeURIComponent(fbId)}`, {
-            method: 'PATCH',
-            headers: {
-              apikey: supabaseKey,
-              Authorization: `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(feedbackUpdates),
-          });
-
-          if (!fbPatchRes.ok) {
-            // Fallback: strip continuation columns and embed in critical_areas
-            const fallbackFb = { ...feedbackUpdates };
-            delete fallbackFb.cr_recommend_continue;
-            delete fallbackFb.cr_recommend_reason;
-            delete fallbackFb.acr_recommend_continue;
-            delete fallbackFb.acr_recommend_reason;
-            fallbackFb.critical_areas = `${criticalAreasVal}\n[CR Continue: ${(data.crRecommendContinue || '').toUpperCase()}] Reason: ${data.crRecommendReason || ''}\n[ACR Esther Continue: ${(data.acrRecommendContinue || '').toUpperCase()}] Reason: ${data.acrRecommendReason || ''}`.trim();
-
-            await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?id=eq.${encodeURIComponent(fbId)}`, {
-              method: 'PATCH',
-              headers: {
-                apikey: supabaseKey,
-                Authorization: `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(fallbackFb),
-            });
-          }
-        } else {
-          // Insert fresh feedback row linked to this profile
-          const newFb = {
-            ...feedbackUpdates,
-            student_id: isAnonymous ? null : profileId,
-            is_anonymous: isAnonymous,
-          };
-          await fetch(`${supabaseUrl}/rest/v1/leadership_feedback`, {
-            method: 'POST',
-            headers: {
-              apikey: supabaseKey,
-              Authorization: `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(newFb),
-          });
+        const rows = await checkFbRes.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          targetFeedbackId = rows[0].id;
         }
       }
+    }
+
+    if (targetFeedbackId) {
+      // Direct PATCH to existing row - completely avoids duplicate inserts
+      let fbPatchRes = await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?id=eq.${encodeURIComponent(targetFeedbackId)}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(feedbackUpdates),
+      });
+
+      if (!fbPatchRes.ok) {
+        // Fallback: strip continuation columns and embed in critical_areas
+        const fallbackFb = { ...feedbackUpdates };
+        delete fallbackFb.cr_recommend_continue;
+        delete fallbackFb.cr_recommend_reason;
+        delete fallbackFb.acr_recommend_continue;
+        delete fallbackFb.acr_recommend_reason;
+        fallbackFb.critical_areas = `${criticalAreasVal}\n[CR Continue: ${(data.crRecommendContinue || '').toUpperCase()}] Reason: ${data.crRecommendReason || ''}\n[ACR Esther Continue: ${(data.acrRecommendContinue || '').toUpperCase()}] Reason: ${data.acrRecommendReason || ''}`.trim();
+
+        await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?id=eq.${encodeURIComponent(targetFeedbackId)}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(fallbackFb),
+        });
+      }
+    } else if (profileId) {
+      // Insert fresh feedback row linked to this profile
+      const newFb = {
+        ...feedbackUpdates,
+        student_id: profileId,
+        is_anonymous: isAnonymous,
+      };
+      await fetch(`${supabaseUrl}/rest/v1/leadership_feedback`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newFb),
+      });
     }
 
     return { success: true, profileId };

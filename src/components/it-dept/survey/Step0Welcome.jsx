@@ -4,11 +4,12 @@ import { ArrowRight, Clock, ShieldCheck, CheckCircle2, UserCheck, Search, X, Loa
 import { WelcomeMascot } from './WelcomeMascot';
 import { dataService } from '../services/dataService';
 
-export const Step0Welcome = ({ onStart, onReturningStudent, showToast }) => {
+export const Step0Welcome = ({ onStart, onReturningStudent, onViewCompleted, showToast }) => {
   const [showLookupModal, setShowLookupModal] = useState(false);
   const [lookupQuery, setLookupQuery] = useState('');
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [lookupError, setLookupError] = useState('');
+  const [completedStudent, setCompletedStudent] = useState(null);
 
   const handleLookupSubmit = async (e) => {
     e?.preventDefault();
@@ -20,6 +21,7 @@ export const Step0Welcome = ({ onStart, onReturningStudent, showToast }) => {
 
     setIsLookingUp(true);
     setLookupError('');
+    setCompletedStudent(null);
 
     try {
       const isEmail = query.includes('@');
@@ -28,9 +30,14 @@ export const Step0Welcome = ({ onStart, onReturningStudent, showToast }) => {
 
       const res = await dataService.lookupStudent(matricArg, emailArg);
       if (res && res.found && res.student) {
-        showToast?.(`Welcome back, ${res.student.fullName}! Your records were loaded.`, 'success');
-        setShowLookupModal(false);
-        onReturningStudent?.(res.student);
+        if (res.hasCompletedAll || res.student.hasCompletedAll) {
+          // Student already completed all questions including continuation questions
+          setCompletedStudent(res.student);
+        } else {
+          showToast?.(`Welcome back, ${res.student.fullName}! Your records were loaded.`, 'success');
+          setShowLookupModal(false);
+          onReturningStudent?.(res.student);
+        }
       } else {
         setLookupError('No existing submission found for this Matric Number or Email. If you have not submitted before, please click "Begin Survey" below.');
       }
@@ -236,104 +243,190 @@ export const Step0Welcome = ({ onStart, onReturningStudent, showToast }) => {
               <X size={18} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  background: 'rgba(37, 99, 235, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#60A5FA',
-                }}
-              >
-                <UserCheck size={18} />
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>
-                  Update Your Submission
-                </h3>
-                <p style={{ margin: '1px 0 0', fontSize: '0.72rem', color: '#94A3B8' }}>
-                  Answer the newly added leadership continuation questions
-                </p>
-              </div>
-            </div>
-
-            <p style={{ fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.5, margin: '0 0 16px' }}>
-              If you submitted before new questions were added, enter your Matric Number or Email below to load your details and jump directly to the new questions.
-            </p>
-
-            <form onSubmit={handleLookupSubmit}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
-                  Matriculation Number or Email Address:
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    className="it-input"
-                    placeholder="e.g. 24/52HA042 or your@gmail.com"
-                    value={lookupQuery}
-                    onChange={(e) => {
-                      setLookupQuery(e.target.value);
-                      if (lookupError) setLookupError('');
+            {completedStudent ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '8px',
+                      background: 'rgba(34, 197, 94, 0.15)',
+                      border: '1px solid rgba(34, 197, 94, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#4ADE80',
                     }}
-                    autoFocus
-                    style={{ paddingRight: '36px', fontSize: '0.875rem' }}
-                  />
-                  <Search size={16} color="#64748B" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  >
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>
+                      Survey Already Completed!
+                    </h3>
+                    <p style={{ margin: '1px 0 0', fontSize: '0.72rem', color: '#86EFAC' }}>
+                      All responses & continuation questions are safely recorded
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {lookupError && (
                 <div
                   style={{
-                    padding: '10px 12px',
+                    padding: '12px 14px',
                     borderRadius: '8px',
-                    background: 'rgba(239, 68, 68, 0.12)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#FCA5A5',
-                    fontSize: '0.78rem',
-                    lineHeight: 1.45,
-                    marginBottom: '14px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    fontSize: '0.8rem',
+                    color: '#CBD5E1',
+                    lineHeight: 1.5,
                   }}
                 >
-                  {lookupError}
+                  <p style={{ margin: '0 0 6px' }}>
+                    Welcome back, <strong>{completedStudent.fullName}</strong> (<span style={{ fontFamily: 'monospace', color: '#93C5FD' }}>{completedStudent.matricNo}</span>)!
+                  </p>
+                  <p style={{ margin: 0, color: '#94A3B8', fontSize: '0.75rem' }}>
+                    You have already completed the full survey and answered the leadership continuation questions for Glory and Esther. Your answers are safely preserved in our records.
+                  </p>
                 </div>
-              )}
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowLookupModal(false)}
-                  className="it-btn-secondary"
-                  style={{ fontSize: '0.82rem', padding: '9px 16px' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLookingUp}
-                  className="it-btn-primary"
-                  style={{ fontSize: '0.82rem', padding: '9px 18px', minWidth: '130px' }}
-                >
-                  {isLookingUp ? (
-                    <>
-                      <Loader2 size={14} className="it-spin" />
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Find & Continue</span>
-                      <ArrowRight size={14} />
-                    </>
-                  )}
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLookupModal(false);
+                      onViewCompleted?.(completedStudent);
+                    }}
+                    className="it-btn-primary"
+                    style={{ width: '100%', padding: '10px 16px', fontSize: '0.85rem' }}
+                  >
+                    <UserCheck size={16} />
+                    <span>View My 200L Pass & Summary</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLookupModal(false);
+                      onReturningStudent?.(completedStudent);
+                    }}
+                    className="it-btn-secondary"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#60A5FA',
+                      fontSize: '0.75rem',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      padding: '4px',
+                    }}
+                  >
+                    Need to modify an answer? Open edit mode
+                  </button>
+                </div>
               </div>
-            </form>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      background: 'rgba(37, 99, 235, 0.15)',
+                      border: '1px solid rgba(59, 130, 246, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#60A5FA',
+                    }}
+                  >
+                    <UserCheck size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>
+                      Update Your Submission
+                    </h3>
+                    <p style={{ margin: '1px 0 0', fontSize: '0.72rem', color: '#94A3B8' }}>
+                      Answer the newly added leadership continuation questions
+                    </p>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.5, margin: '0 0 16px' }}>
+                  If you submitted before new questions were added, enter your Matric Number or Email below to load your details and jump directly to the new questions.
+                </p>
+
+                <form onSubmit={handleLookupSubmit}>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
+                      Matriculation Number or Email Address:
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        className="it-input"
+                        placeholder="e.g. 24/52HA042 or your@gmail.com"
+                        value={lookupQuery}
+                        onChange={(e) => {
+                          setLookupQuery(e.target.value);
+                          if (lookupError) setLookupError('');
+                        }}
+                        autoFocus
+                        style={{ paddingRight: '36px', fontSize: '0.875rem' }}
+                      />
+                      <Search size={16} color="#64748B" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                    </div>
+                  </div>
+
+                  {lookupError && (
+                    <div
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        color: '#FCA5A5',
+                        fontSize: '0.78rem',
+                        lineHeight: 1.45,
+                        marginBottom: '14px',
+                      }}
+                    >
+                      {lookupError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowLookupModal(false)}
+                      className="it-btn-secondary"
+                      style={{ fontSize: '0.82rem', padding: '9px 16px' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLookingUp}
+                      className="it-btn-primary"
+                      style={{ fontSize: '0.82rem', padding: '9px 18px', minWidth: '130px' }}
+                    >
+                      {isLookingUp ? (
+                        <>
+                          <Loader2 size={14} className="it-spin" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Find & Continue</span>
+                          <ArrowRight size={14} />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

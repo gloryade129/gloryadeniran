@@ -84,6 +84,22 @@ export const App = () => {
     );
   }, [showToast]);
 
+  const handleViewCompleted = useCallback((studentData) => {
+    if (!studentData) return;
+    setFormData(prev => ({
+      ...INITIAL_SURVEY_STATE,
+      ...studentData,
+    }));
+    setIsUpdateMode(false);
+    setCurrentStep(9); // Directly show their verified 200L celebration & summary pass
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast(
+      `Welcome back, ${studentData.fullName || 'Scholar'}! Viewing your recorded submission pass.`,
+      'info',
+      'Submission Verified'
+    );
+  }, [showToast]);
+
   const handleNext = useCallback(() => {
     setCurrentStep(prev => Math.min(prev + 1, 8));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -308,6 +324,7 @@ export const App = () => {
           <Step0Welcome
             onStart={handleStart}
             onReturningStudent={handleReturningStudent}
+            onViewCompleted={handleViewCompleted}
             showToast={showToast}
           />
         )}
@@ -318,6 +335,7 @@ export const App = () => {
             onNext={handleNext}
             onBack={handleBack}
             onReturningStudent={handleReturningStudent}
+            onViewCompleted={handleViewCompleted}
             showToast={showToast}
           />
         )}

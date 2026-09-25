@@ -77,7 +77,7 @@ export async function POST(req) {
       paymentStatus: data.paymentStatus,
       paymentRef: data.paymentRef,
       supportNote: data.supportNote,
-      academicRating100L: data.academicRating100L || 5,
+      academicRating100L: data.academicRating100L || 0,
       challenges: data.challenges100L,
       suggestions: data.suggestions200L,
       crRecommendContinue: data.crRecommendContinue,

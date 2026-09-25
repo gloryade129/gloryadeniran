@@ -928,7 +928,7 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Star size={14} fill="#3B82F6" color="#3B82F6" />
                         <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#FFFFFF' }}>
-                          {matchedFeedback.overallScore || 5.0} / 5.0
+                          {matchedFeedback.overallScore > 0 ? `${matchedFeedback.overallScore} / 5.0` : 'Not Rated'}
                         </span>
                       </div>
                     </div>
@@ -937,22 +937,55 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                       <div>
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#60A5FA', display: 'block', marginBottom: '4px' }}>Glory Adeniran (CR):</span>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.7rem', color: '#CBD5E1' }}>
-                          <div>Comm: ★{matchedFeedback.crCommunication || 5}/5</div>
-                          <div>Materials: ★{matchedFeedback.crMaterials || 5}/5</div>
-                          <div>Avail: ★{matchedFeedback.crAvailability || 5}/5</div>
-                          <div>Welfare: ★{matchedFeedback.crWelfare || 5}/5</div>
+                          <div>Comm: ★{matchedFeedback.crCommunication || 0}/5</div>
+                          <div>Materials: ★{matchedFeedback.crMaterials || 0}/5</div>
+                          <div>Avail: ★{matchedFeedback.crAvailability || 0}/5</div>
+                          <div>Welfare: ★{matchedFeedback.crWelfare || 0}/5</div>
                         </div>
                       </div>
                       <div>
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#93C5FD', display: 'block', marginBottom: '4px' }}>Esther (ACR):</span>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.7rem', color: '#CBD5E1' }}>
-                          <div>Comm: ★{matchedFeedback.acrCommunication || 5}/5</div>
-                          <div>Materials: ★{matchedFeedback.acrMaterials || 5}/5</div>
-                          <div>Avail: ★{matchedFeedback.acrAvailability || 5}/5</div>
-                          <div>Welfare: ★{matchedFeedback.acrWelfare || 5}/5</div>
+                          <div>Comm: ★{matchedFeedback.acrCommunication || 0}/5</div>
+                          <div>Materials: ★{matchedFeedback.acrMaterials || 0}/5</div>
+                          <div>Avail: ★{matchedFeedback.acrAvailability || 0}/5</div>
+                          <div>Welfare: ★{matchedFeedback.acrWelfare || 0}/5</div>
                         </div>
                       </div>
                     </div>
+
+                    {/* Continuation Recommendations in Student Modal */}
+                    {(selectedStudent.crRecommendContinue || matchedFeedback.crRecommendContinue) && (
+                      <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#60A5FA' }}>Recommend Glory (CR) to continue:</span>
+                          <span className={`it-badge ${(selectedStudent.crRecommendContinue || matchedFeedback.crRecommendContinue) === 'yes' ? 'it-badge-success' : 'it-badge-warning'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                            {String(selectedStudent.crRecommendContinue || matchedFeedback.crRecommendContinue).toUpperCase()}
+                          </span>
+                        </div>
+                        {(selectedStudent.crRecommendReason || matchedFeedback.crRecommendReason) && (
+                          <p style={{ margin: '4px 0 0', fontSize: '0.76rem', color: '#CBD5E1', fontStyle: 'italic' }}>
+                            "{selectedStudent.crRecommendReason || matchedFeedback.crRecommendReason}"
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {(selectedStudent.acrRecommendContinue || matchedFeedback.acrRecommendContinue) && (
+                      <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#93C5FD' }}>Recommend Esther (ACR) to continue:</span>
+                          <span className={`it-badge ${(selectedStudent.acrRecommendContinue || matchedFeedback.acrRecommendContinue) === 'yes' ? 'it-badge-success' : 'it-badge-warning'}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                            {String(selectedStudent.acrRecommendContinue || matchedFeedback.acrRecommendContinue).toUpperCase()}
+                          </span>
+                        </div>
+                        {(selectedStudent.acrRecommendReason || matchedFeedback.acrRecommendReason) && (
+                          <p style={{ margin: '4px 0 0', fontSize: '0.76rem', color: '#CBD5E1', fontStyle: 'italic' }}>
+                            "{selectedStudent.acrRecommendReason || matchedFeedback.acrRecommendReason}"
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {matchedFeedback.wellDone && (
                       <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(37, 99, 235, 0.1)', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
