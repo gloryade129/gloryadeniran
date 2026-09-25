@@ -51,6 +51,15 @@ ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS support_amount NUMERIC(10,
 ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS payment_status VARCHAR(30) NOT NULL DEFAULT 'unpaid';
 ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS payment_ref VARCHAR(100) DEFAULT '';
 ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS support_note TEXT DEFAULT '';
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS cr_recommend_continue VARCHAR(20) DEFAULT '';
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS cr_recommend_reason TEXT DEFAULT '';
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS acr_recommend_continue VARCHAR(20) DEFAULT '';
+ALTER TABLE students_profile ADD COLUMN IF NOT EXISTS acr_recommend_reason TEXT DEFAULT '';
+
+ALTER TABLE leadership_feedback ADD COLUMN IF NOT EXISTS cr_recommend_continue VARCHAR(20) DEFAULT '';
+ALTER TABLE leadership_feedback ADD COLUMN IF NOT EXISTS cr_recommend_reason TEXT DEFAULT '';
+ALTER TABLE leadership_feedback ADD COLUMN IF NOT EXISTS acr_recommend_continue VARCHAR(20) DEFAULT '';
+ALTER TABLE leadership_feedback ADD COLUMN IF NOT EXISTS acr_recommend_reason TEXT DEFAULT '';
 
 -- Case-insensitive & trimmed unique index on matric_no to prevent duplicates
 CREATE UNIQUE INDEX IF NOT EXISTS idx_students_profile_matric_unique 

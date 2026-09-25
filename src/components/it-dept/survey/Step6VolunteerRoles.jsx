@@ -53,8 +53,8 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack, showTo
                       width: '38px',
                       height: '38px',
                       borderRadius: '8px',
-                      background: isSelected ? 'rgba(62, 207, 142, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                      color: isSelected ? '#3ECF8E' : '#A1A1AA',
+                      background: isSelected ? 'rgba(37, 99, 235, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                      color: isSelected ? '#60A5FA' : '#94A3B8',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -64,10 +64,10 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack, showTo
                     <IconComp size={18} />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: isSelected ? '#3ECF8E' : '#EDEDED' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: isSelected ? '#60A5FA' : '#EDEDED' }}>
                       {role.name}
                     </h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#71717A' }}>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94A3B8' }}>
                       {role.desc}
                     </p>
                   </div>
@@ -79,8 +79,8 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack, showTo
                     height: '20px',
                     borderRadius: '50%',
                     border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
-                    background: isSelected ? '#3ECF8E' : 'transparent',
-                    color: '#09090B',
+                    background: isSelected ? '#3B82F6' : 'transparent',
+                    color: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -103,8 +103,11 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack, showTo
             className="it-input"
             rows={2}
             placeholder="Share any fresh ideas, events, hackathons, or study structures..."
-            value={formData.vision200L || ''}
-            onChange={(e) => onChange('vision200L', e.target.value)}
+            value={formData.vision200L || formData.suggestions200L || ''}
+            onChange={(e) => {
+              onChange('vision200L', e.target.value);
+              onChange('suggestions200L', e.target.value);
+            }}
           />
         </div>
       </div>

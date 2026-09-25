@@ -20,6 +20,13 @@ export const CsvExportButton = ({ profiles = [], feedbacks = [] }) => {
       'Favorite Courses',
       'Toughest Courses',
       'Volunteer Roles',
+      'CR Glory Continue',
+      'CR Reason',
+      'ACR Esther Continue',
+      'ACR Reason',
+      'Leadership Score',
+      'What Leadership Did Well',
+      'Critical Areas to Improve in 200L',
       'Support Choice',
       'Support Amount (NGN)',
       'Payment Status',
@@ -29,25 +36,40 @@ export const CsvExportButton = ({ profiles = [], feedbacks = [] }) => {
       'Date Submitted'
     ];
 
-    const rows = profiles.map(p => [
-      `"${p.fullName || ''}"`,
-      `"${p.matricNo || ''}"`,
-      `"${p.email || ''}"`,
-      `"${p.phone || ''}"`,
-      `"${p.birthday || ''}"`,
-      `"${p.techTrack || ''}"`,
-      p.academicRating100L || '',
-      `"${(p.favoriteCourses || []).join(', ')}"`,
-      `"${(p.toughestCourses || []).join(', ')}"`,
-      `"${(p.volunteerRoles || []).join(', ')}"`,
-      `"${p.supportChoice || 'no'}"`,
-      p.supportAmount || 0,
-      `"${p.paymentStatus || 'unpaid'}"`,
-      `"${p.paymentRef || ''}"`,
-      `"${(p.supportNote || '').replace(/"/g, '""')}"`,
-      `"${(p.suggestions200L || '').replace(/"/g, '""')}"`,
-      `"${p.createdAt || ''}"`
-    ]);
+    const rows = profiles.map(p => {
+      const fb = feedbacks.find(
+        f =>
+          (f.studentId && f.studentId === p.id) ||
+          (!f.isAnonymous && f.studentMatric && f.studentMatric.toLowerCase() === p.matricNo?.toLowerCase())
+      );
+
+      return [
+        `"${p.fullName || ''}"`,
+        `"${p.matricNo || ''}"`,
+        `"${p.email || ''}"`,
+        `"${p.phone || ''}"`,
+        `"${p.birthday || ''}"`,
+        `"${p.techTrack || ''}"`,
+        p.academicRating100L || '',
+        `"${(p.favoriteCourses || []).join(', ')}"`,
+        `"${(p.toughestCourses || []).join(', ')}"`,
+        `"${(p.volunteerRoles || []).join(', ')}"`,
+        `"${p.crRecommendContinue || fb?.crRecommendContinue || ''}"`,
+        `"${((p.crRecommendReason || fb?.crRecommendReason || '')).replace(/"/g, '""')}"`,
+        `"${p.acrRecommendContinue || fb?.acrRecommendContinue || ''}"`,
+        `"${((p.acrRecommendReason || fb?.acrRecommendReason || '')).replace(/"/g, '""')}"`,
+        fb?.overallScore || '',
+        `"${((fb?.wellDone || '')).replace(/"/g, '""')}"`,
+        `"${((fb?.criticalAreas || '')).replace(/"/g, '""')}"`,
+        `"${p.supportChoice || 'no'}"`,
+        p.supportAmount || 0,
+        `"${p.paymentStatus || 'unpaid'}"`,
+        `"${p.paymentRef || ''}"`,
+        `"${(p.supportNote || '').replace(/"/g, '""')}"`,
+        `"${(p.suggestions200L || '').replace(/"/g, '""')}"`,
+        `"${p.createdAt || ''}"`
+      ];
+    });
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

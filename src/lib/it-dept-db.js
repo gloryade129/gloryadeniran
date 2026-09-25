@@ -93,15 +93,19 @@ export async function saveStudentSubmission(data) {
       challenges_100l: data.challenges100L || [],
       committees: data.committees || [],
       volunteer_roles: data.volunteerRoles || [],
+      cr_recommend_continue: data.crRecommendContinue || '',
+      cr_recommend_reason: data.crRecommendReason || '',
+      acr_recommend_continue: data.acrRecommendContinue || '',
+      acr_recommend_reason: data.acrRecommendReason || '',
       support_choice: data.supportLeadershipChoice || 'no',
       support_amount: Number(data.supportAmount) || 0,
       payment_status: data.paymentStatus || 'unpaid',
       payment_ref: data.paymentRef || '',
       support_note: data.supportNote || '',
-      suggestions_200l: data.suggestions200L || '',
+      suggestions_200l: (data.suggestions200L || data.vision200L || '').trim(),
     };
 
-    const profileRes = await fetch(`${supabaseUrl}/rest/v1/students_profile`, {
+    let profileRes = await fetch(`${supabaseUrl}/rest/v1/students_profile`, {
       method: 'POST',
       headers: {
         apikey: supabaseKey,
@@ -112,25 +116,53 @@ export async function saveStudentSubmission(data) {
       body: JSON.stringify(profileRecord),
     });
 
+    // If new columns are not yet in Supabase schema cache, retry safely by embedding in suggestions
     if (!profileRes.ok) {
       const errText = await profileRes.text();
-      console.error('[it-dept-db] Profile insert error:', errText);
+      console.warn('[it-dept-db] Profile insert initial attempt note:', errText);
       if (errText.includes('email') || errText.includes('idx_students_profile_email')) {
         return { success: false, error: 'EMAIL_EXISTS' };
       }
       if (errText.includes('matric_no') || errText.includes('idx_students_profile_matric')) {
         return { success: false, error: 'MATRIC_EXISTS' };
       }
-      return { success: false, error: errText };
+
+      // Fallback: strip new columns and embed in suggestions_200l
+      const fallbackRecord = { ...profileRecord };
+      delete fallbackRecord.cr_recommend_continue;
+      delete fallbackRecord.cr_recommend_reason;
+      delete fallbackRecord.acr_recommend_continue;
+      delete fallbackRecord.acr_recommend_reason;
+      fallbackRecord.suggestions_200l = `${data.suggestions200L || data.vision200L || ''}\n[CR Continue: ${(data.crRecommendContinue || '').toUpperCase()}] Reason: ${data.crRecommendReason || ''}\n[ACR Esther Continue: ${(data.acrRecommendContinue || '').toUpperCase()}] Reason: ${data.acrRecommendReason || ''}`.trim();
+
+      profileRes = await fetch(`${supabaseUrl}/rest/v1/students_profile`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify(fallbackRecord),
+      });
+
+      if (!profileRes.ok) {
+        const secondErr = await profileRes.text();
+        return { success: false, error: secondErr };
+      }
     }
 
     const insertedProfile = await profileRes.json();
     const profileId = Array.isArray(insertedProfile) ? insertedProfile[0]?.id : insertedProfile?.id;
 
-    // 3. Insert Leadership Review (Decoupled Anonymity)
+    // 4. Insert Leadership Review (Decoupled Anonymity)
+    const isAnonymous = Boolean(data.isAnonymousLeadership || data.isAnonymousFeedback);
+    const wellDoneVal = (data.leadershipWellDone || data.leadershipPraises || data.wellDone || data.positiveShoutout || '').trim();
+    const criticalAreasVal = (data.leadershipCriticalAreas || data.leadershipImprovements || data.criticalAreas || data.qualitativeCritique || '').trim();
+
     const feedbackRecord = {
-      student_id: data.isAnonymousLeadership ? null : profileId,
-      is_anonymous: Boolean(data.isAnonymousLeadership),
+      student_id: isAnonymous ? null : profileId,
+      is_anonymous: isAnonymous,
       cr_communication: Number(data.crRatingCommunication) || 5,
       cr_materials: Number(data.crRatingMaterials) || 5,
       cr_availability: Number(data.crRatingAvailability) || 5,
@@ -139,11 +171,15 @@ export async function saveStudentSubmission(data) {
       acr_materials: Number(data.acrRatingMaterials) || 5,
       acr_availability: Number(data.acrRatingAvailability) || 5,
       acr_welfare: Number(data.acrRatingWelfare) || 5,
-      well_done: data.leadershipWellDone || data.wellDone || data.positiveShoutout || '',
-      critical_areas: data.leadershipCriticalAreas || data.criticalAreas || data.qualitativeCritique || '',
+      well_done: wellDoneVal,
+      critical_areas: criticalAreasVal,
+      cr_recommend_continue: data.crRecommendContinue || '',
+      cr_recommend_reason: data.crRecommendReason || '',
+      acr_recommend_continue: data.acrRecommendContinue || '',
+      acr_recommend_reason: data.acrRecommendReason || '',
     };
 
-    await fetch(`${supabaseUrl}/rest/v1/leadership_feedback`, {
+    let feedbackRes = await fetch(`${supabaseUrl}/rest/v1/leadership_feedback`, {
       method: 'POST',
       headers: {
         apikey: supabaseKey,
@@ -152,6 +188,27 @@ export async function saveStudentSubmission(data) {
       },
       body: JSON.stringify(feedbackRecord),
     });
+
+    if (!feedbackRes.ok) {
+      // Fallback: strip new columns and embed in critical_areas
+      const fallbackFeedback = { ...feedbackRecord };
+      delete fallbackFeedback.cr_recommend_continue;
+      delete fallbackFeedback.cr_recommend_reason;
+      delete fallbackFeedback.acr_recommend_continue;
+      delete fallbackFeedback.acr_recommend_reason;
+      const critiqueNote = criticalAreasVal || '';
+      fallbackFeedback.critical_areas = `${critiqueNote}\n[CR Continue: ${(data.crRecommendContinue || '').toUpperCase()}] Reason: ${data.crRecommendReason || ''}\n[ACR Esther Continue: ${(data.acrRecommendContinue || '').toUpperCase()}] Reason: ${data.acrRecommendReason || ''}`.trim();
+
+      await fetch(`${supabaseUrl}/rest/v1/leadership_feedback`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fallbackFeedback),
+      });
+    }
 
     return { success: true, profileId };
   } catch (err) {
@@ -206,28 +263,94 @@ export async function getAdminData() {
       paymentRef: p.payment_ref || '',
       supportNote: p.support_note || '',
       suggestions200L: p.suggestions_200l || '',
+      crRecommendContinue: p.cr_recommend_continue || '',
+      crRecommendReason: p.cr_recommend_reason || '',
+      acrRecommendContinue: p.acr_recommend_continue || '',
+      acrRecommendReason: p.acr_recommend_reason || '',
       createdAt: p.created_at,
     }));
 
-    const feedbacks = (Array.isArray(rawFeedbacks) ? rawFeedbacks : []).map(f => ({
-      id: f.id,
-      studentId: f.student_id,
-      isAnonymous: f.is_anonymous,
-      crCommunication: f.cr_communication,
-      crMaterials: f.cr_materials,
-      crAvailability: f.cr_availability,
-      crWelfare: f.cr_welfare,
-      acrCommunication: f.acr_communication,
-      acrMaterials: f.acr_materials,
-      acrAvailability: f.acr_availability,
-      acrWelfare: f.acr_welfare,
-      wellDone: f.well_done || f.positive_shoutout || '',
-      criticalAreas: f.critical_areas || f.qualitative_critique || '',
-      qualitativeCritique: f.critical_areas || f.qualitative_critique || '',
-      positiveShoutout: f.well_done || f.positive_shoutout || '',
-      overallScore: f.overall_score || 5.0,
-      createdAt: f.created_at,
-    }));
+    // Build lookup map by profile ID for lightning-fast join
+    const profilesById = new Map();
+    for (const p of profiles) {
+      if (p.id) profilesById.set(p.id, p);
+    }
+
+    const feedbacks = (Array.isArray(rawFeedbacks) ? rawFeedbacks : []).map(f => {
+      const matchedProfile = f.student_id ? profilesById.get(f.student_id) : null;
+      const isAnon = Boolean(f.is_anonymous || !f.student_id);
+
+      const wellDone = (
+        f.well_done ||
+        f.positive_shoutout ||
+        f.leadership_well_done ||
+        f.leadership_praises ||
+        ''
+      ).trim();
+
+      const criticalAreas = (
+        f.critical_areas ||
+        f.qualitative_critique ||
+        f.leadership_critical_areas ||
+        f.leadership_improvements ||
+        ''
+      ).trim();
+
+      const crRecommendContinue = f.cr_recommend_continue || matchedProfile?.crRecommendContinue || '';
+      const crRecommendReason = f.cr_recommend_reason || matchedProfile?.crRecommendReason || '';
+      const acrRecommendContinue = f.acr_recommend_continue || matchedProfile?.acrRecommendContinue || '';
+      const acrRecommendReason = f.acr_recommend_reason || matchedProfile?.acrRecommendReason || '';
+
+      const suggestions200L = matchedProfile?.suggestions200L || '';
+      const supportNote = matchedProfile?.supportNote || '';
+      const challenges100L = matchedProfile?.challenges100L || [];
+
+      // Compute overall score average across all 8 metrics if not already stored
+      const crComm = Number(f.cr_communication) || 5;
+      const crMat = Number(f.cr_materials) || 5;
+      const crAvail = Number(f.cr_availability) || 5;
+      const crWelf = Number(f.cr_welfare) || 5;
+      const acrComm = Number(f.acr_communication) || 5;
+      const acrMat = Number(f.acr_materials) || 5;
+      const acrAvail = Number(f.acr_availability) || 5;
+      const acrWelf = Number(f.acr_welfare) || 5;
+
+      const sumScores = crComm + crMat + crAvail + crWelf + acrComm + acrMat + acrAvail + acrWelf;
+      const computedOverall = Math.round((sumScores / 8) * 100) / 100;
+      const finalScore = Number(f.overall_score) > 0 ? Number(f.overall_score) : computedOverall;
+
+      return {
+        id: f.id,
+        studentId: f.student_id,
+        isAnonymous: isAnon,
+        studentName: isAnon ? '' : (matchedProfile?.fullName || ''),
+        studentMatric: isAnon ? '' : (matchedProfile?.matricNo || ''),
+        studentEmail: isAnon ? '' : (matchedProfile?.email || ''),
+        studentPhone: isAnon ? '' : (matchedProfile?.phone || ''),
+        techTrack: isAnon ? '' : (matchedProfile?.techTrack || ''),
+        crCommunication: crComm,
+        crMaterials: crMat,
+        crAvailability: crAvail,
+        crWelfare: crWelf,
+        acrCommunication: acrComm,
+        acrMaterials: acrMat,
+        acrAvailability: acrAvail,
+        acrWelfare: acrWelf,
+        overallScore: finalScore,
+        wellDone,
+        criticalAreas,
+        qualitativeCritique: criticalAreas,
+        positiveShoutout: wellDone,
+        suggestions200L,
+        supportNote,
+        challenges100L,
+        crRecommendContinue,
+        crRecommendReason,
+        acrRecommendContinue,
+        acrRecommendReason,
+        createdAt: f.created_at,
+      };
+    });
 
     return { profiles, feedbacks, isDemo: false };
   } catch (err) {

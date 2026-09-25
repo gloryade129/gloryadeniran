@@ -31,7 +31,7 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
   <div style="padding: 24px 12px;">
     <div class="wrapper">
       <div class="header">
-        <div class="dept-title">University of Ilorin - Faculty of Computing</div>
+        <div class="dept-title">University of Ilorin - Faculty of Communication and Information Sciences</div>
         <div class="headline">Department of Information Technology</div>
         <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">2025-2029 Set: 100L to 200L Transition Record</div>
       </div>
@@ -78,7 +78,7 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
       </div>
       <div class="footer">
         <div><strong>Your Class Rep</strong> - Information Technology Department (2025-2029 Set)</div>
-        <div style="margin-top: 4px;">Faculty of Computing - University of Ilorin</div>
+        <div style="margin-top: 4px;">Faculty of Communication and Information Sciences - University of Ilorin</div>
       </div>
     </div>
   </div>
@@ -87,7 +87,7 @@ export function buildStudentConfirmationEmail({ studentName, matricNo, techTrack
   `;
 }
 
-export function buildAdminAlertEmail({ studentName, studentEmail, matricNo, phone, techTrack, committees, volunteerRoles, supportChoice, supportAmount, paymentStatus, paymentRef, supportNote, academicRating100L, challenges, suggestions }) {
+export function buildAdminAlertEmail({ studentName, studentEmail, matricNo, phone, techTrack, committees, volunteerRoles, supportChoice, supportAmount, paymentStatus, paymentRef, supportNote, academicRating100L, challenges, suggestions, crRecommendContinue, crRecommendReason, acrRecommendContinue, acrRecommendReason }) {
   const volRoles = volunteerRoles && volunteerRoles.length > 0 ? volunteerRoles.join(', ') : (committees && committees.length > 0 ? committees.join(', ') : 'None');
   const challengeList = challenges && challenges.length > 0 ? challenges.join(', ') : 'None specified';
   const hasSupport = Number(supportAmount) > 0 || supportChoice === 'yes' || supportChoice === 'support_yes';
@@ -124,6 +124,8 @@ export function buildAdminAlertEmail({ studentName, studentEmail, matricNo, phon
         <tr><td class="label">100L Rating:</td><td class="val">${academicRating100L}/5</td></tr>
         <tr><td class="label">Tech Track:</td><td class="val">${techTrack}</td></tr>
         <tr><td class="label">Volunteer Role(s):</td><td class="val">${volRoles}</td></tr>
+        <tr><td class="label">CR Glory Continue?:</td><td class="val" style="color: ${crRecommendContinue === 'no' ? '#F87171' : '#60A5FA'}; font-weight: 700;">${crRecommendContinue ? crRecommendContinue.toUpperCase() : 'Not answered'}${crRecommendReason ? ` - "${crRecommendReason}"` : ''}</td></tr>
+        <tr><td class="label">ACR Esther Continue?:</td><td class="val" style="color: ${acrRecommendContinue === 'no' ? '#F87171' : '#60A5FA'}; font-weight: 700;">${acrRecommendContinue ? acrRecommendContinue.toUpperCase() : 'Not answered'}${acrRecommendReason ? ` - "${acrRecommendReason}"` : ''}</td></tr>
         <tr><td class="label">Leadership Support:</td><td class="val" style="color: #60A5FA;">${hasSupport ? `₦${Number(supportAmount || 0).toLocaleString()} (${paymentStatus || 'pledged'})` : 'No financial support'}</td></tr>
         ${paymentRef ? `<tr><td class="label">Payment Ref:</td><td class="val" style="font-family: monospace;">${paymentRef}</td></tr>` : ''}
         ${supportNote ? `<tr><td class="label">Support Note:</td><td class="val" style="font-style: italic;">"${supportNote}"</td></tr>` : ''}
@@ -169,7 +171,7 @@ export function buildDirectStudentEmail({ studentName, subject, messageBody }) {
       <div class="body">${messageBody}</div>
       <div class="footer">
         <div><strong>Your Class Rep</strong> - IT Dept 2025-2029 Set</div>
-        <div style="margin-top: 3px;">Faculty of Computing - University of Ilorin</div>
+        <div style="margin-top: 3px;">Faculty of Communication and Information Sciences - University of Ilorin</div>
       </div>
     </div>
   </div>

@@ -80,6 +80,10 @@ export async function POST(req) {
       academicRating100L: data.academicRating100L || 5,
       challenges: data.challenges100L,
       suggestions: data.suggestions200L,
+      crRecommendContinue: data.crRecommendContinue,
+      crRecommendReason: data.crRecommendReason,
+      acrRecommendContinue: data.acrRecommendContinue,
+      acrRecommendReason: data.acrRecommendReason,
     });
 
     promises.push(

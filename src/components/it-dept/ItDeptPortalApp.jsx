@@ -196,7 +196,7 @@ export const App = () => {
               marginBottom: '8px',
             }}
           >
-            <span style={{ color: '#3ECF8E', fontWeight: 600 }}>
+            <span style={{ color: '#60A5FA', fontWeight: 600 }}>
               STEP {currentStep} OF {maxSurveyStep}: <span style={{ color: '#EDEDED' }}>{stepTitles[currentStep]}</span>
             </span>
             <span style={{ color: '#71717A', fontWeight: 600 }}>{progressPercent}%</span>

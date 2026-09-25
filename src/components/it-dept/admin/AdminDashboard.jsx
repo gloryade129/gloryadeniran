@@ -834,6 +834,143 @@ export const AdminDashboard = ({ onBackToSurvey, onLock }) => {
                 </div>
               </div>
 
+              {/* Leadership Continuation Evaluations */}
+              {(selectedStudent.crRecommendContinue || selectedStudent.acrRecommendContinue) && (
+                <div
+                  style={{
+                    background: 'rgba(37, 99, 235, 0.06)',
+                    border: '1px solid rgba(37, 99, 235, 0.2)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    200L Leadership Continuation Evaluations
+                  </span>
+
+                  {selectedStudent.crRecommendContinue && (
+                    <div style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#EDEDED' }}>Glory Adeniran (Class Rep):</span>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: selectedStudent.crRecommendContinue === 'yes' ? 'rgba(37, 99, 235, 0.2)' : selectedStudent.crRecommendContinue === 'no' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(100, 116, 139, 0.2)',
+                          color: selectedStudent.crRecommendContinue === 'yes' ? '#60A5FA' : selectedStudent.crRecommendContinue === 'no' ? '#F87171' : '#94A3B8',
+                          border: `1px solid ${selectedStudent.crRecommendContinue === 'yes' ? 'rgba(37, 99, 235, 0.4)' : selectedStudent.crRecommendContinue === 'no' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(100, 116, 139, 0.4)'}`,
+                        }}>
+                          {selectedStudent.crRecommendContinue.toUpperCase()}
+                        </span>
+                      </div>
+                      {selectedStudent.crRecommendReason && (
+                        <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#CBD5E1', fontStyle: 'italic', lineHeight: 1.45 }}>
+                          "{selectedStudent.crRecommendReason}"
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedStudent.acrRecommendContinue && (
+                    <div style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#EDEDED' }}>Esther (Assistant Class Rep):</span>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: selectedStudent.acrRecommendContinue === 'yes' ? 'rgba(37, 99, 235, 0.2)' : selectedStudent.acrRecommendContinue === 'no' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(100, 116, 139, 0.2)',
+                          color: selectedStudent.acrRecommendContinue === 'yes' ? '#60A5FA' : selectedStudent.acrRecommendContinue === 'no' ? '#F87171' : '#94A3B8',
+                          border: `1px solid ${selectedStudent.acrRecommendContinue === 'yes' ? 'rgba(37, 99, 235, 0.4)' : selectedStudent.acrRecommendContinue === 'no' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(100, 116, 139, 0.4)'}`,
+                        }}>
+                          {selectedStudent.acrRecommendContinue.toUpperCase()}
+                        </span>
+                      </div>
+                      {selectedStudent.acrRecommendReason && (
+                        <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#CBD5E1', fontStyle: 'italic', lineHeight: 1.45 }}>
+                          "{selectedStudent.acrRecommendReason}"
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Leadership Evaluation & Comments from this Student */}
+              {(() => {
+                const matchedFeedback = feedbacks.find(
+                  (f) =>
+                    (f.studentId && f.studentId === selectedStudent.id) ||
+                    (!f.isAnonymous && f.studentMatric && f.studentMatric.toLowerCase() === selectedStudent.matricNo?.toLowerCase())
+                );
+                if (!matchedFeedback) return null;
+                return (
+                  <div
+                    style={{
+                      background: 'rgba(37, 99, 235, 0.06)',
+                      border: '1px solid rgba(37, 99, 235, 0.2)',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Leadership Evaluation & Scores
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Star size={14} fill="#3B82F6" color="#3B82F6" />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#FFFFFF' }}>
+                          {matchedFeedback.overallScore || 5.0} / 5.0
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
+                      <div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#60A5FA', display: 'block', marginBottom: '4px' }}>Glory Adeniran (CR):</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.7rem', color: '#CBD5E1' }}>
+                          <div>Comm: ★{matchedFeedback.crCommunication || 5}/5</div>
+                          <div>Materials: ★{matchedFeedback.crMaterials || 5}/5</div>
+                          <div>Avail: ★{matchedFeedback.crAvailability || 5}/5</div>
+                          <div>Welfare: ★{matchedFeedback.crWelfare || 5}/5</div>
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#93C5FD', display: 'block', marginBottom: '4px' }}>Esther (ACR):</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.7rem', color: '#CBD5E1' }}>
+                          <div>Comm: ★{matchedFeedback.acrCommunication || 5}/5</div>
+                          <div>Materials: ★{matchedFeedback.acrMaterials || 5}/5</div>
+                          <div>Avail: ★{matchedFeedback.acrAvailability || 5}/5</div>
+                          <div>Welfare: ★{matchedFeedback.acrWelfare || 5}/5</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {matchedFeedback.wellDone && (
+                      <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(37, 99, 235, 0.1)', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#60A5FA', display: 'block', marginBottom: '2px' }}>What Leadership Did Well:</span>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#E2E8F0', lineHeight: 1.45 }}>"{matchedFeedback.wellDone}"</p>
+                      </div>
+                    )}
+
+                    {matchedFeedback.criticalAreas && (
+                      <div style={{ padding: '8px 10px', borderRadius: '6px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#FBBF24', display: 'block', marginBottom: '2px' }}>Areas to Improve in 200L:</span>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#E2E8F0', lineHeight: 1.45 }}>"{matchedFeedback.criticalAreas}"</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* 200L Suggestions */}
               {selectedStudent.suggestions200L && (
                 <div

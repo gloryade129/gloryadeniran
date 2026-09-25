@@ -14,26 +14,32 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
     } catch (e) {}
   }, []);
 
-  const isNameValid = formData.fullName.trim().length >= 3;
-  const isMatricValid = /^[A-Z0-9/]{6,16}$/.test(formData.matricNo.trim().toUpperCase());
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim());
-  const isPhoneValid = formData.phone.trim().length >= 10;
+  const nameParts = formData.fullName.trim().split(/\s+/).filter(Boolean);
+  const isNameValid = nameParts.length >= 2 && nameParts.every(part => part.length >= 2);
+  const trimmedMatric = formData.matricNo.trim().toUpperCase();
+  // Unilorin Matric pattern: requires slash '/', starts with 2 digits, followed by 4-8 chars (e.g., 24/52HA042 or 25/52HT014)
+  const isMatricValid = /^[0-9]{2}\/[0-9A-Z]{4,8}$/i.test(trimmedMatric);
+  const isEmailValid = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email.trim());
+  const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
+  const isPhoneValid = (cleanPhone.length === 11 && cleanPhone.startsWith('0')) ||
+                       (cleanPhone.length === 13 && cleanPhone.startsWith('234')) ||
+                       (cleanPhone.length >= 10 && cleanPhone.length <= 14);
 
   const handleContinue = async () => {
     if (!isNameValid) {
-      showToast?.('Please enter your full official name (at least 3 characters).', 'error');
+      showToast?.('Please enter your full official name (both First Name and Surname).', 'error');
       return;
     }
     if (!isMatricValid) {
-      showToast?.('Please enter a valid Matriculation Number (e.g., 24/52HA042).', 'error');
+      showToast?.('Please enter a valid Matric Number with forward slash (e.g., 24/52HA042 or 25/52HT014).', 'error');
       return;
     }
     if (!isEmailValid) {
-      showToast?.('Please enter a valid email address.', 'error');
+      showToast?.('Please enter a valid email address (e.g., yourname@gmail.com).', 'error');
       return;
     }
     if (!isPhoneValid) {
-      showToast?.('Please enter a valid WhatsApp phone number.', 'error');
+      showToast?.('Please enter a valid Nigerian WhatsApp phone number (e.g., 08012345678).', 'error');
       return;
     }
 

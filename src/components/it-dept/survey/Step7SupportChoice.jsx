@@ -67,15 +67,15 @@ export const Step7SupportChoice = ({ formData, onChange, onNext, onBack, onCompl
                 width: '18px',
                 height: '18px',
                 borderRadius: '50%',
-                border: formData.supportLeadershipChoice === 'yes' ? '5px solid #3ECF8E' : '1px solid #71717A',
+                border: formData.supportLeadershipChoice === 'yes' ? '5px solid #3B82F6' : '1px solid #71717A',
                 background: formData.supportLeadershipChoice === 'yes' ? '#09090B' : 'transparent',
               }}
             />
             <div>
-              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: formData.supportLeadershipChoice === 'yes' ? '#3ECF8E' : '#EDEDED' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: formData.supportLeadershipChoice === 'yes' ? '#60A5FA' : '#EDEDED' }}>
                 Yes, I'd love to contribute
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#71717A' }}>
+              <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94A3B8' }}>
                 Support semester welfare and tutorials
               </p>
             </div>
@@ -94,15 +94,15 @@ export const Step7SupportChoice = ({ formData, onChange, onNext, onBack, onCompl
                 width: '18px',
                 height: '18px',
                 borderRadius: '50%',
-                border: formData.supportLeadershipChoice === 'no' ? '5px solid #3ECF8E' : '1px solid #71717A',
+                border: formData.supportLeadershipChoice === 'no' ? '5px solid #3B82F6' : '1px solid #71717A',
                 background: formData.supportLeadershipChoice === 'no' ? '#09090B' : 'transparent',
               }}
             />
             <div>
-              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: formData.supportLeadershipChoice === 'no' ? '#3ECF8E' : '#EDEDED' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: formData.supportLeadershipChoice === 'no' ? '#60A5FA' : '#EDEDED' }}>
                 Not now, active participation
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#71717A' }}>
+              <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#94A3B8' }}>
                 Support primarily by volunteering skills
               </p>
             </div>
@@ -111,9 +111,9 @@ export const Step7SupportChoice = ({ formData, onChange, onNext, onBack, onCompl
 
         {/* When YES selected */}
         {formData.supportLeadershipChoice === 'yes' && (
-          <div style={{ padding: '18px', borderRadius: '10px', background: 'rgba(62, 207, 142, 0.05)', border: '1px solid rgba(62, 207, 142, 0.25)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ padding: '18px', borderRadius: '10px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.25)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#3ECF8E', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#60A5FA', marginBottom: '8px' }}>
                 Select Contribution Amount (₦)
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>

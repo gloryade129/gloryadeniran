@@ -42,6 +42,16 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
     { label: 'Empathy & Class Welfare', val: kpis.acrWelfareAvg },
   ];
 
+  const crYes = profiles.filter(p => p.crRecommendContinue === 'yes').length;
+  const crNo = profiles.filter(p => p.crRecommendContinue === 'no').length;
+  const crTotal = crYes + crNo + profiles.filter(p => p.crRecommendContinue === 'undecided').length;
+  const crContinuePct = crTotal > 0 ? Math.round((crYes / crTotal) * 100) : 0;
+
+  const acrYes = profiles.filter(p => p.acrRecommendContinue === 'yes').length;
+  const acrNo = profiles.filter(p => p.acrRecommendContinue === 'no').length;
+  const acrTotal = acrYes + acrNo + profiles.filter(p => p.acrRecommendContinue === 'undecided').length;
+  const acrContinuePct = acrTotal > 0 ? Math.round((acrYes / acrTotal) * 100) : 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Primary KPI Cards Grid */}
@@ -213,7 +223,7 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
             {crMetrics.map((m) => (
               <div key={m.label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
@@ -226,6 +236,21 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
               </div>
             ))}
           </div>
+
+          {/* CR Continuation Recommendation KPI */}
+          <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>200L Continuation Recommendation</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#60A5FA' }}>{crTotal > 0 ? `${crContinuePct}% Yes` : 'Pending'}</span>
+            </div>
+            <div className="it-progress-track" style={{ height: '4px', marginBottom: '6px' }}>
+              <div className="it-progress-fill" style={{ width: `${crContinuePct}%` }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#64748B' }}>
+              <span>Endorsements: {crYes} Yes · {crNo} No</span>
+              <span>{crTotal} responses</span>
+            </div>
+          </div>
         </div>
 
         {/* Assistant Class Representative Card */}
@@ -235,7 +260,7 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
               <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#FFFFFF' }}>
                 Assistant Class Representative (ACR) Evaluation
               </h3>
-              <span style={{ fontSize: '0.72rem', color: '#3B82F6' }}>Assistant Class Rep</span>
+              <span style={{ fontSize: '0.72rem', color: '#3B82F6' }}>Esther · Assistant Class Rep</span>
             </div>
             <div style={{ textAlign: 'right' }}>
               <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>
@@ -244,7 +269,7 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
             {acrMetrics.map((m) => (
               <div key={m.label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
@@ -256,6 +281,21 @@ export const KpiOverview = ({ profiles = [], feedbacks = [], kpis: precomputedKp
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ACR Continuation Recommendation KPI */}
+          <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>200L Continuation Recommendation</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#60A5FA' }}>{acrTotal > 0 ? `${acrContinuePct}% Yes` : 'Pending'}</span>
+            </div>
+            <div className="it-progress-track" style={{ height: '4px', marginBottom: '6px' }}>
+              <div className="it-progress-fill" style={{ width: `${acrContinuePct}%` }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#64748B' }}>
+              <span>Endorsements: {acrYes} Yes · {acrNo} No</span>
+              <span>{acrTotal} responses</span>
+            </div>
           </div>
         </div>
       </div>

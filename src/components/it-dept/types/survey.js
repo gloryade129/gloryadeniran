@@ -15,10 +15,14 @@ export const INITIAL_SURVEY_STATE = {
   crRatingMaterials: 0,
   crRatingAvailability: 0,
   crRatingWelfare: 0,
+  crRecommendContinue: '', // 'yes' | 'no' | 'undecided'
+  crRecommendReason: '',
   acrRatingCommunication: 0,
   acrRatingMaterials: 0,
   acrRatingAvailability: 0,
   acrRatingWelfare: 0,
+  acrRecommendContinue: '', // 'yes' | 'no' | 'undecided'
+  acrRecommendReason: '',
   leadershipWellDone: '',
   leadershipCriticalAreas: '',
   isAnonymousLeadership: false,

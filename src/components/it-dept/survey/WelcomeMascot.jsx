@@ -4,6 +4,7 @@ import { Sparkles, X, ChevronRight } from 'lucide-react';
 
 export const WelcomeMascot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasDismissed, setHasDismissed] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [isWiggling, setIsWiggling] = useState(false);
 
@@ -21,11 +22,20 @@ export const WelcomeMascot = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleClose = () => {
+    setIsOpen(false);
+    setHasDismissed(true);
+  };
+
   const handleNextTip = () => {
     setIsWiggling(true);
     setQuoteIndex((prev) => (prev + 1) % tips.length);
     setTimeout(() => setIsWiggling(false), 500);
   };
+
+  if (hasDismissed || !isOpen) {
+    return null;
+  }
 
   return (
     <>
@@ -62,51 +72,8 @@ export const WelcomeMascot = () => {
         }
       `}</style>
 
-      {/* Floating Pill / Trigger Button when minimized */}
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            zIndex: 60,
-            background: 'rgba(17, 21, 36, 0.95)',
-            border: '1px solid rgba(59, 130, 246, 0.4)',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6), 0 0 16px rgba(37, 99, 235, 0.25)',
-            borderRadius: '9999px',
-            padding: '8px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            color: '#FFFFFF',
-            cursor: 'pointer',
-            backdropFilter: 'blur(12px)',
-            transition: 'all 0.2s ease',
-            fontFamily: 'Montserrat, sans-serif',
-          }}
-          className="it-btn-interactive"
-          aria-label="Open Byte 200L Companion"
-        >
-          <div
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#3B82F6',
-              boxShadow: '0 0 8px #3B82F6',
-            }}
-          />
-          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#EDEDED' }}>
-            Byte · 200L Companion
-          </span>
-        </button>
-      )}
-
       {/* Interactive Pop-up Modal / Dialog */}
-      {isOpen && (
-        <div
+      <div
           style={{
             position: 'fixed',
             bottom: '24px',
@@ -160,7 +127,7 @@ export const WelcomeMascot = () => {
             </div>
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -250,7 +217,7 @@ export const WelcomeMascot = () => {
 
             <button
               type="button"
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               className="it-btn-primary"
               style={{
                 width: '100%',
@@ -266,7 +233,6 @@ export const WelcomeMascot = () => {
             </button>
           </div>
         </div>
-      )}
     </>
   );
 };

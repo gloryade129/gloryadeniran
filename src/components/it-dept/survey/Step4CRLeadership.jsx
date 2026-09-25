@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { ArrowRight, ArrowLeft, Star, Award } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Star, ThumbsUp, ThumbsDown, HelpCircle } from 'lucide-react';
 
 const CR_METRICS = [
   { field: 'crRatingCommunication', label: 'Communication & Class Announcements', desc: 'Timely lecture updates, venue changes, and department info' },
@@ -16,6 +16,17 @@ export const Step4CRLeadership = ({ formData, onChange, onNext, onBack, showToas
       showToast?.(`Please select a rating for: ${unrated.label}`, 'error');
       return;
     }
+
+    if (!formData.crRecommendContinue) {
+      showToast?.('Please indicate whether you recommend Glory to continue as Class Rep.', 'error');
+      return;
+    }
+
+    if (!formData.crRecommendReason || formData.crRecommendReason.trim().length < 5) {
+      showToast?.('Please share your reason (if yes why, if no why) with at least 5 characters.', 'error');
+      return;
+    }
+
     onNext();
   };
 
@@ -32,16 +43,16 @@ export const Step4CRLeadership = ({ formData, onChange, onNext, onBack, showToas
       </div>
 
       {/* Leadership Profile Header Card */}
-      <div className="it-card" style={{ padding: '16px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '14px', borderLeft: '3px solid #3ECF8E' }}>
+      <div className="it-card" style={{ padding: '16px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '14px', borderLeft: '3px solid #2563EB' }}>
         <img
           src="/images/Put_an_I_watch_to_202606282357.jpeg"
           alt="Glory Adeniran"
-          style={{ width: '46px', height: '46px', borderRadius: '8px', objectFit: 'cover', border: '1px solid rgba(62, 207, 142, 0.4)' }}
+          style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', border: '1.5px solid rgba(59, 130, 246, 0.5)' }}
           onError={(e) => { e.target.style.display = 'none'; }}
         />
         <div>
-          <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#FFFFFF' }}>Glory Adeniran</h3>
-          <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#3ECF8E', fontFamily: 'JetBrains Mono, monospace' }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#FFFFFF' }}>Glory Adeniran</h3>
+          <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#60A5FA', fontFamily: 'JetBrains Mono, monospace' }}>
             Class Representative · IT Dept (2025-2029 Set)
           </p>
         </div>
@@ -55,9 +66,9 @@ export const Step4CRLeadership = ({ formData, onChange, onNext, onBack, showToas
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#EDEDED' }}>{m.label}</h4>
-                  <p style={{ margin: '2px 0 8px', fontSize: '0.75rem', color: '#71717A' }}>{m.desc}</p>
+                  <p style={{ margin: '2px 0 8px', fontSize: '0.75rem', color: '#94A3B8' }}>{m.desc}</p>
                 </div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: val > 0 ? '#FBBF24' : '#52525B' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: val > 0 ? '#3B82F6' : '#64748B' }}>
                   {val > 0 ? `${val} / 5` : 'Tap star'}
                 </span>
               </div>
@@ -72,14 +83,14 @@ export const Step4CRLeadership = ({ formData, onChange, onNext, onBack, showToas
                       width: '38px',
                       height: '38px',
                       borderRadius: '6px',
-                      background: val >= star ? 'rgba(251, 191, 36, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                      border: val >= star ? '1px solid rgba(251, 191, 36, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: val >= star ? 'rgba(37, 99, 235, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                      border: val >= star ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
                     }}
                   >
                     <Star
                       size={20}
-                      fill={val >= star ? '#FBBF24' : 'none'}
-                      color={val >= star ? '#FBBF24' : '#52525B'}
+                      fill={val >= star ? '#3B82F6' : 'none'}
+                      color={val >= star ? '#3B82F6' : '#64748B'}
                     />
                   </button>
                 ))}
@@ -87,6 +98,66 @@ export const Step4CRLeadership = ({ formData, onChange, onNext, onBack, showToas
             </div>
           );
         })}
+
+        {/* Continuation Question for CR Glory */}
+        <div style={{ paddingTop: '8px' }}>
+          <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
+            Would you recommend Glory to continue as the Class Representative in 200 Level? *
+          </label>
+          <p style={{ fontSize: '0.75rem', color: '#94A3B8', margin: '0 0 12px 0' }}>
+            Your honest assessment helps ensure effective leadership continuity for our class.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+            {[
+              { id: 'yes', label: 'Yes, definitely', icon: ThumbsUp },
+              { id: 'no', label: 'No', icon: ThumbsDown },
+              { id: 'undecided', label: 'Undecided', icon: HelpCircle },
+            ].map(opt => {
+              const isSelected = formData.crRecommendContinue === opt.id;
+              const IconComp = opt.icon;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => onChange('crRecommendContinue', opt.id)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    background: isSelected ? 'rgba(37, 99, 235, 0.18)' : 'rgba(255, 255, 255, 0.03)',
+                    border: isSelected ? '1.5px solid #3B82F6' : '1px solid rgba(255, 255, 255, 0.08)',
+                    color: isSelected ? '#60A5FA' : '#CBD5E1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: isSelected ? 700 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <IconComp size={16} color={isSelected ? '#60A5FA' : '#94A3B8'} />
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#EDEDED', marginBottom: '6px' }}>
+              Kindly share your reason (If yes why, if no why): *
+            </label>
+            <textarea
+              className="it-input"
+              rows={3}
+              placeholder="Please explain why you recommend or do not recommend Glory to continue as Class Rep for 200 Level..."
+              value={formData.crRecommendReason || ''}
+              onChange={(e) => onChange('crRecommendReason', e.target.value)}
+              style={{ width: '100%', fontSize: '0.85rem', lineHeight: 1.5 }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Nav Actions */}
