@@ -486,3 +486,262 @@ export async function checkDuplicateStudent(email, matricNo) {
   }
 }
 
+/**
+ * Looks up an existing student submission by Matric Number (or Email)
+ * for returning students wanting to answer the new questions
+ */
+export async function lookupStudentByMatric(matricNo, email) {
+  const normalizedMatric = (matricNo || '').trim().toUpperCase();
+  const normalizedEmail = (email || '').trim().toLowerCase();
+
+  if (!isSupabaseConfigured()) {
+    return { found: false };
+  }
+
+  try {
+    let query = '';
+    if (normalizedMatric) {
+      query = `matric_no=ilike.${encodeURIComponent(normalizedMatric)}`;
+    } else if (normalizedEmail) {
+      query = `email=ilike.${encodeURIComponent(normalizedEmail)}`;
+    } else {
+      return { found: false };
+    }
+
+    const res = await fetch(`${supabaseUrl}/rest/v1/students_profile?${query}&select=*&limit=1`, {
+      method: 'GET',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) return { found: false };
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) return { found: false };
+
+    const profile = rows[0];
+
+    // Also look up any existing leadership feedback
+    let feedback = null;
+    if (profile.id) {
+      const fbRes = await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?student_id=eq.${encodeURIComponent(profile.id)}&select=*&limit=1`, {
+        method: 'GET',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        cache: 'no-store',
+      });
+      if (fbRes.ok) {
+        const fbRows = await fbRes.json();
+        if (Array.isArray(fbRows) && fbRows.length > 0) {
+          feedback = fbRows[0];
+        }
+      }
+    }
+
+    return {
+      found: true,
+      student: {
+        profileId: profile.id,
+        fullName: profile.full_name,
+        matricNo: profile.matric_no,
+        email: profile.email || '',
+        phone: profile.phone || '',
+        birthDay: profile.birth_day || 1,
+        birthMonth: profile.birth_month || 1,
+        techTrack: profile.tech_track || '',
+        academicRating100L: profile.academic_rating_100l || 5,
+        favoriteCourses: profile.favorite_courses || [],
+        toughestCourses: profile.toughest_courses || [],
+        challenges100L: profile.challenges_100l || [],
+        volunteerRoles: profile.volunteer_roles || profile.committees || [],
+        committees: profile.committees || [],
+        supportLeadershipChoice: profile.support_choice || 'no',
+        supportAmount: Number(profile.support_amount) || 0,
+        paymentStatus: profile.payment_status || 'unpaid',
+        paymentRef: profile.payment_ref || '',
+        supportNote: profile.support_note || '',
+        suggestions200L: profile.suggestions_200l || '',
+        vision200L: profile.suggestions_200l || '',
+        crRecommendContinue: profile.cr_recommend_continue || feedback?.cr_recommend_continue || '',
+        crRecommendReason: profile.cr_recommend_reason || feedback?.cr_recommend_reason || '',
+        acrRecommendContinue: profile.acr_recommend_continue || feedback?.acr_recommend_continue || '',
+        acrRecommendReason: profile.acr_recommend_reason || feedback?.acr_recommend_reason || '',
+        crRatingCommunication: feedback?.cr_communication || 5,
+        crRatingMaterials: feedback?.cr_materials || 5,
+        crRatingAvailability: feedback?.cr_availability || 5,
+        crRatingWelfare: feedback?.cr_welfare || 5,
+        acrRatingCommunication: feedback?.acr_communication || 5,
+        acrRatingMaterials: feedback?.acr_materials || 5,
+        acrRatingAvailability: feedback?.acr_availability || 5,
+        acrRatingWelfare: feedback?.acr_welfare || 5,
+        leadershipWellDone: feedback?.well_done || '',
+        leadershipPraises: feedback?.well_done || '',
+        leadershipCriticalAreas: feedback?.critical_areas || '',
+        leadershipImprovements: feedback?.critical_areas || '',
+        isAnonymousLeadership: Boolean(feedback?.is_anonymous),
+        isAnonymousFeedback: Boolean(feedback?.is_anonymous),
+      },
+    };
+  } catch (err) {
+    console.error('[it-dept-db] lookupStudentByMatric error:', err);
+    return { found: false, error: err.message };
+  }
+}
+
+/**
+ * Updates an existing student submission with answers to the new questions
+ * (e.g. CR & ACR continuation recommendations, updated comments, suggestions)
+ */
+export async function updateStudentSubmission(data) {
+  const profileId = data.profileId;
+  const normalizedMatric = (data.matricNo || '').trim().toUpperCase();
+
+  if (!isSupabaseConfigured()) {
+    return { success: true, isDemo: true };
+  }
+
+  try {
+    // 1. Update students_profile record
+    const profileUpdates = {
+      cr_recommend_continue: data.crRecommendContinue || '',
+      cr_recommend_reason: data.crRecommendReason || '',
+      acr_recommend_continue: data.acrRecommendContinue || '',
+      acr_recommend_reason: data.acrRecommendReason || '',
+      volunteer_roles: data.volunteerRoles || [],
+      suggestions_200l: (data.suggestions200L || data.vision200L || '').trim(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (data.supportLeadershipChoice) profileUpdates.support_choice = data.supportLeadershipChoice;
+    if (data.supportAmount !== undefined) profileUpdates.support_amount = Number(data.supportAmount) || 0;
+    if (data.supportNote) profileUpdates.support_note = data.supportNote;
+
+    const profileQuery = profileId
+      ? `id=eq.${encodeURIComponent(profileId)}`
+      : `matric_no=ilike.${encodeURIComponent(normalizedMatric)}`;
+
+    let profilePatchRes = await fetch(`${supabaseUrl}/rest/v1/students_profile?${profileQuery}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(profileUpdates),
+    });
+
+    // If new columns failed schema cache, embed in suggestions_200l
+    if (!profilePatchRes.ok) {
+      const fallbackUpdates = { ...profileUpdates };
+      delete fallbackUpdates.cr_recommend_continue;
+      delete fallbackUpdates.cr_recommend_reason;
+      delete fallbackUpdates.acr_recommend_continue;
+      delete fallbackUpdates.acr_recommend_reason;
+      fallbackUpdates.suggestions_200l = `${data.suggestions200L || data.vision200L || ''}\n[CR Continue: ${(data.crRecommendContinue || '').toUpperCase()}] Reason: ${data.crRecommendReason || ''}\n[ACR Esther Continue: ${(data.acrRecommendContinue || '').toUpperCase()}] Reason: ${data.acrRecommendReason || ''}`.trim();
+
+      await fetch(`${supabaseUrl}/rest/v1/students_profile?${profileQuery}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fallbackUpdates),
+      });
+    }
+
+    // 2. Update or Upsert leadership_feedback record
+    const isAnonymous = Boolean(data.isAnonymousLeadership || data.isAnonymousFeedback);
+    const wellDoneVal = (data.leadershipWellDone || data.leadershipPraises || data.wellDone || '').trim();
+    const criticalAreasVal = (data.leadershipCriticalAreas || data.leadershipImprovements || data.criticalAreas || '').trim();
+
+    const feedbackUpdates = {
+      cr_communication: Number(data.crRatingCommunication) || 5,
+      cr_materials: Number(data.crRatingMaterials) || 5,
+      cr_availability: Number(data.crRatingAvailability) || 5,
+      cr_welfare: Number(data.crRatingWelfare) || 5,
+      acr_communication: Number(data.acrRatingCommunication) || 5,
+      acr_materials: Number(data.acrRatingMaterials) || 5,
+      acr_availability: Number(data.acrRatingAvailability) || 5,
+      acr_welfare: Number(data.acrRatingWelfare) || 5,
+      well_done: wellDoneVal,
+      critical_areas: criticalAreasVal,
+      cr_recommend_continue: data.crRecommendContinue || '',
+      cr_recommend_reason: data.crRecommendReason || '',
+      acr_recommend_continue: data.acrRecommendContinue || '',
+      acr_recommend_reason: data.acrRecommendReason || '',
+    };
+
+    if (profileId) {
+      // Check if feedback already exists for this student_id
+      const checkFbRes = await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?student_id=eq.${encodeURIComponent(profileId)}&select=id&limit=1`, {
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        cache: 'no-store',
+      });
+
+      if (checkFbRes.ok) {
+        const existingFb = await checkFbRes.json();
+        if (Array.isArray(existingFb) && existingFb.length > 0) {
+          // Update existing feedback
+          const fbId = existingFb[0].id;
+          let fbPatchRes = await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?id=eq.${encodeURIComponent(fbId)}`, {
+            method: 'PATCH',
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(feedbackUpdates),
+          });
+
+          if (!fbPatchRes.ok) {
+            // Fallback: strip continuation columns and embed in critical_areas
+            const fallbackFb = { ...feedbackUpdates };
+            delete fallbackFb.cr_recommend_continue;
+            delete fallbackFb.cr_recommend_reason;
+            delete fallbackFb.acr_recommend_continue;
+            delete fallbackFb.acr_recommend_reason;
+            fallbackFb.critical_areas = `${criticalAreasVal}\n[CR Continue: ${(data.crRecommendContinue || '').toUpperCase()}] Reason: ${data.crRecommendReason || ''}\n[ACR Esther Continue: ${(data.acrRecommendContinue || '').toUpperCase()}] Reason: ${data.acrRecommendReason || ''}`.trim();
+
+            await fetch(`${supabaseUrl}/rest/v1/leadership_feedback?id=eq.${encodeURIComponent(fbId)}`, {
+              method: 'PATCH',
+              headers: {
+                apikey: supabaseKey,
+                Authorization: `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(fallbackFb),
+            });
+          }
+        } else {
+          // Insert fresh feedback row linked to this profile
+          const newFb = {
+            ...feedbackUpdates,
+            student_id: isAnonymous ? null : profileId,
+            is_anonymous: isAnonymous,
+          };
+          await fetch(`${supabaseUrl}/rest/v1/leadership_feedback`, {
+            method: 'POST',
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newFb),
+          });
+        }
+      }
+    }
+
+    return { success: true, profileId };
+  } catch (err) {
+    console.error('[it-dept-db] Exception updating student submission:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+

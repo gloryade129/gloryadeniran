@@ -2,7 +2,7 @@
 import React from 'react';
 import { CheckCircle2, RotateCcw, User, Mail, Hash, BookOpen } from 'lucide-react';
 
-export const Step5Celebration = ({ formData, onReset }) => {
+export const Step5Celebration = ({ formData, onReset, isUpdateMode = false }) => {
   const firstName = (formData.fullName || 'Scholar').split(' ')[0];
 
   return (
@@ -27,7 +27,7 @@ export const Step5Celebration = ({ formData, onReset }) => {
       </div>
 
       <span className="it-badge" style={{ marginBottom: '10px' }}>
-        SUBMISSION RECORDED
+        {isUpdateMode ? 'REVIEW UPDATED' : 'SUBMISSION RECORDED'}
       </span>
 
       <h2
@@ -38,7 +38,7 @@ export const Step5Celebration = ({ formData, onReset }) => {
           margin: '6px 0 10px',
         }}
       >
-        Thank You, {firstName}!
+        {isUpdateMode ? `Review Updated, ${firstName}!` : `Thank You, ${firstName}!`}
       </h2>
 
       <p
@@ -50,7 +50,9 @@ export const Step5Celebration = ({ formData, onReset }) => {
           lineHeight: 1.55,
         }}
       >
-        Your directory details, retrospective feedback, and committee preferences have been securely saved.
+        {isUpdateMode
+          ? 'Your responses to the newly added leadership continuation questions and suggestions have been securely saved.'
+          : 'Your directory details, retrospective feedback, and committee preferences have been securely saved.'}
       </p>
 
       {/* Clean Summary Card */}

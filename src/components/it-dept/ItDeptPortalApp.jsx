@@ -21,6 +21,7 @@ const DRAFT_STORAGE_KEY = 'it_dept_survey_draft_v4';
 
 export const App = () => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [isUpdateMode, setIsUpdateMode] = useState(false);
   const [formData, setFormData] = useState(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -49,14 +50,14 @@ export const App = () => {
     setToast(prev => ({ ...prev, open: false }));
   }, []);
 
-  // Save draft across steps before submission
+  // Save draft across steps before submission (only in regular mode)
   useEffect(() => {
-    if (currentStep > 0 && currentStep < 9) {
+    if (!isUpdateMode && currentStep > 0 && currentStep < 9) {
       try {
         localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
       } catch (e) {}
     }
-  }, [formData, currentStep]);
+  }, [formData, currentStep, isUpdateMode]);
 
   const handleFieldChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -66,6 +67,22 @@ export const App = () => {
     setCurrentStep(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  const handleReturningStudent = useCallback((studentData) => {
+    if (!studentData) return;
+    setFormData(prev => ({
+      ...INITIAL_SURVEY_STATE,
+      ...studentData,
+    }));
+    setIsUpdateMode(true);
+    setCurrentStep(4); // Jump directly to Step 4 CR Leadership
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast(
+      `Welcome back, ${studentData.fullName || 'Scholar'}! Reviewing leadership continuation questions.`,
+      'info',
+      'Update Mode Active'
+    );
+  }, [showToast]);
 
   const handleNext = useCallback(() => {
     setCurrentStep(prev => Math.min(prev + 1, 8));
@@ -84,16 +101,20 @@ export const App = () => {
       localStorage.removeItem('it_dept_submitted_matric');
     } catch (e) {}
     setFormData(INITIAL_SURVEY_STATE);
+    setIsUpdateMode(false);
     setCurrentStep(0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Submit student journey - strictly triggered when payment is confirmed or opted out
+  // Submit student journey - handles both fresh insert and returning student updates
   const handleSubmitJourney = useCallback(async (overrides = {}) => {
     setIsSubmitting(true);
     const payload = { ...formData, ...overrides };
     try {
-      const res = await dataService.submitStudentJourney(payload);
+      const res = isUpdateMode
+        ? await dataService.updateStudentJourney(payload)
+        : await dataService.submitStudentJourney(payload);
+
       if (!res.success) {
         showToast(res.error || 'Submission failed. Please check your network and try again.', 'error');
         setIsSubmitting(false);
@@ -105,7 +126,12 @@ export const App = () => {
         localStorage.removeItem('it_dept_submitted_matric');
       } catch (e) {}
       setIsSubmitting(false);
-      showToast('Survey submitted successfully! Welcome to 200 Level.', 'success');
+      showToast(
+        isUpdateMode
+          ? 'Your responses and continuation questions were updated successfully!'
+          : 'Survey submitted successfully! Welcome to 200 Level.',
+        'success'
+      );
       setCurrentStep(9); // Celebration Step
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return true;
@@ -115,7 +141,7 @@ export const App = () => {
       setIsSubmitting(false);
       return false;
     }
-  }, [formData, showToast]);
+  }, [formData, isUpdateMode, showToast]);
 
   // Handle return from external Flutterwave redirect
   useEffect(() => {
@@ -171,12 +197,70 @@ export const App = () => {
       {/* Global Floating Toast Notification */}
       <ToastNotification toast={toast} onClose={closeToast} />
 
+      {/* Update Mode Active Banner */}
+      {isUpdateMode && currentStep >= 1 && currentStep <= 8 && (
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 45,
+            background: 'rgba(30, 58, 138, 0.95)',
+            backdropFilter: 'blur(12px)',
+            borderBottom: '1px solid rgba(59, 130, 246, 0.4)',
+            padding: '8px 16px',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: '640px',
+              margin: '0 auto',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '0.75rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#DBEAFE' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#60A5FA',
+                  boxShadow: '0 0 8px #60A5FA',
+                }}
+              />
+              <span>
+                <strong>Update Mode:</strong> Updating review for <strong>{formData.fullName}</strong> ({formData.matricNo})
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '4px',
+                color: '#FFFFFF',
+                fontSize: '0.7rem',
+                padding: '2px 8px',
+                cursor: 'pointer',
+              }}
+            >
+              Exit Update Mode
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Progress Bar - Supabase Style Minimalist Line */}
       {currentStep >= 1 && currentStep <= 8 && (
         <div
           style={{
             position: 'sticky',
-            top: '60px',
+            top: isUpdateMode ? '37px' : '60px',
             zIndex: 30,
             background: 'rgba(10, 10, 12, 0.95)',
             backdropFilter: 'blur(16px)',
@@ -220,13 +304,20 @@ export const App = () => {
           zIndex: 10,
         }}
       >
-        {currentStep === 0 && <Step0Welcome onStart={handleStart} />}
+        {currentStep === 0 && (
+          <Step0Welcome
+            onStart={handleStart}
+            onReturningStudent={handleReturningStudent}
+            showToast={showToast}
+          />
+        )}
         {currentStep === 1 && (
           <Step1Identity
             formData={formData}
             onChange={handleFieldChange}
             onNext={handleNext}
             onBack={handleBack}
+            onReturningStudent={handleReturningStudent}
             showToast={showToast}
           />
         )}
@@ -273,6 +364,9 @@ export const App = () => {
             onNext={handleNext}
             onBack={handleBack}
             showToast={showToast}
+            isUpdateMode={isUpdateMode}
+            onUpdateSubmit={() => handleSubmitJourney()}
+            isSubmitting={isSubmitting}
           />
         )}
         {currentStep === 7 && (
@@ -301,7 +395,13 @@ export const App = () => {
             isSubmitting={isSubmitting}
           />
         )}
-        {currentStep === 9 && <Step5Celebration formData={formData} onReset={handleReset} />}
+        {currentStep === 9 && (
+          <Step5Celebration
+            formData={formData}
+            onReset={handleReset}
+            isUpdateMode={isUpdateMode}
+          />
+        )}
       </main>
 
       <Footer />

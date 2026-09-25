@@ -84,6 +84,44 @@ export class DataService {
     }
   }
 
+  async lookupStudent(matricNo, email) {
+    try {
+      const res = await fetch('/api/it-dept/lookup-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matricNo, email }),
+      });
+      if (!res.ok) return { found: false };
+      return await res.json();
+    } catch (err) {
+      console.warn('lookupStudent error:', err);
+      return { found: false };
+    }
+  }
+
+  async updateStudentJourney(formData) {
+    try {
+      const res = await fetch('/api/it-dept/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Failed to update your response.' };
+      }
+      return {
+        success: true,
+        profileId: data.profileId,
+        passToken: data.passToken,
+        updated: true,
+      };
+    } catch (err) {
+      console.error('updateStudentJourney error:', err);
+      return { success: false, error: err.message || 'Network error updating review.' };
+    }
+  }
+
   async getAdminDashboardData(pin) {
     try {
       const res = await fetch('/api/it-dept/admin-data', {

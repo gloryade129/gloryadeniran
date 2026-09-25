@@ -1,10 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, ArrowLeft, User, Hash, Mail, Phone, Calendar, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, User, Hash, Mail, Phone, Calendar, Loader2, UserCheck } from 'lucide-react';
 import { MONTH_NAMES } from '@/components/it-dept/types/survey';
+import { dataService } from '../services/dataService';
 
-export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast }) => {
+export const Step1Identity = ({ formData, onChange, onNext, onBack, onReturningStudent, showToast }) => {
   const [isChecking, setIsChecking] = useState(false);
+  const [matchedStudentRecord, setMatchedStudentRecord] = useState(null);
 
   // Clear stale local duplicate markers on mount so deleted admin records can re-enter immediately
   useEffect(() => {
@@ -58,7 +60,14 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
       if (res.ok) {
         const checkData = await res.json();
         if (checkData.exists) {
-          showToast?.(checkData.message || 'A submission with this email or matric number already exists in our records.', 'error');
+          // Attempt to lookup student profile so they can jump directly to new questions
+          const lookup = await dataService.lookupStudent(formData.matricNo.trim().toUpperCase(), formData.email.trim().toLowerCase());
+          if (lookup && lookup.found && lookup.student) {
+            setMatchedStudentRecord(lookup.student);
+            showToast?.('Existing submission found! Click below to complete the newly added leadership questions.', 'info');
+          } else {
+            showToast?.(checkData.message || 'A submission with this email or matric number already exists in our records.', 'error');
+          }
           setIsChecking(false);
           return;
         }
@@ -177,6 +186,70 @@ export const Step1Identity = ({ formData, onChange, onNext, onBack, showToast })
           </div>
         </div>
       </div>
+
+      {/* Returning Student Alert Banner */}
+      {matchedStudentRecord && (
+        <div
+          className="it-card it-animate-fade"
+          style={{
+            padding: '16px 18px',
+            marginBottom: '20px',
+            border: '1.5px solid #2563EB',
+            background: 'rgba(37, 99, 235, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(37, 99, 235, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#60A5FA',
+                flexShrink: 0,
+              }}
+            >
+              <UserCheck size={18} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF' }}>
+                Previous Submission Found for {matchedStudentRecord.fullName || formData.fullName}
+              </h4>
+              <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#93C5FD', fontFamily: 'JetBrains Mono, monospace' }}>
+                Matric: {matchedStudentRecord.matricNo || formData.matricNo}
+              </p>
+            </div>
+          </div>
+
+          <p style={{ margin: 0, fontSize: '0.8125rem', color: '#CBD5E1', lineHeight: 1.5 }}>
+            You previously submitted your student directory details. You don't need to refill earlier steps—jump straight to answering the newly added questions (Glory CR & Esther ACR continuation)!
+          </p>
+
+          <button
+            type="button"
+            onClick={() => onReturningStudent?.(matchedStudentRecord)}
+            className="it-btn-primary"
+            style={{
+              padding: '10px 18px',
+              fontSize: '0.85rem',
+              alignSelf: 'flex-start',
+              background: '#2563EB',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <UserCheck size={16} />
+            <span>Jump to New Leadership Questions →</span>
+          </button>
+        </div>
+      )}
 
       {/* Nav Actions */}
       <div className="it-nav-actions">

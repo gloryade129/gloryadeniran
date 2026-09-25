@@ -1,13 +1,22 @@
 'use client';
 import React from 'react';
-import { ArrowRight, ArrowLeft, Palette, Film, Share2, BookOpen, Terminal, Heart, Calendar, Camera, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Palette, Film, Share2, BookOpen, Terminal, Heart, Calendar, Camera, Check, CheckCircle2, Loader2 } from 'lucide-react';
 import { VOLUNTEER_ROLES } from '@/components/it-dept/types/survey';
 
 const ROLE_ICONS = {
   Palette, Film, Share2, BookOpen, Terminal, Heart, Calendar, Camera
 };
 
-export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack, showToast }) => {
+export const Step6VolunteerRoles = ({
+  formData,
+  onChange,
+  onNext,
+  onBack,
+  showToast,
+  isUpdateMode = false,
+  onUpdateSubmit,
+  isSubmitting = false,
+}) => {
   const toggleRole = (name) => {
     const current = formData.volunteerRoles || [];
     if (current.includes(name)) {
@@ -113,15 +122,61 @@ export const Step6VolunteerRoles = ({ formData, onChange, onNext, onBack, showTo
       </div>
 
       {/* Nav Actions */}
-      <div className="it-nav-actions">
-        <button type="button" onClick={onBack} className="it-btn-secondary">
-          <ArrowLeft size={16} />
-          <span>Back</span>
-        </button>
-        <button type="button" onClick={onNext} className="it-btn-primary" style={{ minWidth: '180px' }}>
-          <span>Next: Leadership Support</span>
-          <ArrowRight size={16} />
-        </button>
+      <div className="it-nav-actions" style={{ flexDirection: isUpdateMode ? 'column' : 'row', gap: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
+          <button type="button" onClick={onBack} disabled={isSubmitting} className="it-btn-secondary">
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
+
+          {isUpdateMode ? (
+            <button
+              type="button"
+              onClick={onUpdateSubmit}
+              disabled={isSubmitting}
+              className="it-btn-primary"
+              style={{ minWidth: '200px' }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="it-spin" />
+                  <span>Saving Updates...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={16} />
+                  <span>Submit Updated Review</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button type="button" onClick={onNext} className="it-btn-primary" style={{ minWidth: '180px' }}>
+              <span>Next: Leadership Support</span>
+              <ArrowRight size={16} />
+            </button>
+          )}
+        </div>
+
+        {isUpdateMode && (
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={isSubmitting}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#60A5FA',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: '4px',
+              }}
+            >
+              Want to review leadership contribution options? Continue to Step 7 →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
