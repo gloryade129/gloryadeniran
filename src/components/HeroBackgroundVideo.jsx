@@ -2,10 +2,12 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import useNetworkQuality from '@/hooks/useNetworkQuality';
 
 export default function HeroBackgroundVideo() {
   const videoRef = useRef(null);
   const progressBarRef = useRef(null);
+  const network = useNetworkQuality();
 
   // Playback & Interaction States
   const [isPlaying, setIsPlaying] = useState(true);
@@ -16,11 +18,18 @@ export default function HeroBackgroundVideo() {
   const [isScrolling, setIsScrolling] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 35 });
   const [isHovered, setIsHovered] = useState(false);
+  
+  // Adaptive Network State
+  const [userWantsVideo, setUserWantsVideo] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
-  // Auto-play on mount
+  // If network is detected as weak / 2G / 3G / saveData, stay in Lite Mode unless explicitly requested
+  const isLiteMode = network.isDetected && network.isSlowNetwork && !userWantsVideo;
+
+  // Auto-play when video element is mounted and allowed
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
+    if (!isLiteMode && videoRef.current) {
+      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
 
     const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -28,7 +37,7 @@ export default function HeroBackgroundVideo() {
       videoRef.current.pause();
       setIsPlaying(false);
     }
-  }, []);
+  }, [isLiteMode]);
 
   // Update time tracker
   const handleTimeUpdate = () => {
@@ -51,8 +60,8 @@ export default function HeroBackgroundVideo() {
       setScrollProgress(progress);
       setIsScrolling(true);
 
-      // Dynamically accelerate playback rate slightly on active scroll (Google Flow feeling)
-      if (videoRef.current && isPlaying) {
+      // Accelerate playback slightly during active scroll (Google Flow experience)
+      if (videoRef.current && isPlaying && !isLiteMode) {
         const dynamicRate = Math.min(playbackSpeed * 1.35, 2.5);
         videoRef.current.playbackRate = dynamicRate;
       }
@@ -60,7 +69,7 @@ export default function HeroBackgroundVideo() {
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         setIsScrolling(false);
-        if (videoRef.current && isPlaying) {
+        if (videoRef.current && isPlaying && !isLiteMode) {
           videoRef.current.playbackRate = playbackSpeed;
         }
       }, 180);
@@ -71,7 +80,7 @@ export default function HeroBackgroundVideo() {
       window.removeEventListener('scroll', handleScroll);
       clearTimeout(scrollTimeout);
     };
-  }, [isPlaying, playbackSpeed]);
+  }, [isPlaying, playbackSpeed, isLiteMode]);
 
   // Google Flow: Interactive Mouse Proximity Lighting
   useEffect(() => {
@@ -151,30 +160,51 @@ export default function HeroBackgroundVideo() {
         zIndex: 0,
       }}
     >
-      {/* Background HTML5 Video with Google Flow Parallax Transform */}
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        poster="/videos/hero-bg-poster.jpg"
-        onTimeUpdate={handleTimeUpdate}
+      {/* ── LITE MODE POSTER (INSTANT PAINT FOR WEAK NETWORKS / 49KB) ── */}
+      <div
         style={{
           position: 'absolute',
           inset: 0,
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
-          objectPosition: 'center',
-          opacity: 0.92,
+          backgroundImage: 'url(/videos/hero-bg-poster.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           transform: `scale(${1.02 + scrollProgress * 0.08}) translateY(${scrollProgress * 24}px)`,
           transition: 'transform 0.15s ease-out',
+          opacity: isLiteMode ? 0.95 : videoLoaded ? 0 : 0.95,
+          zIndex: 0,
         }}
-      >
-        <source src="/videos/hero-bg.mp4" type="video/mp4" />
-      </video>
+      />
+
+      {/* ── HIGH PERFORMANCE HTML5 VIDEO (STREAMED ONLY ON STRONG CONNECTION) ── */}
+      {!isLiteMode && (
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          poster="/videos/hero-bg-poster.jpg"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedData={() => setVideoLoaded(true)}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            opacity: 0.92,
+            transform: `scale(${1.02 + scrollProgress * 0.08}) translateY(${scrollProgress * 24}px)`,
+            transition: 'transform 0.15s ease-out, opacity 0.5s ease',
+            zIndex: 1,
+          }}
+        >
+          <source src="/videos/hero-bg.mp4" type="video/mp4" />
+        </video>
+      )}
 
       {/* Google Flow: Dynamic Interactive Cursor Lighting Scrim */}
       <div
@@ -186,6 +216,7 @@ export default function HeroBackgroundVideo() {
           background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(37, 99, 235, 0.14) 0%, transparent 55%)`,
           pointerEvents: 'none',
           transition: 'background 0.2s ease',
+          zIndex: 2,
         }}
       />
 
@@ -198,6 +229,7 @@ export default function HeroBackgroundVideo() {
           width: '100%',
           height: '100%',
           background: 'var(--video-scrim-dark, linear-gradient(180deg, rgba(10, 14, 23, 0.18) 0%, rgba(10, 14, 23, 0.38) 55%, var(--bg) 100%))',
+          zIndex: 3,
         }}
       />
 
@@ -211,6 +243,7 @@ export default function HeroBackgroundVideo() {
           height: '120px',
           background: 'linear-gradient(to bottom, transparent, var(--bg))',
           pointerEvents: 'none',
+          zIndex: 4,
         }}
       />
 
@@ -218,10 +251,11 @@ export default function HeroBackgroundVideo() {
       <div
         style={{
           position: 'absolute',
-          bottom: '24px',
-          right: '32px',
+          bottom: network.isMobile ? '84px' : '28px',
+          right: network.isMobile ? '16px' : '36px',
           zIndex: 10,
           pointerEvents: 'auto',
+          maxWidth: network.isMobile ? 'calc(100vw - 32px)' : 'none',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -232,115 +266,155 @@ export default function HeroBackgroundVideo() {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '10px',
-            padding: '7px 16px',
+            gap: network.isMobile ? '8px' : '10px',
+            padding: network.isMobile ? '6px 14px' : '7px 16px',
             borderRadius: '9999px',
-            background: 'rgba(10, 14, 23, 0.78)',
+            background: 'rgba(10, 14, 23, 0.82)',
             border: '1px solid rgba(255, 255, 255, 0.16)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06)',
             color: '#F8FAFC',
             fontFamily: 'var(--mono, monospace)',
-            fontSize: '11px',
+            fontSize: network.isMobile ? '10px' : '11px',
+            flexWrap: 'nowrap',
           }}
         >
-          {/* Play / Pause Toggle Button */}
-          <button
-            onClick={togglePlay}
-            type="button"
-            aria-label={isPlaying ? "Pause background video" : "Play background video"}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: isPlaying ? '#38BDF8' : '#94A3B8',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '13px',
-              padding: '2px',
-            }}
-          >
-            {isPlaying ? '⏸' : '▶'}
-          </button>
+          {isLiteMode ? (
+            /* Lite Mode Badge & 1-Click Load Video Option */
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: '#38BDF8',
+                  boxShadow: '0 0 8px #38BDF8',
+                }}
+              />
+              <span style={{ color: '#94A3B8', fontSize: '10px' }}>
+                LITE (DATA SAVER)
+              </span>
+              <button
+                type="button"
+                onClick={() => setUserWantsVideo(true)}
+                title="Download and stream full background video"
+                style={{
+                  background: 'rgba(37, 99, 235, 0.25)',
+                  border: '1px solid rgba(59, 130, 246, 0.5)',
+                  borderRadius: '9999px',
+                  color: '#93C5FD',
+                  padding: '3px 9px',
+                  fontSize: '9.5px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                LOAD VIDEO ▷
+              </button>
+            </div>
+          ) : (
+            /* Full Google Flow Interactive Video Controls */
+            <>
+              {/* Play / Pause Toggle Button */}
+              <button
+                onClick={togglePlay}
+                type="button"
+                aria-label={isPlaying ? "Pause background video" : "Play background video"}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: isPlaying ? '#38BDF8' : '#94A3B8',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  padding: '2px',
+                }}
+              >
+                {isPlaying ? '⏸' : '▶'}
+              </button>
 
-          {/* Timeline Scrubber Bar */}
-          <div
-            ref={progressBarRef}
-            onClick={handleScrub}
-            title="Click to seek"
-            style={{
-              width: '75px',
-              height: '4px',
-              borderRadius: '9999px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              position: 'relative',
-              cursor: 'pointer',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                bottom: 0,
-                width: `${progressFraction}%`,
-                background: 'linear-gradient(90deg, #2563EB, #38BDF8)',
-                borderRadius: '9999px',
-                transition: 'width 0.1s linear',
-              }}
-            />
-          </div>
+              {/* Timeline Scrubber Bar */}
+              <div
+                ref={progressBarRef}
+                onClick={handleScrub}
+                title="Click to seek"
+                style={{
+                  width: network.isMobile ? '46px' : '75px',
+                  height: '4px',
+                  borderRadius: '9999px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: `${progressFraction}%`,
+                    background: 'linear-gradient(90deg, #2563EB, #38BDF8)',
+                    borderRadius: '9999px',
+                    transition: 'width 0.1s linear',
+                  }}
+                />
+              </div>
 
-          {/* Time Display */}
-          <span style={{ fontSize: '10.5px', color: '#94A3B8', minWidth: '32px' }}>
-            {formatTime(currentTime)}
-          </span>
+              {/* Time Display */}
+              <span style={{ fontSize: '10px', color: '#94A3B8', minWidth: '28px' }}>
+                {formatTime(currentTime)}
+              </span>
 
-          {/* Speed Toggle Pill (1.0x / 1.5x / 2.0x) */}
-          <button
-            onClick={cycleSpeed}
-            type="button"
-            title="Click to change playback speed"
-            style={{
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: '9999px',
-              padding: '2px 8px',
-              color: '#F8FAFC',
-              fontSize: '10px',
-              cursor: 'pointer',
-            }}
-          >
-            {playbackSpeed.toFixed(1)}x
-          </button>
+              {/* Speed Toggle Pill (1.0x / 1.5x / 2.0x) */}
+              <button
+                onClick={cycleSpeed}
+                type="button"
+                title="Click to change playback speed"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '9999px',
+                  padding: '2px 7px',
+                  color: '#F8FAFC',
+                  fontSize: '9.5px',
+                  cursor: 'pointer',
+                }}
+              >
+                {playbackSpeed.toFixed(1)}x
+              </button>
 
-          {/* Google Flow Synchronized Indicator Badge */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              paddingLeft: '4px',
-              borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
-            }}
-          >
-            <span
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: isScrolling ? '#22C55E' : '#3B82F6',
-                boxShadow: isScrolling ? '0 0 8px #22C55E' : '0 0 6px #3B82F6',
-                transition: 'all 0.2s ease',
-              }}
-            />
-            <span style={{ fontSize: '10px', color: isScrolling ? '#86EFAC' : '#94A3B8' }}>
-              {isScrolling ? 'Syncing...' : 'Flow Synced'}
-            </span>
-          </div>
+              {/* Google Flow Synchronized Indicator Badge */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  paddingLeft: '4px',
+                  borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: isScrolling ? '#22C55E' : '#3B82F6',
+                    boxShadow: isScrolling ? '0 0 8px #22C55E' : '0 0 6px #3B82F6',
+                    transition: 'all 0.2s ease',
+                  }}
+                />
+                <span style={{ fontSize: '9.5px', color: isScrolling ? '#86EFAC' : '#94A3B8' }}>
+                  {isScrolling ? 'Syncing...' : 'Flow Synced'}
+                </span>
+              </div>
+            </>
+          )}
         </motion.div>
       </div>
     </div>

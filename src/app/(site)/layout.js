@@ -2,10 +2,10 @@ import Header from "@/components/once-ui/Header";
 import Footer from "@/components/once-ui/Footer";
 import SmoothScroll from "@/components/SmoothScroll";
 import Preloader from "@/components/Preloader";
-import MusicPlayer from "@/components/MusicPlayer";
 import AccentColorAnimator from "@/components/AccentColorAnimator";
 import PageTransition from "@/components/PageTransition";
 import LeadCapturePopup from "@/components/LeadCapturePopup";
+import NetworkStatusPill from "@/components/NetworkStatusPill";
 import settingsData from "@/data/settings.json";
 
 export default function SiteLayout({ children }) {
@@ -14,6 +14,7 @@ export default function SiteLayout({ children }) {
       <AccentColorAnimator />
       <Preloader />
       <LeadCapturePopup />
+      <NetworkStatusPill />
       
       {/* CSS glow background layers */}
       <div className="bg-glow" aria-hidden="true" />
@@ -28,8 +29,6 @@ export default function SiteLayout({ children }) {
         </main>
         <Footer />
       </SmoothScroll>
-      
-      {settingsData.musicEnabled && <MusicPlayer />}
     </>
   );
 }

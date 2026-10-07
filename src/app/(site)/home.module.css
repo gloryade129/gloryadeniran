@@ -100,6 +100,48 @@
   }
 }
 
+@media (max-width: 480px) {
+  .heroInner {
+    padding: 20px 12px 84px !important;
+    gap: 24px !important;
+  }
+
+  .heroText {
+    padding: 24px 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .headline {
+    font-size: clamp(1.8rem, 8vw, 2.3rem) !important;
+  }
+
+  .heroImage {
+    height: 300px !important;
+    max-width: 270px !important;
+  }
+
+  .quickFacts {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .qfCard {
+    padding: 10px 14px !important;
+    flex: 1 1 85px;
+  }
+
+  .actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px !important;
+  }
+
+  .actions > a {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ── LEFT: Hero Text Container (Google Material 3 Surface) ── */
 .heroText {
   display: flex;

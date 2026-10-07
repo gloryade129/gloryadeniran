@@ -387,7 +387,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                     background: 'var(--chip-bg, rgba(255, 255, 255, 0.05))',
                     border: '1px solid var(--border)',
                     color: 'var(--white, #fff)',
-                    fontSize: '13.5px',
+                    fontSize: '16px',
                     outline: 'none',
                   }}
                 />
@@ -406,7 +406,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                     background: 'var(--chip-bg, rgba(255, 255, 255, 0.05))',
                     border: '1px solid var(--border)',
                     color: 'var(--white, #fff)',
-                    fontSize: '13.5px',
+                    fontSize: '16px',
                     outline: 'none',
                   }}
                 />
@@ -583,7 +583,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                     background: 'var(--chip-bg)',
                     border: '1px solid var(--border)',
                     color: '#fff',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     outline: 'none',
                   }}
                 />
@@ -599,7 +599,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                     background: 'var(--chip-bg)',
                     border: '1px solid var(--border)',
                     color: '#fff',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     outline: 'none',
                   }}
                 />

@@ -108,7 +108,7 @@
     "Vibe Coding",
     "Brand Identity"
   ],
-  "musicEnabled": true,
+  "musicEnabled": false,
   "categories": [
     { "key": "graphic_design",  "label": "Graphic Design",  "tag": "01", "sub": "Logo · Flyers · Print · Branding" },
     { "key": "website_design",  "label": "Website Design",  "tag": "02", "sub": "Shopify · WordPress · Wix" },

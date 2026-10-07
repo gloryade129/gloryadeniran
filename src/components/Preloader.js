@@ -27,7 +27,10 @@ export default function Preloader() {
     setIsLightMode(currentTheme === 'light');
 
     // Prevent body scroll during initial reveal
-    document.body.style.overflow = 'hidden';
+    // Detect network speed: if slow network, minimize wait time
+    const conn = typeof navigator !== 'undefined' ? (navigator.connection || navigator.mozConnection || navigator.webkitConnection) : null;
+    const isSlow = conn && (conn.saveData || ['slow-2g', '2g', '3g'].includes(conn.effectiveType) || conn.downlink < 1.5);
+    const duration = isSlow ? 700 : 1200;
 
     const timer = setTimeout(() => {
       setLoading(false);
@@ -35,13 +38,21 @@ export default function Preloader() {
       try {
         sessionStorage.setItem('preloader-shown', 'true');
       } catch (e) {}
-    }, 1500);
+    }, duration);
 
     return () => {
       clearTimeout(timer);
       document.body.style.overflow = '';
     };
   }, []);
+
+  const handleFastDismiss = () => {
+    setLoading(false);
+    document.body.style.overflow = '';
+    try {
+      sessionStorage.setItem('preloader-shown', 'true');
+    } catch (e) {}
+  };
 
   if (hasVisited) return null;
 
@@ -58,6 +69,7 @@ export default function Preloader() {
       {loading && (
         <motion.div
           key="google-preloader"
+          onClick={handleFastDismiss}
           initial={{ opacity: 1 }}
           exit={{ 
             opacity: 0, 
@@ -68,6 +80,7 @@ export default function Preloader() {
             position: 'fixed',
             inset: 0,
             zIndex: 99999,
+            cursor: 'pointer',
             background: isLightMode ? '#F8FAFC' : '#0A0E17',
             display: 'flex',
             flexDirection: 'column',
