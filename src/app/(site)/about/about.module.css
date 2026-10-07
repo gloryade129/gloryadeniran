@@ -101,6 +101,32 @@
   }
 }
 
+@media (max-width: 640px) {
+  .heroInner {
+    padding-top: 80px;
+    padding-bottom: 32px;
+    gap: 28px;
+  }
+
+  .portrait {
+    max-width: min(340px, 92vw);
+    margin: 0 auto;
+  }
+
+  .section {
+    padding: 60px 0;
+  }
+
+  .cta {
+    padding: 60px 0 100px;
+    text-align: center;
+  }
+
+  .ctaActions {
+    justify-content: center;
+  }
+}
+
 /* Facts */
 .facts {
   border-top: 1px solid var(--border);

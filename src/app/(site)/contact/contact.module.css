@@ -3,6 +3,14 @@
   padding-bottom: 64px;
 }
 
+@media (max-width: 768px) {
+  .hero {
+    padding-top: 96px;
+    padding-bottom: 32px;
+    text-align: center;
+  }
+}
+
 .body { padding-bottom: 120px; }
 
 .grid {
@@ -97,6 +105,12 @@
   resize: vertical;
   appearance: none;
   -webkit-appearance: none;
+}
+
+@media (max-width: 640px) {
+  .input {
+    font-size: 16px !important;
+  }
 }
 
 .input::placeholder { color: var(--gray-2); opacity: 0.8; }

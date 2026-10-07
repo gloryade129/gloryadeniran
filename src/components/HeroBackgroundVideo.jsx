@@ -23,6 +23,11 @@ export default function HeroBackgroundVideo() {
   const [userWantsVideo, setUserWantsVideo] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
+  // On mobile screens, do not render or stream the background video
+  if (network.isDetected && network.isMobile) {
+    return null;
+  }
+
   // If network is detected as weak / 2G / 3G / saveData, stay in Lite Mode unless explicitly requested
   const isLiteMode = network.isDetected && network.isSlowNetwork && !userWantsVideo;
 

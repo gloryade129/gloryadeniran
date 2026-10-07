@@ -87,7 +87,7 @@ export const Header = () => {
             padding="4"
             horizontal="center"
             zIndex={1}
-            className="once-glass"
+            className={`${styles.navDock} once-glass`}
           >
             <Row gap="4" vertical="center" textVariant="body-default-s" suppressHydrationWarning>
               {routes["/"] && (

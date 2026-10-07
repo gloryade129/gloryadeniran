@@ -44,7 +44,7 @@ export const Footer = () => {
           )}
         </Row>
       </Row>
-      <Row height="80" hide s={{ hide: false }} />
+      <Row height="96" hide s={{ hide: false }} />
     </Row>
   );
 };
