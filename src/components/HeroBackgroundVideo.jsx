@@ -18,9 +18,6 @@ export default function HeroBackgroundVideo() {
   const [isScrolling, setIsScrolling] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 35 });
   const [isHovered, setIsHovered] = useState(false);
-  
-  // Adaptive Network State
-  const [userWantsVideo, setUserWantsVideo] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   // On mobile screens, do not render or stream the background video
@@ -28,12 +25,9 @@ export default function HeroBackgroundVideo() {
     return null;
   }
 
-  // If network is detected as weak / 2G / 3G / saveData, stay in Lite Mode unless explicitly requested
-  const isLiteMode = network.isDetected && network.isSlowNetwork && !userWantsVideo;
-
   // Auto-play when video element is mounted and allowed
   useEffect(() => {
-    if (!isLiteMode && videoRef.current) {
+    if (videoRef.current) {
       videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
 
@@ -42,7 +36,7 @@ export default function HeroBackgroundVideo() {
       videoRef.current.pause();
       setIsPlaying(false);
     }
-  }, [isLiteMode]);
+  }, []);
 
   // Update time tracker
   const handleTimeUpdate = () => {
@@ -285,46 +279,9 @@ export default function HeroBackgroundVideo() {
             flexWrap: 'nowrap',
           }}
         >
-          {isLiteMode ? (
-            /* Lite Mode Badge & 1-Click Load Video Option */
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: '#38BDF8',
-                  boxShadow: '0 0 8px #38BDF8',
-                }}
-              />
-              <span style={{ color: '#94A3B8', fontSize: '10px' }}>
-                LITE (DATA SAVER)
-              </span>
-              <button
-                type="button"
-                onClick={() => setUserWantsVideo(true)}
-                title="Download and stream full background video"
-                style={{
-                  background: 'rgba(37, 99, 235, 0.25)',
-                  border: '1px solid rgba(59, 130, 246, 0.5)',
-                  borderRadius: '9999px',
-                  color: '#93C5FD',
-                  padding: '3px 9px',
-                  fontSize: '9.5px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                LOAD VIDEO ▷
-              </button>
-            </div>
-          ) : (
-            /* Full Google Flow Interactive Video Controls */
-            <>
-              {/* Play / Pause Toggle Button */}
-              <button
-                onClick={togglePlay}
+          {/* Play / Pause Toggle Button */}
+          <button
+            onClick={togglePlay}
                 type="button"
                 aria-label={isPlaying ? "Pause background video" : "Play background video"}
                 style={{
@@ -427,8 +384,6 @@ export default function HeroBackgroundVideo() {
                   {isScrolling ? 'Syncing...' : 'Flow Synced'}
                 </span>
               </div>
-            </>
-          )}
         </motion.div>
       </div>
     </div>
