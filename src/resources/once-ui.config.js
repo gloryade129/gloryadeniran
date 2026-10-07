@@ -64,8 +64,8 @@ export const effects = {
     colorEnd: "page-background",
   },
   dots: {
-    display: true,
-    opacity: 30,
+    display: false,
+    opacity: 0,
     size: "2",
     color: "brand-background-strong",
   },

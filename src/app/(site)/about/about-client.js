@@ -17,8 +17,6 @@ const { skills, tools, profile } = settingsData;
 export default function AboutClient() {
   return (
     <>
-      <div className="grain" aria-hidden="true" />
-
       {/* ── HERO ── */}
       <section className={styles.hero}>
         <div className={`container ${styles.heroInner}`}>

@@ -29,7 +29,6 @@ export default function AdminLogin() {
 
   return (
     <div className={styles.page}>
-      <div className="grain" aria-hidden="true" />
       <div className={styles.box}>
         <div className={styles.header}>
           <div className="eyebrow" style={{ marginBottom: '24px' }}>

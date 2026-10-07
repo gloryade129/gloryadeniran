@@ -37,8 +37,6 @@ export default function ContactClient({ initialSettings = {} }) {
 
   return (
     <>
-      <div className="grain" aria-hidden="true" />
-
       <section className={styles.hero}>
         <div className="container">
           <p className="eyebrow">

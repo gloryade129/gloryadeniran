@@ -87,8 +87,6 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
 
   return (
     <>
-      <div className="grain" aria-hidden="true" />
-
       {/* ── HERO SECTION ── */}
       <section className={styles.hero}>
         {/* Google-Style Ambient Hero Video Background */}

@@ -327,7 +327,6 @@ export default function Dashboard() {
   if (loading || !projectsData || !settingsData) {
     return (
       <div className={styles.page}>
-        <div className="grain" aria-hidden="true" />
         <div className={styles.main} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <p className="mono">ESTABLISHING_ENCRYPTED_CONNECTION...</p>
         </div>
@@ -339,8 +338,6 @@ export default function Dashboard() {
 
   return (
     <div className={styles.page}>
-      <div className="grain" aria-hidden="true" />
-
       <AnimatePresence>
         {message && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className={styles.toast}>

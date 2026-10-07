@@ -238,8 +238,6 @@ export default function ProjectClient({ project }) {
 
   return (
     <>
-      <div className="grain" aria-hidden="true" />
-
       {/* Floating Toast Notification */}
       <AnimatePresence>
         {toast && (

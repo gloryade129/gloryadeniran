@@ -121,8 +121,6 @@ export default function WorkClient({ initialData, initialSettings }) {
   const categories = initialSettings?.categories || defaultCategories;
   return (
     <>
-      <div className="grain" aria-hidden="true" />
-
       {/* ── PAGE HERO ── */}
       <section className={styles.hero}>
         <div className="container">
