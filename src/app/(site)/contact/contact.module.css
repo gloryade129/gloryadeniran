@@ -12,12 +12,15 @@
   align-items: start;
 }
 
-@media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 1024px) { .grid { grid-template-columns: 1fr; gap: 32px; } }
 
 /* Info Column */
-.info { display: flex; flex-direction: column; gap: 16px; }
+.info { display: flex; flex-direction: column; gap: 20px; }
 
-.infoCard { padding: 28px 24px; }
+.infoCard { 
+  padding: 32px 28px; 
+  border-radius: 24px !important;
+}
 
 .statusRow {
   display: flex;
@@ -28,10 +31,13 @@
 .socialLink {
   font-size: 14px;
   color: var(--gray-1);
-  transition: color 0.2s;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   display: block;
 }
-.socialLink:hover { color: var(--lime); }
+.socialLink:hover { 
+  color: var(--lime); 
+  transform: translateX(3px);
+}
 
 .serviceRow {
   display: flex;
@@ -44,14 +50,17 @@
 .formWrap {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  padding: 40px;
+  padding: 44px;
+  border-radius: 28px !important;
   box-shadow: var(--card-shadow);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 @media (max-width: 640px) {
   .formWrap {
-    padding: 24px;
+    padding: 24px 20px;
+    border-radius: 20px !important;
   }
 }
 
@@ -67,40 +76,47 @@
 
 .field { display: flex; flex-direction: column; gap: 8px; }
 
-.field label { font-size: 11px; letter-spacing: 0.06em; color: var(--gray-1); font-weight: 500; }
+.field label { 
+  font-size: 11.5px; 
+  letter-spacing: 0.05em; 
+  color: var(--gray-1); 
+  font-weight: 500; 
+}
 
 .input {
-  background: rgba(255,255,255,0.06);
+  background: var(--chip-bg);
   border: 1px solid var(--border-md);
-  color: var(--foreground);
+  border-radius: 14px !important;
+  color: var(--white);
   font-family: var(--font);
-  font-size: 15px;
-  padding: 14px;
+  font-size: 14.5px;
+  padding: 14px 18px;
   width: 100%;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
   resize: vertical;
   appearance: none;
   -webkit-appearance: none;
 }
 
-.input::placeholder { color: rgba(250,250,250,0.55); }
+.input::placeholder { color: var(--gray-2); opacity: 0.8; }
 .input:focus {
-  background: rgba(255,255,255,0.09);
-  border-color: rgba(255,255,255,0.32);
-  box-shadow: 0 0 0 2px var(--lime-dim);
+  background: var(--bg-surface);
+  border-color: var(--lime);
+  box-shadow: 0 0 0 3px var(--lime-dim);
 }
 
 /* Fix select option text in browser dropdown */
 .input option {
-  background: #111;
-  color: #fafafa;
+  background: var(--bg-2);
+  color: var(--white);
 }
 
 /* Success */
 .successMsg {
   padding: 64px 40px;
   text-align: center;
+  border-radius: 24px !important;
 }
 
 .successIcon {

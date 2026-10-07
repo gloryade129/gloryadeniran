@@ -8,13 +8,32 @@ export const ThemeToggle = () => {
   const [mounted, setMounted] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("dark");
 
+  const applyTheme = (targetTheme) => {
+    setCurrentTheme(targetTheme);
+    try {
+      document.documentElement.setAttribute("data-theme", targetTheme);
+      document.documentElement.classList.remove("light", "dark");
+      document.documentElement.classList.add(targetTheme);
+
+      document.body.setAttribute("data-theme", targetTheme);
+      document.body.classList.remove("light", "dark");
+      document.body.classList.add(targetTheme);
+
+      localStorage.setItem("data-theme", targetTheme);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     setMounted(true);
-    setCurrentTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    const saved = localStorage.getItem("data-theme") || 
+      document.documentElement.getAttribute("data-theme") || "dark";
+    applyTheme(saved);
   }, []);
 
   useEffect(() => {
-    setCurrentTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    if (theme && theme !== currentTheme) {
+      applyTheme(theme);
+    }
   }, [theme]);
 
   if (!mounted) return null;
@@ -26,10 +45,13 @@ export const ThemeToggle = () => {
       prefixIcon={currentTheme === "dark" ? "light" : "dark"}
       onClick={() => {
         setTheme(nextTheme);
-        document.documentElement.setAttribute("data-theme", nextTheme);
-        localStorage.setItem("data-theme", nextTheme);
+        applyTheme(nextTheme);
       }}
       aria-label={`Switch to ${nextTheme} mode`}
+      style={{
+        borderRadius: '9999px',
+        transition: 'all 0.25s cubic-bezier(0.2, 0, 0, 1)',
+      }}
     />
   );
 };

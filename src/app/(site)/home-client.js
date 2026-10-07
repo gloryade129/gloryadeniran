@@ -4,7 +4,8 @@ import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import dynamic_import from 'next/dynamic';
+import HeroBackgroundVideo from '@/components/HeroBackgroundVideo';
+import { TextRotate } from '@/components/TextRotate';
 import styles from './home.module.css';
 
 const isVideoUrl = (url) => {
@@ -45,23 +46,20 @@ const HoverVideo = ({ src, className }) => {
   );
 };
 
-import { TextRotate } from '@/components/TextRotate';
-
-const Scene3D = dynamic_import(() => import('@/components/Scene3D'), { ssr: false });
-
+// Google Material Motion curves
 const fadeUp = {
-  hidden: { opacity: 0, y: 36 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } }
+  hidden: { opacity: 0, y: 32 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.75, ease: [0.2, 0, 0, 1] } }
 };
 
 const slideUpLine = {
   hidden: { y: '100%' },
-  show:   { y: 0, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } }
+  show:   { y: 0, transition: { duration: 0.8, ease: [0.2, 0, 0, 1] } }
 };
 
 const stagger = {
   hidden: {},
-  show:   { transition: { staggerChildren: 0.11 } }
+  show:   { transition: { staggerChildren: 0.1 } }
 };
 
 export default function HomeClient({ initialProjects = {}, initialSettings = {} }) {
@@ -70,7 +68,10 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const categoriesList = settingsData.categories || [
@@ -88,14 +89,17 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
     <>
       <div className="grain" aria-hidden="true" />
 
-      {/* ── HERO ── */}
+      {/* ── HERO SECTION ── */}
       <section className={styles.hero}>
-        {/* Lightweight CSS Watermark Background Title */}
+        {/* Google-Style Ambient Hero Video Background */}
+        <HeroBackgroundVideo />
+
+        {/* Subtle Watermark Background Title */}
         <div className={styles.bgTitle} aria-hidden="true">
           GLORY<br />ADENIRAN
         </div>
-        <div className={styles.heroInner}>
 
+        <div className={styles.heroInner}>
           {/* LEFT — Text content */}
           <motion.div
             className={styles.heroText}
@@ -103,11 +107,12 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
             animate="show"
             variants={stagger}
           >
-            <motion.p variants={fadeUp} className="eyebrow">
-              <span className="eyebrow-bar" aria-hidden="true" />
-              <span className="eyebrow-tag">[01]</span>
-              {settingsData.profile.title} · 2026
-            </motion.p>
+            {/* Google Pill Eyebrow Chip */}
+            <motion.div variants={fadeUp} className={styles.eyebrowChip}>
+              <span className={styles.pulseDot} aria-hidden="true" />
+              <span className={styles.eyebrowTag}>[01]</span>
+              <span>{settingsData.profile.title} · 2026</span>
+            </motion.div>
 
             <h1 className={styles.headline}>
               <div className={styles.lineClip}>
@@ -118,11 +123,11 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
                   <TextRotate
                     texts={settingsData.hero.rotate_1}
                     staggerFrom="last"
-                    staggerDuration={isMobile ? 0 : 0.025}
+                    staggerDuration={isMobile ? 0 : 0.02}
                     splitBy={isMobile ? "words" : "characters"}
-                    rotationInterval={3500}
-                    transition={{ type: "spring", damping: 30, stiffness: 400 }}
-                    elementLevelClassName={styles.rotateTextLime}
+                    rotationInterval={3400}
+                    transition={{ type: "spring", damping: 28, stiffness: 380 }}
+                    elementLevelClassName={styles.rotateTextBrand}
                   />
                 </motion.div>
               </div>
@@ -134,10 +139,10 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
                   <TextRotate
                     texts={settingsData.hero.rotate_2}
                     staggerFrom="first"
-                    staggerDuration={isMobile ? 0 : 0.025}
+                    staggerDuration={isMobile ? 0 : 0.02}
                     splitBy={isMobile ? "words" : "characters"}
-                    rotationInterval={3500}
-                    transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                    rotationInterval={3400}
+                    transition={{ type: "spring", damping: 28, stiffness: 380 }}
                     elementLevelClassName={styles.rotateTextItalic}
                   />
                 </motion.div>
@@ -148,22 +153,21 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
               {settingsData.profile.bio.split('. ')[0]}.
             </motion.p>
 
-            {/* Quick facts */}
+            {/* Google Material Quick Stats Cards */}
             <motion.div variants={fadeUp} className={styles.quickFacts}>
-              {settingsData.hero.stats.map((stat, i) => (
-                <div key={stat.label} style={{ display: 'flex', alignItems: 'center' }}>
-                  <div className={styles.qf}>
-                    <span className={styles.qfVal}>{stat.val}</span>
-                    <span className={styles.qfLabel}>{stat.label}</span>
-                  </div>
-                  {i < settingsData.hero.stats.length - 1 && <div className={styles.qfDivider} />}
+              {settingsData.hero.stats.map((stat) => (
+                <div key={stat.label} className={styles.qfCard}>
+                  <span className={styles.qfVal}>{stat.val}</span>
+                  <span className={styles.qfLabel}>{stat.label}</span>
                 </div>
               ))}
             </motion.div>
 
+            {/* Google Pill Action Buttons */}
             <motion.div variants={fadeUp} className={styles.actions}>
               <Link href="/contact" className="shiny-cta">
-                <span>Start a Project &nbsp;→</span>
+                <span>Start a Project</span>
+                <span aria-hidden="true" style={{ fontSize: '15px' }}>→</span>
               </Link>
               <Link href="/work" className="btn-secondary">
                 <span className="btn-dot" aria-hidden="true" />
@@ -172,14 +176,13 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
             </motion.div>
           </motion.div>
 
-          {/* RIGHT — Large profile image, half showing with gradient */}
+          {/* RIGHT — Studio Profile Card */}
           <motion.div
             className={styles.heroImage}
-            initial={{ opacity: 0, x: 60 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.1, ease: [0.2, 0, 0, 1], delay: 0.15 }}
           >
-            {/* Lime glow behind photo */}
             <div className={styles.imgGlow} />
 
             <div className={styles.imgFrame}>
@@ -188,19 +191,24 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
                 alt={settingsData.profile.name}
                 fill
                 priority
-                quality={80}
+                quality={85}
                 style={{
                   objectFit: 'cover',
                   objectPosition: 'top center',
-                  filter: 'contrast(1.06) saturate(1.12)',
                 }}
               />
+              
+              {/* Google-Style Floating Role Chip */}
+              <div className={styles.floatingRoleBadge}>
+                <span className={styles.roleBadgeDot} />
+                <span>Creative Lead · Global Graphics</span>
+              </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* ── FACTS BAR ── */}
+      {/* ── FACTS / SERVICES BAR ── */}
       <section className={styles.facts}>
         <div className="container">
           <dl className={styles.factsInner}>
@@ -220,15 +228,15 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
         </div>
       </section>
 
-      {/* ── SELECTED WORK ── */}
+      {/* ── SELECTED WORK (Google Material 3 Cards) ── */}
       <section className={styles.workSection}>
         <div className="container">
           <header className={styles.sectionHead}>
-            <p className="eyebrow">
+            <div className="eyebrow">
               <span className="eyebrow-bar" aria-hidden="true" />
               <span className="eyebrow-tag">[03]</span>
-              Selected Work
-            </p>
+              <span>Selected Work</span>
+            </div>
             <h2>From the Studio.</h2>
           </header>
 
@@ -247,21 +255,36 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
               >
                 <Link href={`/work/${p.id}`} className={styles.shotLink}>
                   <div className={styles.shotImg}>
+                    {/* Category Chip Badge floating top-left */}
+                    <div className={styles.categoryBadge}>
+                      {p.subcategory || 'Design'}
+                    </div>
+
                     {isVideoUrl(p.image) ? (
                       <HoverVideo src={p.image} className={styles.img} />
                     ) : (
-                      <Image src={p.image} alt={p.title} fill sizes="(max-width: 768px) 100vw, 50vw" className={styles.img} />
+                      <Image 
+                        src={p.image} 
+                        alt={p.title} 
+                        fill 
+                        sizes="(max-width: 768px) 100vw, 50vw" 
+                        className={styles.img} 
+                      />
                     )}
                     <div className={styles.shotGradient} />
                   </div>
+
                   <figcaption className={styles.shotCaption}>
                     <div>
-                      <span className="mono" style={{ color: 'var(--gray-2)' }}>
+                      <span className="mono" style={{ color: 'var(--gray-2)', fontSize: '11px' }}>
                         {String(i + 1).padStart(2, '0')} / {p.subcategory}
                       </span>
                       <p>{p.title}</p>
                     </div>
-                    <span className={styles.arrow}>↗</span>
+                    {/* Google circular action arrow */}
+                    <div className={styles.arrowCircle}>
+                      <span className={styles.arrow}>↗</span>
+                    </div>
                   </figcaption>
                 </Link>
               </motion.figure>
@@ -270,20 +293,31 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
         </div>
       </section>
 
-      {/* ── BOTTOM CTA ── */}
+      {/* ── BOTTOM CTA BANNER (Google Material 3) ── */}
       <section className={styles.cta}>
         <div className="container">
-          <div className={styles.ctaInner}>
-            <p className="eyebrow">
+          <div className={styles.ctaCard}>
+            <div className="eyebrow" style={{ marginBottom: '16px' }}>
               <span className="eyebrow-bar" aria-hidden="true" />
               <span className="eyebrow-tag">[04]</span>
-              Let's Work Together
-            </p>
-            <h2>{settingsData.cta.heading.split('?')[0]}<br /><em>{settingsData.cta.heading.includes('?') ? settingsData.cta.heading.split('?')[0].includes('project') ? 'own project?' : 'in mind?' : ''}</em></h2>
+              <span>Let's Work Together</span>
+            </div>
+            <h2>
+              {settingsData.cta.heading.split('?')[0]}
+              <br />
+              <em style={{ fontStyle: 'normal', color: 'var(--lime)' }}>
+                {settingsData.cta.heading.includes('?') 
+                  ? settingsData.cta.heading.split('?')[0].includes('project') 
+                    ? 'own project?' 
+                    : 'in mind?' 
+                  : ''}
+              </em>
+            </h2>
             <p className={styles.ctaText}>{settingsData.cta.text}</p>
             <div className={styles.ctaActions}>
               <Link href="/contact" className="shiny-cta">
-                <span>Start a Project &nbsp;→</span>
+                <span>Start a Project</span>
+                <span aria-hidden="true">→</span>
               </Link>
               <Link href="/work" className="btn-secondary">
                 <span className="btn-dot" aria-hidden="true" />

@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Preloader() {
   const [loading, setLoading] = useState(true);
   const [hasVisited, setHasVisited] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(false);
 
   useEffect(() => {
-    // Check if user has already seen the preloader in this session
+    // Check if user already saw the preloader in this tab session
     try {
       const visited = sessionStorage.getItem('preloader-shown');
       if (visited) {
@@ -17,10 +18,15 @@ export default function Preloader() {
         return;
       }
     } catch (e) {
-      // Ignore sessionStorage errors
+      // Ignore sessionStorage exceptions
     }
 
-    // Lock body scroll while loading
+    // Detect theme for preloader surface
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    setIsLightMode(currentTheme === 'light');
+
+    // Prevent body scroll during initial reveal
     document.body.style.overflow = 'hidden';
 
     const timer = setTimeout(() => {
@@ -29,7 +35,7 @@ export default function Preloader() {
       try {
         sessionStorage.setItem('preloader-shown', 'true');
       } catch (e) {}
-    }, 1400);
+    }, 1500);
 
     return () => {
       clearTimeout(timer);
@@ -37,28 +43,32 @@ export default function Preloader() {
     };
   }, []);
 
-  // If already visited, render nothing to avoid any flash
   if (hasVisited) return null;
 
-  // An elegant SVG path resembling a fast handwritten "G" and swoop
-  const signaturePath = "M 30,70 C 10,70 10,30 30,30 C 50,30 60,50 40,70 C 20,90 10,100 30,100 C 60,100 80,60 90,60 C 100,60 110,70 120,60 C 130,50 140,50 150,60 C 160,70 170,80 190,60 M 30,110 C 100,110 150,110 250,100";
+  // Google 4-dots brand palette (Royal blue, electric cyan, deep cobalt, sky cyan)
+  const googleBrandDots = [
+    { color: '#2563EB', glow: 'rgba(37, 99, 235, 0.45)', delay: 0 },
+    { color: '#0091FF', glow: 'rgba(0, 145, 255, 0.45)', delay: 0.12 },
+    { color: '#1D4ED8', glow: 'rgba(29, 78, 216, 0.45)', delay: 0.24 },
+    { color: '#38BDF8', glow: 'rgba(56, 189, 248, 0.45)', delay: 0.36 },
+  ];
 
   return (
     <AnimatePresence mode="wait">
       {loading && (
         <motion.div
-          key="preloader"
+          key="google-preloader"
           initial={{ opacity: 1 }}
           exit={{ 
             opacity: 0, 
-            y: '-100%',
-            transition: { duration: 0.7, ease: [0.76, 0, 0.24, 1] } 
+            scale: 1.02,
+            transition: { duration: 0.6, ease: [0.2, 0, 0, 1] } 
           }}
           style={{
             position: 'fixed',
             inset: 0,
             zIndex: 99999,
-            background: '#080706',
+            background: isLightMode ? '#F8FAFC' : '#0A0E17',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -67,85 +77,141 @@ export default function Preloader() {
             pointerEvents: 'all'
           }}
         >
-          {/* Subtle background glow */}
+          {/* Subtle Google ambient radial spotlight */}
           <div 
             style={{
               position: 'absolute',
-              width: '350px',
-              height: '350px',
-              background: 'radial-gradient(circle, rgba(0, 145, 255, 0.12) 0%, transparent 70%)',
-              filter: 'blur(60px)',
+              width: '420px',
+              height: '420px',
+              background: isLightMode 
+                ? 'radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%)'
+                : 'radial-gradient(circle, rgba(37, 99, 235, 0.16) 0%, transparent 70%)',
+              filter: 'blur(70px)',
               pointerEvents: 'none',
             }} 
           />
 
-          {/* Animated Signature SVG */}
-          <svg width="280" height="140" viewBox="0 0 300 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <motion.path
-              d={signaturePath}
-              stroke="var(--lime, #0091FF)"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{
-                pathLength: { duration: 0.85, ease: "easeInOut", delay: 0.1 },
-                opacity: { duration: 0.15 }
-              }}
-            />
-          </svg>
-
-          {/* Fading in the name */}
-          <motion.div
-            initial={{ opacity: 0, filter: 'blur(8px)', y: 8 }}
-            animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5, ease: "easeOut" }}
+          {/* Central Google-style loading cluster */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.88 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.45, ease: [0.2, 0, 0, 1] }}
             style={{
-              color: '#FAFAFA',
-              fontSize: '1.25rem',
-              letterSpacing: '0.25em',
-              fontWeight: 500,
-              textTransform: 'uppercase',
-              fontFamily: 'var(--font, sans-serif)',
-              marginTop: '16px'
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '24px',
+              zIndex: 1
             }}
           >
-            Glory Adeniran
+            {/* Iconic Google 4-Dot Harmonic Bounce */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', height: '40px' }}>
+              {googleBrandDots.map((dot, index) => (
+                <motion.span
+                  key={index}
+                  animate={{
+                    y: [-8, 8, -8],
+                    scale: [1, 1.15, 1],
+                  }}
+                  transition={{
+                    duration: 1.1,
+                    repeat: Infinity,
+                    ease: [0.4, 0, 0.2, 1],
+                    delay: dot.delay,
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '14px',
+                    height: '14px',
+                    borderRadius: '50%',
+                    backgroundColor: dot.color,
+                    boxShadow: `0 4px 14px ${dot.glow}`,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Typography */}
+            <div style={{ textAlign: 'center' }}>
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2, ease: [0.2, 0, 0, 1] }}
+                style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: isLightMode ? '#0F172A' : '#F8FAFC',
+                  fontFamily: 'var(--font, sans-serif)',
+                  margin: 0,
+                }}
+              >
+                Glory Adeniran
+              </motion.h2>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginTop: '10px',
+                  padding: '4px 14px',
+                  borderRadius: '9999px',
+                  background: isLightMode ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.06)',
+                  border: isLightMode ? '1px solid rgba(0, 0, 0, 0.06)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  fontSize: '10px',
+                  fontFamily: 'var(--mono, monospace)',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: isLightMode ? '#64748B' : '#94A3B8',
+                }}
+              >
+                <span 
+                  style={{ 
+                    width: '6px', 
+                    height: '6px', 
+                    borderRadius: '50%', 
+                    backgroundColor: '#2563EB',
+                    boxShadow: '0 0 6px #2563EB' 
+                  }} 
+                />
+                Product Designer &amp; Vibe Coder
+              </motion.div>
+            </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.6 }}
-            transition={{ duration: 0.4, delay: 0.7 }}
+          {/* Google Material Indeterminate Linear Progress Bar */}
+          <div 
             style={{
-              fontFamily: 'var(--mono, monospace)',
-              fontSize: '10px',
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-              color: 'var(--gray-2, #9A9994)',
-              marginTop: '6px'
+              position: 'absolute',
+              bottom: '48px',
+              width: '180px',
+              height: '3px',
+              borderRadius: '9999px',
+              background: isLightMode ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)',
+              overflow: 'hidden',
             }}
           >
-            Product Designer &amp; Vibe Coder
-          </motion.div>
-
-          {/* Loading Progress Bar */}
-          <div style={{
-            position: 'absolute',
-            bottom: '40px',
-            width: '160px',
-            height: '2px',
-            background: 'rgba(255,255,255,0.08)',
-            overflow: 'hidden',
-          }}>
             <motion.div
-              initial={{ width: '0%' }}
-              animate={{ width: '100%' }}
-              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ x: '-100%', width: '40%' }}
+              animate={{ 
+                x: ['-100%', '200%'],
+                width: ['30%', '60%', '30%']
+              }}
+              transition={{ 
+                duration: 1.4, 
+                repeat: Infinity, 
+                ease: [0.4, 0, 0.2, 1] 
+              }}
               style={{
                 height: '100%',
-                background: 'var(--lime, #0091FF)'
+                borderRadius: '9999px',
+                background: 'linear-gradient(90deg, #2563EB, #0091FF, #38BDF8)',
+                boxShadow: '0 0 8px rgba(37, 99, 235, 0.6)',
               }}
             />
           </div>

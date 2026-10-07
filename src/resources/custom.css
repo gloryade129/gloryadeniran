@@ -1,4 +1,5 @@
 /* Once UI custom theme refinements for Glory Adeniran Portfolio */
+/* Google Design Language (Material 3) + Royal Blue Brand System */
 
 :root {
   --font-family-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -19,18 +20,42 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glassmorphism helpers */
+/* ─── GOOGLE FLOATING DOCK (Material Pill) ─── */
 .once-glass {
-  background: rgba(12, 18, 32, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 24, 44, 0.82) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+  padding: 6px 10px !important;
+}
+
+[data-theme="light"] .once-glass,
+.light .once-glass {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.once-glass button,
+.once-glass a {
+  border-radius: 9999px !important;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 
 .once-glass-elevated {
-  background: rgba(16, 25, 41, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(37, 99, 235, 0.25);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  background: rgba(16, 25, 41, 0.88) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(37, 99, 235, 0.25) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="light"] .once-glass-elevated,
+.light .once-glass-elevated {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.06) !important;
 }

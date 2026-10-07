@@ -147,7 +147,10 @@
 @media (max-width: 1024px) { .skillsGrid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px)  { .skillsGrid { grid-template-columns: 1fr; } }
 
-.skillCard { padding: 32px 28px; }
+.skillCard { 
+  padding: 32px 28px; 
+  border-radius: 24px !important;
+}
 
 .skillList {
   list-style: none;
@@ -165,35 +168,40 @@
 }
 
 .skillDot {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: var(--lime);
+  box-shadow: 0 0 6px var(--lime);
   flex-shrink: 0;
 }
 
-/* Tools */
+/* Tools (Google Pill Chips) */
 .toolsWrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .tool {
   display: inline-block;
-  padding: 10px 20px;
+  padding: 8px 18px;
   border: 1px solid var(--border);
+  border-radius: 9999px !important;
+  background: var(--chip-bg);
   font-size: 13px;
   font-weight: 500;
   color: var(--gray-1);
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   cursor: default;
 }
 
 .tool:hover {
   border-color: var(--lime);
   color: var(--lime);
-  background: rgba(201,226,101,0.04);
+  background: var(--lime-dim);
+  transform: translateY(-2px);
 }
 
 /* CTA */

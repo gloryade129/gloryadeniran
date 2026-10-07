@@ -91,6 +91,19 @@ export default function RootLayout({ children }) {
             })
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('data-theme') || 'dark';
+                  document.documentElement.setAttribute('data-theme', saved);
+                  document.documentElement.classList.add(saved);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body
         data-theme="dark"
