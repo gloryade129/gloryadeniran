@@ -27,6 +27,21 @@ const nextConfig = {
     silenceDeprecations: ['legacy-js-api'],
   },
   transpilePackages: ['@once-ui-system/core'],
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'gloryadeniran.cv',
+          },
+        ],
+        destination: 'https://www.gloryadeniran.cv/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -73,6 +73,7 @@ export default function Dashboard() {
   const [allComments, setAllComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [subscribersSubTab, setSubscribersSubTab] = useState('subscribers'); // 'subscribers' | 'comments'
+  const [projectMetrics, setProjectMetrics] = useState({});
 
   // Newsletter / Direct Email Modal State
   const [emailModal, setEmailModal] = useState({
@@ -197,13 +198,14 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [projRes, setRes, expRes, msgRes, subsRes, comRes] = await Promise.all([
+      const [projRes, setRes, expRes, msgRes, subsRes, comRes, metricsRes] = await Promise.all([
         fetch('/api/admin/projects'),
         fetch('/api/admin/settings'),
         fetch('/api/admin/experience'),
         fetch('/api/admin/messages'),
         fetch('/api/newsletter/subscribers').catch(() => null),
-        fetch('/api/projects/engagement?all=true').catch(() => null)
+        fetch('/api/projects/engagement?all=true').catch(() => null),
+        fetch('/api/projects/engagement?summary=true').catch(() => null),
       ]);
       setProjectsData(await projRes.json());
       setSettingsData(await setRes.json());
@@ -217,6 +219,10 @@ export default function Dashboard() {
       if (comRes && comRes.ok) {
         const comData = await comRes.json();
         if (comData?.comments) setAllComments(comData.comments);
+      }
+      if (metricsRes && metricsRes.ok) {
+        const mData = await metricsRes.json();
+        if (mData?.metrics) setProjectMetrics(mData.metrics);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -241,6 +247,17 @@ export default function Dashboard() {
     }
   };
 
+  const getProjectTitleById = (pid) => {
+    if (!pid || !projectsData) return pid || 'Project';
+    for (const cat of Object.keys(projectsData)) {
+      if (Array.isArray(projectsData[cat])) {
+        const found = projectsData[cat].find(p => p.id === pid);
+        if (found) return found.title;
+      }
+    }
+    return pid;
+  };
+
   const handleExportCSV = () => {
     if (!subscribers.length) {
       alert('No subscribers to export.');
@@ -262,6 +279,26 @@ export default function Dashboard() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleResetEngagement = async () => {
+    if (!confirm('Are you sure you want to clear test subscribers and likes? Student evaluations, projects, and portfolio settings are 100% safe.')) return;
+    try {
+      const res = await fetch('/api/projects/engagement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset', projectId: 'system' })
+      });
+      if (res.ok) {
+        setSubscribers([]);
+        setAllComments([]);
+        setProjectMetrics({});
+        setMessage('SUBSCRIBERS & LIKES CLEARED');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (e) {
+      alert('Reset failed: ' + e.message);
+    }
   };
 
   const handleSendNewsletterEmail = async (e) => {
@@ -1001,6 +1038,14 @@ export default function Dashboard() {
                   </button>
                   <button 
                     type="button" 
+                    className="btn-secondary" 
+                    onClick={handleResetEngagement}
+                    style={{ fontSize: '11px', padding: '8px 12px', borderRadius: '8px', color: '#F87171' }}
+                  >
+                    <span>RESET TEST ENGAGEMENT</span>
+                  </button>
+                  <button 
+                    type="button" 
                     className="shiny-cta" 
                     onClick={openBroadcastEmailModal}
                     style={{ fontSize: '11px', padding: '8px 18px', borderRadius: '8px', height: 'auto' }}
@@ -1072,9 +1117,13 @@ export default function Dashboard() {
                           footer_newsletter: 'FOOTER FORM',
                           general: 'WEBSITE'
                         };
-                        const sourceBadge = sourceLabels[sub.source] || (sub.source ? sub.source.toUpperCase() : 'ORGANIC');
+                        const isLike = sub.source?.startsWith('project_like');
+                        const isComment = sub.source?.startsWith('project_comment');
+                        const isEngagement = isLike || isComment;
+                        const engagedProjectId = isEngagement && sub.source.includes(':') ? sub.source.split(':')[1] : null;
+                        const engagedProjectTitle = engagedProjectId ? getProjectTitleById(engagedProjectId) : null;
+                        const sourceBadge = isLike ? 'PROJECT LIKE' : isComment ? 'PROJECT COMMENT' : (sourceLabels[sub.source] || (sub.source ? sub.source.toUpperCase() : 'ORGANIC'));
                         const isPopup = sub.source === 'scroll_popup_50';
-                        const isEngagement = sub.source === 'project_like' || sub.source === 'project_comment';
 
                         return (
                           <div 
@@ -1108,7 +1157,7 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                               <span 
                                 className="mono" 
                                 style={{ 
@@ -1122,6 +1171,12 @@ export default function Dashboard() {
                               >
                                 {sourceBadge}
                               </span>
+
+                              {engagedProjectTitle && (
+                                <span className="mono" style={{ fontSize: '11px', color: isLike ? '#93C5FD' : '#F472B6', background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                                  PROJECT: {engagedProjectTitle}
+                                </span>
+                              )}
 
                               {sub.page && (
                                 <span className="mono" style={{ fontSize: '11px', color: 'var(--gray-2)' }}>
@@ -1202,8 +1257,8 @@ export default function Dashboard() {
                                 </span>
                               )}
                             </div>
-                            <span className="mono" style={{ fontSize: '10px', color: 'var(--lime)' }}>
-                              PROJECT: {comment.projectId?.toUpperCase()}
+                            <span className="mono" style={{ fontSize: '11px', color: 'var(--lime)' }}>
+                              PROJECT: {getProjectTitleById(comment.projectId)} ({comment.projectId})
                             </span>
                           </div>
                         </div>
@@ -1260,16 +1315,41 @@ export default function Dashboard() {
                       <p className="mono" style={{ color: 'var(--lime)' }}>{catInfo.label.toUpperCase()}</p>
                       <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: true, project: { id: Date.now().toString(), title: '', subcategory: '', description: '', image: '/images/brand.png', link: '', images: [], links: [], details: '' } })}>+ ADD</button>
                     </div>
-                    {projectsData[cat].map(p => (
-                      <div key={p.id} className={`${styles.projectRow} card`}>
-                         <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
-                         <div className={styles.projectRowInfo}><p>{p.title}</p><span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory}</span></div>
-                         <div className={styles.projectRowActions}>
-                          <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: { details: '', ...p, images: p.images || [], links: p.links || [] } })}>EDIT</button>
-                          <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = {...projectsData}; d[cat] = d[cat].filter(x => x.id !== p.id); setProjectsData(d); saveToApi('/api/admin/projects', d, 'Deleted'); } }}>DEL</button>
-                         </div>
-                      </div>
-                    ))}
+                    {projectsData[cat].map(p => {
+                      const pm = projectMetrics[p.id] || { views: 0, likes: 0, commentsCount: 0 };
+                      return (
+                        <div key={p.id} className={`${styles.projectRow} card`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '220px' }}>
+                            <div className={styles.projectRowImg}><Image src={p.image} alt="" fill style={{ objectFit: 'cover' }} /></div>
+                            <div className={styles.projectRowInfo}>
+                              <p style={{ fontWeight: 600 }}>{p.title}</p>
+                              <span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>{p.subcategory} · ID: {p.id}</span>
+                            </div>
+                          </div>
+
+                          {/* Live Project Metrics (Views, Likes, Comments) */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span title="Unique Views" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', color: '#94A3B8' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              <span className="mono">{pm.views || 0} views</span>
+                            </span>
+                            <span title="Total Likes" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(37, 99, 235, 0.1)', border: '1px solid rgba(37, 99, 235, 0.25)', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', color: '#60A5FA' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+                              <span className="mono">{pm.likes || 0} likes</span>
+                            </span>
+                            <span title="Comments" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', color: '#CBD5E1' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                              <span className="mono">{pm.commentsCount || 0} comments</span>
+                            </span>
+                          </div>
+
+                          <div className={styles.projectRowActions}>
+                            <button className="btn-secondary" onClick={() => setEditingProject({ category: cat, isNew: false, project: { details: '', ...p, images: p.images || [], links: p.links || [] } })}>EDIT</button>
+                            <button className="btn-secondary" style={{ color: '#F9423D' }} onClick={() => { if(confirm('Delete?')) { const d = {...projectsData}; d[cat] = d[cat].filter(x => x.id !== p.id); setProjectsData(d); saveToApi('/api/admin/projects', d, 'Deleted'); } }}>DEL</button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}

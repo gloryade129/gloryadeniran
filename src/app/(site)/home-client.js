@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import HeroBackgroundVideo from '@/components/HeroBackgroundVideo';
 import { TextRotate } from '@/components/TextRotate';
+import ProjectCardEngagement from '@/components/ProjectCardEngagement';
 import styles from './home.module.css';
 
 const isVideoUrl = (url) => {
@@ -285,6 +286,8 @@ export default function HomeClient({ initialProjects = {}, initialSettings = {} 
                     </div>
                   </figcaption>
                 </Link>
+                {/* Facebook-Style Engagement Bar (Views, Likes, Comments, Share) */}
+                <ProjectCardEngagement project={p} />
               </motion.figure>
             ))}
           </motion.div>

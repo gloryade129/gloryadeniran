@@ -338,3 +338,148 @@ export async function getAllComments() {
 
   return [];
 }
+
+/* ==========================================================================
+   PROJECT VIEWS TRACKING
+   ========================================================================== */
+
+/**
+ * Record a realistic project impression/view
+ */
+export async function recordProjectView(projectId, visitorId = '') {
+  const cleanId = String(projectId || '').trim();
+  if (!cleanId) return { views: 0 };
+
+  const token = (visitorId || '').trim();
+
+  try {
+    if (token) {
+      const isNew = await redisCmd('SADD', `ga:project_viewers:${cleanId}`, token);
+      if (isNew === 1) {
+        const cur = await redisCmd('INCR', `ga:project_views:${cleanId}`);
+        return { views: Number(cur || 1) };
+      }
+    } else {
+      const cur = await redisCmd('INCR', `ga:project_views:${cleanId}`);
+      return { views: Number(cur || 1) };
+    }
+
+    const cur = await redisCmd('GET', `ga:project_views:${cleanId}`);
+    return { views: Number(cur || 1) };
+  } catch (e) {
+    console.warn('[newsletter-db] View tracking fallback:', e.message);
+    return { views: 1 };
+  }
+}
+
+/**
+ * Get views count for a project
+ */
+export async function getProjectViews(projectId) {
+  const cleanId = String(projectId || '').trim();
+  if (!cleanId) return 0;
+  try {
+    const raw = await redisCmd('GET', `ga:project_views:${cleanId}`);
+    return Number(raw || 0);
+  } catch (e) {
+    return 0;
+  }
+}
+
+/**
+ * Get engagement metrics summary for all projects (views, likes, commentsCount)
+ */
+export async function getAllProjectsMetrics(projectIds = []) {
+  let targetIds = Array.isArray(projectIds) ? [...projectIds] : [];
+  if (targetIds.length === 0) {
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const filePath = path.join(process.cwd(), 'src', 'data', 'projects.json');
+      const fileData = JSON.parse(await fs.readFile(filePath, 'utf-8'));
+      for (const cat of Object.keys(fileData)) {
+        if (Array.isArray(fileData[cat])) {
+          fileData[cat].forEach(p => { if (p?.id) targetIds.push(p.id); });
+        }
+      }
+    } catch (e) {
+      console.warn('[newsletter-db] Could not auto-read projects.json:', e.message);
+    }
+  }
+
+  const metrics = {};
+  for (const id of targetIds) {
+    const cleanId = String(id || '').trim();
+    if (!cleanId) continue;
+    try {
+      const [rawViews, rawLikes, rawComments] = await Promise.all([
+        redisCmd('GET', `ga:project_views:${cleanId}`),
+        redisCmd('GET', `ga:project_likes:${cleanId}`),
+        redisCmd('GET', `ga:project_comments:${cleanId}`),
+      ]);
+      const comments = rawComments ? (typeof rawComments === 'string' ? JSON.parse(rawComments) : rawComments) : [];
+      metrics[cleanId] = {
+        views: Number(rawViews || 0),
+        likes: Number(rawLikes || 0),
+        commentsCount: Array.isArray(comments) ? comments.length : 0,
+        comments: Array.isArray(comments) ? comments.slice(0, 5) : [],
+      };
+    } catch (e) {
+      metrics[cleanId] = { views: 0, likes: 0, commentsCount: 0, comments: [] };
+    }
+  }
+  return metrics;
+}
+
+/**
+ * Reset test subscribers and likes safely without affecting other data
+ */
+export async function resetSubscribersAndLikes() {
+  try {
+    // 1. Get all subscriber emails to clean keys
+    const emails = await redisCmd('SMEMBERS', 'ga:subscribers:all');
+    if (Array.isArray(emails)) {
+      for (const email of emails) {
+        await redisCmd('DEL', `ga:subscribers:email:${email}`);
+      }
+    }
+    await redisCmd('DEL', 'ga:subscribers:all');
+
+    // 2. Clear comments feed
+    await redisCmd('DEL', 'ga:all_comments');
+
+    // 3. Clear project likes counters and liked users sets
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const filePath = path.join(process.cwd(), 'src', 'data', 'projects.json');
+      const fileData = JSON.parse(await fs.readFile(filePath, 'utf-8'));
+      for (const cat of Object.keys(fileData)) {
+        if (Array.isArray(fileData[cat])) {
+          for (const p of fileData[cat]) {
+            if (p?.id) {
+              await redisCmd('DEL', `ga:project_likes:${p.id}`);
+              await redisCmd('DEL', `ga:project_liked_users:${p.id}`);
+              await redisCmd('DEL', `ga:project_comments:${p.id}`);
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 4. Delete from Supabase portfolio_subscribers table if configured
+    if (isSupabaseConfigured()) {
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/portfolio_subscribers?email=neq.system`, {
+          method: 'DELETE',
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        });
+      } catch (e) {}
+    }
+
+    return { success: true, message: 'Subscribers and likes cleared successfully.' };
+  } catch (e) {
+    console.error('Reset engagement error:', e);
+    return { success: false, error: e.message };
+  }
+}
