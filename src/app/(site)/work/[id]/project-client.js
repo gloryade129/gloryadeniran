@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import ProjectEngagement from '@/components/ProjectEngagement';
 import styles from './project.module.css';
 const isVideoUrl = (url) => {
   if (!url) return false;
@@ -435,6 +436,9 @@ export default function ProjectClient({ project }) {
             </div>
 
           </motion.div>
+
+          {/* Community Engagement: Likes, Shares & Comments */}
+          <ProjectEngagement projectId={project.id} projectTitle={project.title} />
         </div>
       </section>
 

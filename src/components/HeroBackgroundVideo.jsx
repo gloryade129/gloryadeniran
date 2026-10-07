@@ -1,18 +1,28 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 
 export default function HeroBackgroundVideo() {
   const videoRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const progressBarRef = useRef(null);
 
+  // Playback & Interaction States
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(22);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 35 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Auto-play on mount
   useEffect(() => {
-    // Attempt automatic playback
     if (videoRef.current) {
       videoRef.current.play().catch(() => {});
     }
 
-    // Respect reduced motion preference if active
     const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion && videoRef.current) {
       videoRef.current.pause();
@@ -20,17 +30,112 @@ export default function HeroBackgroundVideo() {
     }
   }, []);
 
-  const togglePlayback = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Update time tracker
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+      if (videoRef.current.duration) {
+        setDuration(videoRef.current.duration);
+      }
+    }
+  };
+
+  // Google Flow: Scroll-Linked Synchronization
+  useEffect(() => {
+    let scrollTimeout;
+
+    const handleScroll = () => {
+      const heroHeight = window.innerHeight || 800;
+      const currentScroll = window.scrollY;
+      const progress = Math.min(Math.max(currentScroll / heroHeight, 0), 1);
+      setScrollProgress(progress);
+      setIsScrolling(true);
+
+      // Dynamically accelerate playback rate slightly on active scroll (Google Flow feeling)
+      if (videoRef.current && isPlaying) {
+        const dynamicRate = Math.min(playbackSpeed * 1.35, 2.5);
+        videoRef.current.playbackRate = dynamicRate;
+      }
+
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        setIsScrolling(false);
+        if (videoRef.current && isPlaying) {
+          videoRef.current.playbackRate = playbackSpeed;
+        }
+      }, 180);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, [isPlaying, playbackSpeed]);
+
+  // Google Flow: Interactive Mouse Proximity Lighting
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      setMousePos({ x: Math.round(x), y: Math.round(y) });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Toggle Play / Pause
+  const togglePlay = useCallback((e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (!videoRef.current) return;
+
     if (videoRef.current.paused) {
       videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
     }
+  }, []);
+
+  // Toggle Speed (1.0x -> 1.5x -> 2.0x -> 1.0x)
+  const cycleSpeed = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!videoRef.current) return;
+
+    let nextSpeed = 1.0;
+    if (playbackSpeed === 1.0) nextSpeed = 1.5;
+    else if (playbackSpeed === 1.5) nextSpeed = 2.0;
+    else nextSpeed = 1.0;
+
+    setPlaybackSpeed(nextSpeed);
+    videoRef.current.playbackRate = nextSpeed;
   };
+
+  // Interactive Timeline Scrub
+  const handleScrub = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!progressBarRef.current || !videoRef.current) return;
+
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const fraction = Math.max(0, Math.min(1, clickX / rect.width));
+    const targetTime = fraction * duration;
+
+    videoRef.current.currentTime = targetTime;
+    setCurrentTime(targetTime);
+  };
+
+  const formatTime = (secs) => {
+    const s = Math.floor(secs % 60);
+    const m = Math.floor(secs / 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const progressFraction = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div 
@@ -46,7 +151,7 @@ export default function HeroBackgroundVideo() {
         zIndex: 0,
       }}
     >
-      {/* Background HTML5 Video — Evident, Sharp, High Contrast & High Performance */}
+      {/* Background HTML5 Video with Google Flow Parallax Transform */}
       <video
         ref={videoRef}
         autoPlay
@@ -55,6 +160,7 @@ export default function HeroBackgroundVideo() {
         playsInline
         preload="auto"
         poster="/videos/hero-bg-poster.jpg"
+        onTimeUpdate={handleTimeUpdate}
         style={{
           position: 'absolute',
           inset: 0,
@@ -63,12 +169,27 @@ export default function HeroBackgroundVideo() {
           objectFit: 'cover',
           objectPosition: 'center',
           opacity: 0.92,
+          transform: `scale(${1.02 + scrollProgress * 0.08}) translateY(${scrollProgress * 24}px)`,
+          transition: 'transform 0.15s ease-out',
         }}
       >
         <source src="/videos/hero-bg.mp4" type="video/mp4" />
       </video>
 
-      {/* Subtle Google Scrim — Leaves video crisp and visible while ensuring text contrast */}
+      {/* Google Flow: Dynamic Interactive Cursor Lighting Scrim */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(37, 99, 235, 0.14) 0%, transparent 55%)`,
+          pointerEvents: 'none',
+          transition: 'background 0.2s ease',
+        }}
+      />
+
+      {/* Base Google Ambient Scrim */}
       <div
         className="hero-video-scrim"
         style={{
@@ -80,20 +201,20 @@ export default function HeroBackgroundVideo() {
         }}
       />
 
-      {/* Seamless bottom transition */}
+      {/* Bottom fade blending seamlessly into the next page section */}
       <div
         style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
-          height: '100px',
+          height: '120px',
           background: 'linear-gradient(to bottom, transparent, var(--bg))',
           pointerEvents: 'none',
         }}
       />
 
-      {/* Google-Style Motion Toggle Chip */}
+      {/* ── GOOGLE FLOW: INTERACTIVE FLOATING CONTROL DOCK ── */}
       <div
         style={{
           position: 'absolute',
@@ -102,48 +223,125 @@ export default function HeroBackgroundVideo() {
           zIndex: 10,
           pointerEvents: 'auto',
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <button
-          onClick={togglePlayback}
-          type="button"
-          aria-label={isPlaying ? "Pause background animation" : "Play background animation"}
-          title={isPlaying ? "Pause background video" : "Play background video"}
+        <motion.div
+          animate={{ scale: isHovered ? 1.02 : 1 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '6px 14px',
+            gap: '10px',
+            padding: '7px 16px',
             borderRadius: '9999px',
-            background: 'var(--chip-bg, rgba(255, 255, 255, 0.08))',
-            border: '1px solid var(--chip-border, rgba(255, 255, 255, 0.14))',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            color: 'var(--gray-1, #CBD5E1)',
-            fontSize: '11px',
+            background: 'rgba(10, 14, 23, 0.78)',
+            border: '1px solid rgba(255, 255, 255, 0.16)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+            color: '#F8FAFC',
             fontFamily: 'var(--mono, monospace)',
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.2, 0, 0, 1)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--lime)';
-            e.currentTarget.style.borderColor = 'var(--lime)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--gray-1, #CBD5E1)';
-            e.currentTarget.style.borderColor = 'var(--chip-border, rgba(255, 255, 255, 0.14))';
+            fontSize: '11px',
           }}
         >
-          <span 
-            style={{ 
-              width: '6px', 
-              height: '6px', 
-              borderRadius: '50%', 
-              backgroundColor: isPlaying ? 'var(--lime, #3B82F6)' : 'var(--gray-3, #64748B)',
-              boxShadow: isPlaying ? '0 0 6px var(--lime, #3B82F6)' : 'none'
-            }} 
-          />
-          {isPlaying ? 'Motion ON' : 'Motion PAUSED'}
-        </button>
+          {/* Play / Pause Toggle Button */}
+          <button
+            onClick={togglePlay}
+            type="button"
+            aria-label={isPlaying ? "Pause background video" : "Play background video"}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: isPlaying ? '#38BDF8' : '#94A3B8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '13px',
+              padding: '2px',
+            }}
+          >
+            {isPlaying ? '⏸' : '▶'}
+          </button>
+
+          {/* Timeline Scrubber Bar */}
+          <div
+            ref={progressBarRef}
+            onClick={handleScrub}
+            title="Click to seek"
+            style={{
+              width: '75px',
+              height: '4px',
+              borderRadius: '9999px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              position: 'relative',
+              cursor: 'pointer',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                bottom: 0,
+                width: `${progressFraction}%`,
+                background: 'linear-gradient(90deg, #2563EB, #38BDF8)',
+                borderRadius: '9999px',
+                transition: 'width 0.1s linear',
+              }}
+            />
+          </div>
+
+          {/* Time Display */}
+          <span style={{ fontSize: '10.5px', color: '#94A3B8', minWidth: '32px' }}>
+            {formatTime(currentTime)}
+          </span>
+
+          {/* Speed Toggle Pill (1.0x / 1.5x / 2.0x) */}
+          <button
+            onClick={cycleSpeed}
+            type="button"
+            title="Click to change playback speed"
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '9999px',
+              padding: '2px 8px',
+              color: '#F8FAFC',
+              fontSize: '10px',
+              cursor: 'pointer',
+            }}
+          >
+            {playbackSpeed.toFixed(1)}x
+          </button>
+
+          {/* Google Flow Synchronized Indicator Badge */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              paddingLeft: '4px',
+              borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
+            }}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: isScrolling ? '#22C55E' : '#3B82F6',
+                boxShadow: isScrolling ? '0 0 8px #22C55E' : '0 0 6px #3B82F6',
+                transition: 'all 0.2s ease',
+              }}
+            />
+            <span style={{ fontSize: '10px', color: isScrolling ? '#86EFAC' : '#94A3B8' }}>
+              {isScrolling ? 'Syncing...' : 'Flow Synced'}
+            </span>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

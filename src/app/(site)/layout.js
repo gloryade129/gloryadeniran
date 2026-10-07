@@ -5,6 +5,7 @@ import Preloader from "@/components/Preloader";
 import MusicPlayer from "@/components/MusicPlayer";
 import AccentColorAnimator from "@/components/AccentColorAnimator";
 import PageTransition from "@/components/PageTransition";
+import LeadCapturePopup from "@/components/LeadCapturePopup";
 import settingsData from "@/data/settings.json";
 
 export default function SiteLayout({ children }) {
@@ -12,6 +13,7 @@ export default function SiteLayout({ children }) {
     <>
       <AccentColorAnimator />
       <Preloader />
+      <LeadCapturePopup />
       
       {/* CSS glow background layers */}
       <div className="bg-glow" aria-hidden="true" />

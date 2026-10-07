@@ -65,6 +65,26 @@ export default function Dashboard() {
   const [replySubject, setReplySubject] = useState('');
   const [replyText, setReplyText] = useState('');
 
+  // Subscribers & Leads States
+  const [subscribers, setSubscribers] = useState([]);
+  const [subscribersLoading, setSubscribersLoading] = useState(false);
+  const [subscriberSearch, setSubscriberSearch] = useState('');
+  const [subscriberSourceFilter, setSubscriberSourceFilter] = useState('ALL');
+  const [allComments, setAllComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [subscribersSubTab, setSubscribersSubTab] = useState('subscribers'); // 'subscribers' | 'comments'
+
+  // Newsletter / Direct Email Modal State
+  const [emailModal, setEmailModal] = useState({
+    isOpen: false,
+    recipientEmail: '',
+    recipientName: '',
+    isBroadcast: false,
+    subject: '',
+    messageText: '',
+  });
+  const [dispatchingEmail, setDispatchingEmail] = useState(false);
+
   // AI Assistant States
   const [chatHistory, setChatHistory] = useState([
     { role: 'assistant', content: "SYSTEM ONLINE.\nHello Admin. I am Antigravity, your dashboard co-pilot. I can modify projects, experience entries, or update settings on your command. What would you like to build or modify today?" }
@@ -177,21 +197,137 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [projRes, setRes, expRes, msgRes] = await Promise.all([
+      const [projRes, setRes, expRes, msgRes, subsRes, comRes] = await Promise.all([
         fetch('/api/admin/projects'),
         fetch('/api/admin/settings'),
         fetch('/api/admin/experience'),
-        fetch('/api/admin/messages')
+        fetch('/api/admin/messages'),
+        fetch('/api/newsletter/subscribers').catch(() => null),
+        fetch('/api/projects/engagement?all=true').catch(() => null)
       ]);
       setProjectsData(await projRes.json());
       setSettingsData(await setRes.json());
       setExperienceData(await expRes.json());
       setMessages(await msgRes.json());
+
+      if (subsRes && subsRes.ok) {
+        const subsData = await subsRes.json();
+        if (subsData?.subscribers) setSubscribers(subsData.subscribers);
+      }
+      if (comRes && comRes.ok) {
+        const comData = await comRes.json();
+        if (comData?.comments) setAllComments(comData.comments);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteSubscriber = async (email) => {
+    if (!confirm(`Remove subscriber: ${email}?`)) return;
+    try {
+      const res = await fetch(`/api/newsletter/subscribers?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSubscribers(prev => prev.filter(s => s.email !== email));
+        setMessage('SUBSCRIBER REMOVED');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to delete subscriber:', err);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!subscribers.length) {
+      alert('No subscribers to export.');
+      return;
+    }
+    const headers = ['Email', 'Name', 'Source', 'Page', 'Created At'];
+    const rows = subscribers.map(s => [
+      `"${s.email || ''}"`,
+      `"${(s.name || '').replace(/"/g, '""')}"`,
+      `"${s.source || ''}"`,
+      `"${s.page || ''}"`,
+      `"${s.createdAt || s.created_at || ''}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `glory_subscribers_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleSendNewsletterEmail = async (e) => {
+    e.preventDefault();
+    if (!emailModal.subject.trim() || !emailModal.messageText.trim()) {
+      alert('Please fill out both subject and message text.');
+      return;
+    }
+
+    setDispatchingEmail(true);
+    try {
+      const payload = {
+        to: emailModal.isBroadcast 
+          ? subscribers.map(s => s.email) 
+          : emailModal.recipientEmail,
+        subject: emailModal.subject,
+        messageText: emailModal.messageText,
+        recipientName: emailModal.isBroadcast ? '' : emailModal.recipientName,
+      };
+
+      const res = await fetch('/api/newsletter/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to dispatch email');
+      }
+
+      setMessage(`DELIVERED TO ${data.sentCount || 1} RECIPIENT(S) ✓`);
+      setTimeout(() => setMessage(''), 3000);
+      setEmailModal({ isOpen: false, recipientEmail: '', recipientName: '', isBroadcast: false, subject: '', messageText: '' });
+    } catch (err) {
+      console.error(err);
+      alert('Error sending email: ' + err.message);
+    } finally {
+      setDispatchingEmail(false);
+    }
+  };
+
+  const openSingleEmailModal = (sub) => {
+    setEmailModal({
+      isOpen: true,
+      recipientEmail: sub.email,
+      recipientName: sub.name || '',
+      isBroadcast: false,
+      subject: 'Hello from Glory Adeniran',
+      messageText: `Hi ${sub.name || 'there'},\n\nThank you for exploring my portfolio and connecting with my work!\n\nI wanted to share a quick update on some exciting design work I've recently cooked up, and would love to hear your thoughts or discuss any potential collaborations.\n\nLooking forward to staying in touch,\nGlory Adeniran\nCreative Lead & Product Designer`,
+    });
+  };
+
+  const openBroadcastEmailModal = () => {
+    if (!subscribers.length) {
+      alert('No subscribers to email.');
+      return;
+    }
+    setEmailModal({
+      isOpen: true,
+      recipientEmail: `Broadcast: ${subscribers.length} Subscribers`,
+      recipientName: '',
+      isBroadcast: true,
+      subject: 'Fresh Creative Updates from Glory Adeniran ✦',
+      messageText: `Hello friends,\n\nGlory here! I'm thrilled to share our latest portfolio updates, brand case studies, and creative projects now live.\n\nCheck out the recent case studies on the site or reply directly to this email if you'd like to collaborate.\n\nBest regards,\nGlory Adeniran`,
+    });
   };
 
   const saveToApi = async (endpoint, data, successMsg) => {
@@ -626,6 +762,96 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* ── SUBSCRIBER NEWSLETTER / DIRECT EMAIL MODAL ── */}
+      <AnimatePresence>
+        {emailModal.isOpen && (
+          <div className={styles.modalOverlay}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={styles.modal} style={{ maxWidth: '640px' }}>
+              <div className={styles.modalHeader}>
+                <h2 className="mono">{emailModal.isBroadcast ? 'BROADCAST_NEWSLETTER' : 'DIRECT_LEAD_DISPATCH'}</h2>
+                <button onClick={() => setEmailModal({ ...emailModal, isOpen: false })} className={styles.closeBtn}>✕</button>
+              </div>
+              <form className={styles.modalContent} onSubmit={handleSendNewsletterEmail}>
+                
+                {/* Email template presets */}
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '20px' }}>
+                  <p className="mono" style={{ color: 'var(--lime)', fontSize: '10px', marginBottom: '12px', letterSpacing: '0.08em' }}>SELECT_TEMPLATE_VIBE</p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ fontSize: '11px', padding: '6px 12px', height: 'auto' }}
+                      onClick={() => {
+                        setEmailModal(prev => ({
+                          ...prev,
+                          subject: 'Fresh Creative Updates from Glory Adeniran ✦',
+                          messageText: `Hello${prev.recipientName ? ' ' + prev.recipientName : ''},\n\nGlory here! I'm thrilled to share our latest portfolio updates, brand case studies, and creative design work now live.\n\nTake a look at the latest projects and let me know your thoughts or feedback!\n\nBest regards,\nGlory Adeniran\nProduct Designer & Creative Lead`
+                        }));
+                      }}
+                    >
+                      Portfolio Update
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ fontSize: '11px', padding: '6px 12px', height: 'auto' }}
+                      onClick={() => {
+                        setEmailModal(prev => ({
+                          ...prev,
+                          subject: 'Let\'s collaborate on your next project ✦',
+                          messageText: `Hi${prev.recipientName ? ' ' + prev.recipientName : ''},\n\nThanks for connecting through my portfolio! I noticed you were exploring my design work and wanted to reach out directly.\n\nIf you have a creative project, branding overhaul, or UI/UX challenge you are planning, I would love to jump on a quick call or chat on WhatsApp to see how we can bring it to life.\n\nWarm regards,\nGlory Adeniran`
+                        }));
+                      }}
+                    >
+                      Collaboration Outreach
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ fontSize: '11px', padding: '6px 12px', height: 'auto' }}
+                      onClick={() => {
+                        setEmailModal(prev => ({
+                          ...prev,
+                          subject: 'Thank You for Liking & Engaging with my Work!',
+                          messageText: `Hi${prev.recipientName ? ' ' + prev.recipientName : ''},\n\nJust wanted to personally say thank you for leaving love and comments on my portfolio! It really means the world to see fellow creators and design enthusiasts engaging with my work.\n\nStay tuned for more case studies coming soon!\n\nCheers,\nGlory Adeniran`
+                        }));
+                      }}
+                    >
+                      Community Appreciation
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.formGrid}>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">RECIPIENT(S)</label>
+                    <input className={styles.settingInput} value={emailModal.recipientEmail} readOnly disabled style={{ opacity: 0.7 }} />
+                  </div>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">SUBJECT LINE</label>
+                    <input className={styles.settingInput} value={emailModal.subject} onChange={e => setEmailModal({...emailModal, subject: e.target.value})} placeholder="e.g. Fresh Creative Updates from Glory Adeniran" required />
+                  </div>
+                  <div className={`${styles.settingField} ${styles.fullWidth}`}>
+                    <label className="mono">EMAIL BODY (BREVO TEMPLATE)</label>
+                    <textarea 
+                      className={styles.settingInput} 
+                      style={{ height: '200px', resize: 'vertical', lineHeight: '1.6', fontFamily: 'var(--font)' }} 
+                      value={emailModal.messageText} 
+                      onChange={e => setEmailModal({...emailModal, messageText: e.target.value})} 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="shiny-cta" style={{ width: '100%', marginTop: '24px' }} disabled={dispatchingEmail}>
+                  {dispatchingEmail ? 'DISPATCHING VIA BREVO...' : `DISPATCH EMAIL ${emailModal.isBroadcast ? 'TO ALL SUBSCRIBERS' : ''} →`}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <aside className={styles.sidebar}>
         <div className={styles.sidebarTop}>
           <div className={styles.sidebarLogo}>GLORY<span style={{ color: 'var(--lime)' }}>.</span></div>
@@ -633,6 +859,7 @@ export default function Dashboard() {
             {[
               { id: 'overview', label: 'OVERVIEW' },
               { id: 'portfolio', label: 'PORTFOLIO' },
+              { id: 'subscribers', label: 'LEADS & SUBSCRIBERS', count: subscribers.length },
               { id: 'experience', label: 'EXPERIENCE' },
               { id: 'home', label: 'HOME_UI' },
               { id: 'inbox', label: 'INBOX', count: messages.length },
@@ -661,8 +888,9 @@ export default function Dashboard() {
               <div className={styles.statsGrid}>
                 {[
                   { label: 'Projects', value: allProjects.length, tag: 'LIVE', tab: 'portfolio' },
+                  { label: 'Subscribers', value: subscribers.length, tag: 'LEADS', tab: 'subscribers' },
+                  { label: 'Feedback', value: allComments.length, tag: 'COMMENTS', tab: 'subscribers' },
                   { label: 'Inbox', value: messages.length, tag: 'UNREAD', tab: 'inbox' },
-                  { label: 'Exp', value: experienceData.length, tag: 'YEARS', tab: 'experience' },
                   { label: 'Status', value: 'OPTIMAL', tag: 'HEALTH', tab: 'settings' },
                 ].map(s => (
                   <div 
@@ -694,6 +922,331 @@ export default function Dashboard() {
                 ))}
                 {messages.length === 0 && <p className="mono" style={{ opacity: 0.5 }}>Inbox is empty.</p>}
               </div>
+
+              {/* Latest Subscribers Snapshot */}
+              {subscribers.length > 0 && (
+                <>
+                  <div className={styles.sectionTitle} style={{ marginTop: '24px' }}>
+                    <p className="mono">LATEST_SUBSCRIBERS &amp; LEADS</p>
+                  </div>
+                  <div className={styles.projectList}>
+                    {subscribers.slice(0, 3).map((sub, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`${styles.projectRow} card`}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setActiveTab('subscribers')}
+                      >
+                        <div className={styles.projectRowInfo}>
+                          <p className={styles.projectRowTitle}>{sub.email}</p>
+                          <span className="mono" style={{ fontSize: '10px', color: 'var(--lime)' }}>
+                            SOURCE: {sub.source ? sub.source.toUpperCase() : 'LEAD'} {sub.page ? `• PAGE: ${sub.page}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {activeTab === 'subscribers' && (
+            <>
+              {/* Top KPI Metrics */}
+              <div className={styles.statsGrid}>
+                {[
+                  { label: 'Total Subscribers', value: subscribers.length, tag: 'TOTAL LEADS' },
+                  { label: '50% Scroll Captures', value: subscribers.filter(s => s.source === 'scroll_popup_50').length, tag: 'POPUP TRIGGER' },
+                  { label: 'Project Engagements', value: subscribers.filter(s => s.source === 'project_like' || s.source === 'project_comment').length, tag: 'WORK ENGAGEMENT' },
+                  { label: 'Work Comments', value: allComments.length, tag: 'FEEDBACK & REVIEWS' },
+                ].map(s => (
+                  <div key={s.label} className={`${styles.statCard} card`}>
+                    <span className="mono" style={{ color: 'var(--lime)', fontSize: '10px' }}>{s.tag}</span>
+                    <div className={styles.statValue}>{s.value}</div>
+                    <div className={styles.statLabel}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Sub-tab Navigation & Actions Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '28px 0 20px 0', flexWrap: 'wrap', gap: '14px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    type="button" 
+                    className={`btn-secondary ${subscribersSubTab === 'subscribers' ? styles.navBtnActive : ''}`}
+                    style={{ fontSize: '11px', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}
+                    onClick={() => setSubscribersSubTab('subscribers')}
+                  >
+                    <span className="mono">SUBSCRIBERS DIRECTORY ({subscribers.length})</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn-secondary ${subscribersSubTab === 'comments' ? styles.navBtnActive : ''}`}
+                    style={{ fontSize: '11px', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' }}
+                    onClick={() => setSubscribersSubTab('comments')}
+                  >
+                    <span className="mono">PROJECT COMMENTS ({allComments.length})</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button 
+                    type="button" 
+                    className="btn-secondary" 
+                    onClick={handleExportCSV}
+                    style={{ fontSize: '11px', padding: '8px 14px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <span>EXPORT CSV (LEADS)</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    className="shiny-cta" 
+                    onClick={openBroadcastEmailModal}
+                    style={{ fontSize: '11px', padding: '8px 18px', borderRadius: '8px', height: 'auto' }}
+                  >
+                    <span>BROADCAST NEWSLETTER →</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SUBSCRIBERS DIRECTORY VIEW */}
+              {subscribersSubTab === 'subscribers' && (
+                <>
+                  {/* Filters & Search Toolbar */}
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Search subscribers by email or name..." 
+                      className={styles.settingInput} 
+                      value={subscriberSearch} 
+                      onChange={e => setSubscriberSearch(e.target.value)}
+                      style={{ maxWidth: '340px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
+                    />
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {['ALL', 'scroll_popup_50', 'project_like', 'project_comment', 'footer_newsletter'].map(src => {
+                        const labelMap = {
+                          ALL: 'All Sources',
+                          scroll_popup_50: '50% Scroll Popup',
+                          project_like: 'Project Likes',
+                          project_comment: 'Comments',
+                          footer_newsletter: 'Footer'
+                        };
+                        return (
+                          <button 
+                            key={src}
+                            type="button"
+                            className="btn-secondary"
+                            style={{ 
+                              fontSize: '10px', 
+                              padding: '6px 10px', 
+                              borderRadius: '6px',
+                              background: subscriberSourceFilter === src ? 'rgba(37, 99, 235, 0.25)' : undefined,
+                              borderColor: subscriberSourceFilter === src ? '#2563EB' : undefined,
+                              color: subscriberSourceFilter === src ? '#93C5FD' : undefined
+                            }}
+                            onClick={() => setSubscriberSourceFilter(src)}
+                          >
+                            {labelMap[src] || src}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Subscribers List */}
+                  <div className={styles.projectList}>
+                    {subscribers
+                      .filter(s => {
+                        const matchesSearch = !subscriberSearch || 
+                          (s.email && s.email.toLowerCase().includes(subscriberSearch.toLowerCase())) ||
+                          (s.name && s.name.toLowerCase().includes(subscriberSearch.toLowerCase()));
+                        const matchesSource = subscriberSourceFilter === 'ALL' || s.source === subscriberSourceFilter;
+                        return matchesSearch && matchesSource;
+                      })
+                      .map(sub => {
+                        const sourceLabels = {
+                          scroll_popup_50: '50% SCROLL POPUP',
+                          project_like: 'PROJECT LIKE',
+                          project_comment: 'COMMENT',
+                          footer_newsletter: 'FOOTER FORM',
+                          general: 'WEBSITE'
+                        };
+                        const sourceBadge = sourceLabels[sub.source] || (sub.source ? sub.source.toUpperCase() : 'ORGANIC');
+                        const isPopup = sub.source === 'scroll_popup_50';
+                        const isEngagement = sub.source === 'project_like' || sub.source === 'project_comment';
+
+                        return (
+                          <div 
+                            key={sub.email} 
+                            className={`${styles.projectRow} card`}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', gap: '16px', flexWrap: 'wrap' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
+                              <div style={{ 
+                                width: '38px', 
+                                height: '38px', 
+                                borderRadius: '50%', 
+                                background: isPopup ? 'rgba(37, 99, 235, 0.15)' : isEngagement ? 'rgba(236, 72, 153, 0.15)' : 'rgba(255,255,255,0.06)',
+                                border: isPopup ? '1px solid rgba(37, 99, 235, 0.3)' : isEngagement ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid var(--border)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                fontSize: '13px',
+                                color: isPopup ? '#60A5FA' : isEngagement ? '#F472B6' : 'var(--white)'
+                              }}>
+                                {(sub.name ? sub.name[0] : sub.email[0]).toUpperCase()}
+                              </div>
+                              <div>
+                                <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--white)', margin: 0 }}>
+                                  {sub.email}
+                                </p>
+                                {sub.name && (
+                                  <span style={{ fontSize: '12px', color: 'var(--gray-2)' }}>{sub.name}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                              <span 
+                                className="mono" 
+                                style={{ 
+                                  fontSize: '10px', 
+                                  padding: '4px 8px', 
+                                  borderRadius: '6px',
+                                  background: isPopup ? 'rgba(37, 99, 235, 0.1)' : isEngagement ? 'rgba(236, 72, 153, 0.1)' : 'rgba(255,255,255,0.05)',
+                                  color: isPopup ? '#93C5FD' : isEngagement ? '#F472B6' : 'var(--lime)',
+                                  border: '1px solid currentColor'
+                                }}
+                              >
+                                {sourceBadge}
+                              </span>
+
+                              {sub.page && (
+                                <span className="mono" style={{ fontSize: '11px', color: 'var(--gray-2)' }}>
+                                  PAGE: {sub.page}
+                                </span>
+                              )}
+
+                              <span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>
+                                {sub.createdAt ? new Date(sub.createdAt).toLocaleDateString() : 'Active'}
+                              </span>
+                            </div>
+
+                            <div className={styles.projectRowActions}>
+                              <button 
+                                type="button" 
+                                className="btn-secondary" 
+                                onClick={() => openSingleEmailModal(sub)}
+                                style={{ fontSize: '11px', padding: '6px 12px' }}
+                              >
+                                Send Email
+                              </button>
+                              <button 
+                                type="button" 
+                                className="btn-secondary" 
+                                style={{ color: '#F9423D', fontSize: '11px', padding: '6px 10px' }}
+                                onClick={() => handleDeleteSubscriber(sub.email)}
+                              >
+                                DEL
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                    {subscribers.length === 0 && (
+                      <p className="mono" style={{ opacity: 0.5, textAlign: 'center', padding: '40px' }}>
+                        No subscribers registered yet. They will appear here when visitors scroll past 50% or engage with projects!
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* PROJECT COMMENTS VIEW */}
+              {subscribersSubTab === 'comments' && (
+                <div className={styles.projectList}>
+                  {allComments.map(comment => (
+                    <div 
+                      key={comment.id || `${comment.projectId}-${comment.date}`} 
+                      className={`${styles.projectRow} card`}
+                      style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '20px' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ 
+                            width: '36px', 
+                            height: '36px', 
+                            borderRadius: '50%', 
+                            background: 'rgba(59, 130, 246, 0.15)',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            color: '#60A5FA',
+                            fontSize: '13px'
+                          }}>
+                            {(comment.name ? comment.name[0] : 'U').toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--white)' }}>
+                                {comment.name || 'Anonymous Visitor'}
+                              </span>
+                              {comment.email && (
+                                <span className="mono" style={{ fontSize: '11px', color: 'var(--gray-2)' }}>
+                                  &lt;{comment.email}&gt;
+                                </span>
+                              )}
+                            </div>
+                            <span className="mono" style={{ fontSize: '10px', color: 'var(--lime)' }}>
+                              PROJECT: {comment.projectId?.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className="mono" style={{ fontSize: '10px', color: 'var(--gray-2)' }}>
+                          {comment.date ? new Date(comment.date).toLocaleString() : 'Recent'}
+                        </span>
+                      </div>
+
+                      <div style={{ 
+                        background: 'rgba(255,255,255,0.02)', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: '10px', 
+                        padding: '14px 16px',
+                        color: 'var(--white)',
+                        fontSize: '14px',
+                        lineHeight: 1.6
+                      }}>
+                        &ldquo;{comment.text}&rdquo;
+                      </div>
+
+                      {comment.email && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                          <button 
+                            type="button" 
+                            className="btn-secondary" 
+                            style={{ fontSize: '11px', padding: '6px 12px' }}
+                            onClick={() => openSingleEmailModal({ email: comment.email, name: comment.name })}
+                          >
+                            Reply to {comment.name || 'Commenter'} via Email →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {allComments.length === 0 && (
+                    <p className="mono" style={{ opacity: 0.5, textAlign: 'center', padding: '40px' }}>
+                      No comments or reviews submitted on portfolio projects yet.
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           )}
 
