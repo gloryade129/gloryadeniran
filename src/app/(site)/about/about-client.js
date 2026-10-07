@@ -74,7 +74,7 @@ export default function AboutClient() {
               { label: 'Role',     value: profile.title.split(' · ')[0] },
               { label: 'Also',     value: profile.title.split(' · ')[1] || 'Vibe Coder' },
               { label: 'Based',    value: profile.location },
-              { label: 'Status',   value: profile.availability === 'Available for Work' ? 'Available ✦' : 'Busy' },
+              { label: 'Status',   value: profile.availability === 'Available for Work' ? 'Available' : 'Busy' },
             ].map(({ label, value }) => (
               <div key={label} className={styles.fact}>
                 <dt>{label}</dt>

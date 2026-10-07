@@ -248,7 +248,7 @@ export default function ProjectClient({ project }) {
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
             className={styles.toastNotification}
           >
-            <span>✨ {toast}</span>
+            <span>{toast}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -346,7 +346,11 @@ export default function ProjectClient({ project }) {
                                 preload="metadata"
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               />
-                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', fontSize: '20px' }}>▶</div>
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
+                                  <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                              </div>
                             </div>
                           ) : (
                             <Image
@@ -498,7 +502,7 @@ export default function ProjectClient({ project }) {
                   onClick={toggleSlideshow}
                   title="Toggle Automatic Slideshow"
                 >
-                  {isSlideshow ? '⏸ PAUSE' : '▶ SLIDESHOW'}
+                  {isSlideshow ? 'PAUSE' : 'SLIDESHOW'}
                 </button>
                 <button className={styles.lightboxClose} onClick={closeLightbox} title="Close (Esc)">✕</button>
               </div>

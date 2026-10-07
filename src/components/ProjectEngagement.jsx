@@ -219,9 +219,17 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
             <motion.span
               animate={hasLiked ? { scale: [1, 1.3, 1] } : {}}
               transition={{ duration: 0.3 }}
-              style={{ fontSize: '16px' }}
+              style={{ display: 'inline-flex', alignItems: 'center' }}
             >
-              {hasLiked ? '❤️' : '🤍'}
+              {hasLiked ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#EF4444" stroke="#EF4444" strokeWidth="2">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              )}
             </motion.span>
             <span>{likes} {likes === 1 ? 'Like' : 'Likes'}</span>
           </button>
@@ -291,7 +299,10 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <span>{copied ? '✓ Link Copied!' : 'Copy Link'}</span>
-                    <span style={{ fontSize: '11px', color: 'var(--gray-2)' }}>🔗</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--gray-2)' }}>
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
                   </button>
 
                   <a
@@ -316,7 +327,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <span>Share on WhatsApp</span>
-                    <span>💬</span>
+                    <span style={{ fontSize: '11px', color: 'var(--lime)', fontFamily: 'var(--mono)' }}>WA ↗</span>
                   </a>
 
                   <a
@@ -341,7 +352,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <span>Share on X (Twitter)</span>
-                    <span>🐦</span>
+                    <span style={{ fontSize: '11px', color: 'var(--gray-2)', fontFamily: 'var(--mono)' }}>X ↗</span>
                   </a>
                 </motion.div>
               )}
@@ -351,7 +362,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
 
         {/* Comment Count Badge */}
         <div style={{ color: 'var(--gray-2, #94A3B8)', fontSize: '13px', fontFamily: 'var(--mono)' }}>
-          💬 {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
+          {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
         </div>
       </div>
 
@@ -366,7 +377,9 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <span style={{ fontSize: '18px' }}>💬</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--lime)' }}>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
           <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Join the Discussion</h3>
         </div>
 
@@ -475,7 +488,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
             }}
           >
             <p style={{ margin: 0, fontSize: '14px' }}>
-              No comments yet. Be the first to share your feedback with Glory! ✦
+              No comments yet. Be the first to share your feedback with Glory!
             </p>
           </div>
         ) : (
@@ -563,7 +576,11 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ fontSize: '36px', marginBottom: '12px' }}>❤️</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="#EF4444" stroke="#EF4444" strokeWidth="1.5">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              </div>
               <h3 style={{ fontSize: '20px', fontWeight: 600, margin: '0 0 8px' }}>
                 Leave Your Mark!
               </h3>
@@ -606,7 +623,7 @@ export default function ProjectEngagement({ projectId, projectTitle }) {
                 {likeError && <div style={{ color: '#EF4444', fontSize: '12px' }}>{likeError}</div>}
                 
                 <button type="submit" className="shiny-cta" style={{ height: '44px', width: '100%', marginTop: '6px' }}>
-                  <span>Confirm &amp; Like Project ❤️</span>
+                  <span>Confirm &amp; Like Project</span>
                 </button>
 
                 <button

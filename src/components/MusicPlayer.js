@@ -117,7 +117,16 @@ export default function MusicPlayer() {
           onClick={togglePlay}
           title={isPlaying ? "Pause Music" : "Resume Music"}
         >
-          {isPlaying ? '⏸' : '▶'}
+          {isPlaying ? (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="5" y="4" width="4" height="16" rx="1" />
+              <rect x="15" y="4" width="4" height="16" rx="1" />
+            </svg>
+          ) : (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          )}
         </button>
         <button
           className={`${styles.pill} ${isOpen ? styles.pillActive : ''}`}
@@ -172,7 +181,9 @@ export default function MusicPlayer() {
                 ) : (
                   <div className={styles.pausedState} onClick={togglePlay}>
                     <p className="mono">MUSIC_PAUSED</p>
-                    <span style={{ fontSize: '24px' }}>▶</span>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
                   </div>
                 )}
 
@@ -199,7 +210,11 @@ export default function MusicPlayer() {
                       <p>{s.name}</p>
                       <span>{s.artist}</span>
                     </div>
-                    <button className={styles.playBtn} onClick={() => playTrack(s.id)}>▶</button>
+                    <button className={styles.playBtn} onClick={() => playTrack(s.id)}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                    </button>
                   </div>
                 ))}
                 <div className={styles.customSection} style={{ marginTop: '12px' }}>

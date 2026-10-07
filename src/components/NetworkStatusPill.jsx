@@ -16,7 +16,6 @@ export default function NetworkStatusPill() {
       setNotice({
         type: 'offline',
         text: 'Offline mode active • Cached pages available',
-        icon: '⚠️',
         color: '#F59E0B',
       });
       setVisible(true);
@@ -27,7 +26,6 @@ export default function NetworkStatusPill() {
       setNotice({
         type: 'savedata',
         text: 'Data Saver enabled • Media optimized for low data',
-        icon: '⚡',
         color: '#38BDF8',
       });
       setVisible(true);
@@ -39,7 +37,6 @@ export default function NetworkStatusPill() {
       setNotice({
         type: 'slow',
         text: 'Slow network detected • Running in high-speed Lite Mode',
-        icon: '⚡',
         color: '#38BDF8',
       });
       setVisible(true);
@@ -89,7 +86,7 @@ export default function NetworkStatusPill() {
               whiteSpace: 'nowrap',
             }}
           >
-            <span>{notice.icon}</span>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: notice.color, boxShadow: `0 0 8px ${notice.color}`, flexShrink: 0 }} />
             <span style={{ color: notice.color, fontWeight: 500 }}>{notice.text}</span>
             <span style={{ opacity: 0.5, marginLeft: '4px', fontSize: '10px' }}>✕</span>
           </div>

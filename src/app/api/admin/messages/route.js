@@ -93,7 +93,7 @@ export async function POST(request) {
               <img src="https://gloryadeniran.cv/images/profile-nobg.png" alt="Glory Adeniran" style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #0091FF; object-fit: cover;" />
             </div>
 
-            <h2 style="color: #0091FF; font-size: 20px; font-weight: 600; margin-top: 0; text-align: center; letter-spacing: -0.02em;">Yo, Glory here! ✦</h2>
+            <h2 style="color: #0091FF; font-size: 20px; font-weight: 600; margin-top: 0; text-align: center; letter-spacing: -0.02em;">Yo, Glory here!</h2>
 
             <p style="font-size: 14px; line-height: 1.7; color: #C8C7C2;">I just saw your message fly into my inbox. First off, thank you for reaching out — I'm hyped that you checked out my work!</p>
 

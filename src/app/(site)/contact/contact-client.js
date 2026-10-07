@@ -94,7 +94,11 @@ export default function ContactClient({ initialSettings = {} }) {
           <div className={styles.formWrap}>
             {sent ? (
               <div className={`${styles.successMsg} card`}>
-                <div className={styles.successIcon}>✦</div>
+                <div className={styles.successIcon} style={{ display: 'flex', justifyContent: 'center' }}>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
                 <h2>Message Received.</h2>
                 <p style={{ color: 'var(--gray-2)', marginTop: '12px', fontSize: '15px' }}>
                   Thank you for reaching out! I'll get back to you within 24 hours.

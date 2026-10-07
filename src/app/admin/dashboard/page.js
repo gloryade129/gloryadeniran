@@ -325,7 +325,7 @@ export default function Dashboard() {
       recipientEmail: `Broadcast: ${subscribers.length} Subscribers`,
       recipientName: '',
       isBroadcast: true,
-      subject: 'Fresh Creative Updates from Glory Adeniran ✦',
+      subject: 'Fresh Creative Updates from Glory Adeniran',
       messageText: `Hello friends,\n\nGlory here! I'm thrilled to share our latest portfolio updates, brand case studies, and creative projects now live.\n\nCheck out the recent case studies on the site or reply directly to this email if you'd like to collaborate.\n\nBest regards,\nGlory Adeniran`,
     });
   };
@@ -417,7 +417,7 @@ export default function Dashboard() {
     const body = content.includes(':') ? content.split(':').slice(1).join(':').trim() : content;
 
     // Set dynamic default draft (Creative Hype mode)
-    const defaultDraft = `Yo ${clientName}! Glory here. ✦\n\nHyped that you reached out about cooking up some next-level ${project} magic! I just read your message:\n"${body}"\n\nI'm already brainstorming how we can make this project absolutely stand out. Let's chat on WhatsApp to iron out the details, or let me know a time that works for you to hop on a quick call!\n\nBest,\nGlory`;
+    const defaultDraft = `Yo ${clientName}! Glory here.\n\nHyped that you reached out about cooking up some next-level ${project} magic! I just read your message:\n"${body}"\n\nI'm already brainstorming how we can make this project absolutely stand out. Let's chat on WhatsApp to iron out the details, or let me know a time that works for you to hop on a quick call!\n\nBest,\nGlory`;
     
     setReplyText(defaultDraft);
   };
@@ -691,7 +691,7 @@ export default function Dashboard() {
                         const project = projectMatch ? projectMatch[1].trim() : 'Project';
                         const body = content.includes(':') ? content.split(':').slice(1).join(':').trim() : content;
                         
-                        setReplyText(`Yo ${clientName}! Glory here. ✦\n\nHyped that you reached out about cooking up some next-level ${project} magic! I just read your message:\n"${body}"\n\nI'm already brainstorming how we can make this project absolutely stand out. Let's chat on WhatsApp to iron out the details, or let me know a time that works for you to hop on a quick call!\n\nBest,\nGlory`);
+                        setReplyText(`Yo ${clientName}! Glory here.\n\nHyped that you reached out about cooking up some next-level ${project} magic! I just read your message:\n"${body}"\n\nI'm already brainstorming how we can make this project absolutely stand out. Let's chat on WhatsApp to iron out the details, or let me know a time that works for you to hop on a quick call!\n\nBest,\nGlory`);
                       }}
                     >
                       Creative Hype
@@ -784,7 +784,7 @@ export default function Dashboard() {
                       onClick={() => {
                         setEmailModal(prev => ({
                           ...prev,
-                          subject: 'Fresh Creative Updates from Glory Adeniran ✦',
+                          subject: 'Fresh Creative Updates from Glory Adeniran',
                           messageText: `Hello${prev.recipientName ? ' ' + prev.recipientName : ''},\n\nGlory here! I'm thrilled to share our latest portfolio updates, brand case studies, and creative design work now live.\n\nTake a look at the latest projects and let me know your thoughts or feedback!\n\nBest regards,\nGlory Adeniran\nProduct Designer & Creative Lead`
                         }));
                       }}
@@ -798,7 +798,7 @@ export default function Dashboard() {
                       onClick={() => {
                         setEmailModal(prev => ({
                           ...prev,
-                          subject: 'Let\'s collaborate on your next project ✦',
+                          subject: 'Let\'s collaborate on your next project',
                           messageText: `Hi${prev.recipientName ? ' ' + prev.recipientName : ''},\n\nThanks for connecting through my portfolio! I noticed you were exploring my design work and wanted to reach out directly.\n\nIf you have a creative project, branding overhaul, or UI/UX challenge you are planning, I would love to jump on a quick call or chat on WhatsApp to see how we can bring it to life.\n\nWarm regards,\nGlory Adeniran`
                         }));
                       }}

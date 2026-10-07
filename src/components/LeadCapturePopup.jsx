@@ -254,7 +254,7 @@ export default function LeadCapturePopup() {
                   ✓ CONNECTED TO GLORY
                 </div>
                 <h3 style={{ fontSize: '22px', fontWeight: 600, margin: '0 0 8px' }}>
-                  You're in the Inner Circle! 🎉
+                  You're in the Inner Circle!
                 </h3>
                 <p style={{ fontSize: '14px', color: 'var(--gray-2, #94A3B8)', lineHeight: '1.6', margin: 0 }}>
                   Thanks for connecting. You'll receive early looks at newly launched designs and updates directly in your inbox.
@@ -270,7 +270,7 @@ export default function LeadCapturePopup() {
                     padding: '4px 12px', 
                     borderRadius: '9999px', 
                     background: 'var(--chip-bg, rgba(255, 255, 255, 0.06))', 
-                    border: '1px solid var(--border, rgba(255, 255, 255, 0.1))',
+                    border: '1px solid var(--border, rgba(255, 255, 255, 0.1))', 
                     fontSize: '11px',
                     fontFamily: 'var(--mono, monospace)',
                     color: 'var(--lime, #3B82F6)',
@@ -284,7 +284,7 @@ export default function LeadCapturePopup() {
                 </div>
 
                 <h3 style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.02em', margin: '0 0 8px' }}>
-                  Loving the Work? Let's Connect! ✨
+                  Loving the Work? Let's Connect!
                 </h3>
                 <p style={{ fontSize: '14px', color: 'var(--gray-2, #94A3B8)', lineHeight: '1.6', margin: '0 0 24px' }}>
                   Drop your email to receive early project releases, design breakdowns, and creative updates from Glory.
