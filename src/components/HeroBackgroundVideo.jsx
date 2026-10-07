@@ -20,11 +20,6 @@ export default function HeroBackgroundVideo() {
   const [isHovered, setIsHovered] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
-  // On mobile screens, do not render or stream the background video
-  if (network.isDetected && network.isMobile) {
-    return null;
-  }
-
   // Auto-play when video element is mounted and allowed
   useEffect(() => {
     if (videoRef.current) {
@@ -60,7 +55,7 @@ export default function HeroBackgroundVideo() {
       setIsScrolling(true);
 
       // Accelerate playback slightly during active scroll (Google Flow experience)
-      if (videoRef.current && isPlaying && !isLiteMode) {
+      if (videoRef.current && isPlaying) {
         const dynamicRate = Math.min(playbackSpeed * 1.35, 2.5);
         videoRef.current.playbackRate = dynamicRate;
       }
@@ -68,7 +63,7 @@ export default function HeroBackgroundVideo() {
       clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         setIsScrolling(false);
-        if (videoRef.current && isPlaying && !isLiteMode) {
+        if (videoRef.current && isPlaying) {
           videoRef.current.playbackRate = playbackSpeed;
         }
       }, 180);
@@ -79,7 +74,7 @@ export default function HeroBackgroundVideo() {
       window.removeEventListener('scroll', handleScroll);
       clearTimeout(scrollTimeout);
     };
-  }, [isPlaying, playbackSpeed, isLiteMode]);
+  }, [isPlaying, playbackSpeed]);
 
   // Google Flow: Interactive Mouse Proximity Lighting
   useEffect(() => {
@@ -145,6 +140,11 @@ export default function HeroBackgroundVideo() {
 
   const progressFraction = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // On mobile screens, do not render or stream the background video
+  if (network.isDetected && network.isMobile) {
+    return null;
+  }
+
   return (
     <div 
       className="hero-video-wrapper"
@@ -159,7 +159,7 @@ export default function HeroBackgroundVideo() {
         zIndex: 0,
       }}
     >
-      {/* ── LITE MODE POSTER (INSTANT PAINT FOR WEAK NETWORKS / 49KB) ── */}
+      {/* ── AMBIENT VIDEO POSTER ── */}
       <div
         style={{
           position: 'absolute',
@@ -171,39 +171,37 @@ export default function HeroBackgroundVideo() {
           backgroundPosition: 'center',
           transform: `scale(${1.02 + scrollProgress * 0.08}) translateY(${scrollProgress * 24}px)`,
           transition: 'transform 0.15s ease-out',
-          opacity: isLiteMode ? 0.95 : videoLoaded ? 0 : 0.95,
+          opacity: videoLoaded ? 0 : 0.95,
           zIndex: 0,
         }}
       />
 
-      {/* ── HIGH PERFORMANCE HTML5 VIDEO (STREAMED ONLY ON STRONG CONNECTION) ── */}
-      {!isLiteMode && (
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          poster="/videos/hero-bg-poster.jpg"
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedData={() => setVideoLoaded(true)}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center',
-            opacity: 0.92,
-            transform: `scale(${1.02 + scrollProgress * 0.08}) translateY(${scrollProgress * 24}px)`,
-            transition: 'transform 0.15s ease-out, opacity 0.5s ease',
-            zIndex: 1,
-          }}
-        >
-          <source src="/videos/hero-bg.mp4" type="video/mp4" />
-        </video>
-      )}
+      {/* ── HIGH PERFORMANCE HTML5 VIDEO ── */}
+      <video
+        ref={videoRef}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        poster="/videos/hero-bg-poster.jpg"
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedData={() => setVideoLoaded(true)}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center',
+          opacity: 0.92,
+          transform: `scale(${1.02 + scrollProgress * 0.08}) translateY(${scrollProgress * 24}px)`,
+          transition: 'transform 0.15s ease-out, opacity 0.5s ease',
+          zIndex: 1,
+        }}
+      >
+        <source src="/videos/hero-bg.mp4" type="video/mp4" />
+      </video>
 
       {/* Google Flow: Dynamic Interactive Cursor Lighting Scrim */}
       <div
