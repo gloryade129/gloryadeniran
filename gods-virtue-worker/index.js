@@ -19,7 +19,7 @@ import pino from 'pino';
 import { createClient } from '@supabase/supabase-js';
 import qrcode from 'qrcode-terminal';
 
-import { useSupabaseAuthState } from './src/supabase-auth-adapter.js';
+import { useSupabaseAuthState, clearSession } from './src/supabase-auth-adapter.js';
 import { initAI, generateResponse } from './src/ai-engine.js';
 import {
   simulateHumanPresence,
@@ -125,6 +125,57 @@ async function syncAllGroups() {
   }
 }
 
+let isRequestingPairing = false;
+
+// Check and request 8-digit WhatsApp pairing code dynamically
+async function checkAndGeneratePairingCode() {
+  if (isRequestingPairing || !sock || sock.authState?.creds?.registered) return;
+
+  try {
+    let phone = botConfig.phone_number;
+    if (!phone && supabase) {
+      const { data } = await supabase
+        .from('gods_virtue_config')
+        .select('phone_number, pairing_code')
+        .eq('id', 'primary')
+        .single();
+      if (!data?.pairing_code) phone = data?.phone_number;
+    }
+
+    if (phone && !botConfig.pairing_code) {
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      if (cleanPhone.length >= 7) {
+        isRequestingPairing = true;
+        console.log(`[main] Requesting 8-digit WhatsApp pairing code for +${cleanPhone}...`);
+
+        // Wait up to 3 seconds for socket readiness
+        for (let i = 0; i < 6; i++) {
+          if (sock?.ws?.isOpen) break;
+          await sleep(500);
+        }
+
+        const code = await sock.requestPairingCode(cleanPhone);
+        const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
+        console.log('\n========================================');
+        console.log(`  WHATSAPP 8-DIGIT PAIRING CODE: ${formattedCode}`);
+        console.log('========================================\n');
+
+        botConfig.pairing_code = formattedCode;
+        if (supabase) {
+          await supabase.from('gods_virtue_config').update({
+            pairing_code: formattedCode,
+            updated_at: new Date().toISOString(),
+          }).eq('id', 'primary');
+        }
+      }
+    }
+  } catch (pairErr) {
+    console.warn('[main] Pairing code generation warning:', pairErr.message);
+  } finally {
+    isRequestingPairing = false;
+  }
+}
+
 async function startBot() {
   await syncConfigFromCloud();
 
@@ -143,40 +194,12 @@ async function startBot() {
     syncFullHistory: false,
   });
 
-  // Handle Pairing Code Generation
+  // Handle Initial Pairing Check
   if (!sock.authState.creds.registered) {
-    console.log('[main] Account not yet linked.');
-    // Check if phone number was submitted from the web dashboard
-    setTimeout(async () => {
-      try {
-        let phone = botConfig.phone_number;
-        if (!phone && supabase) {
-          const { data } = await supabase.from('gods_virtue_config').select('phone_number').eq('id', 'primary').single();
-          phone = data?.phone_number;
-        }
-
-        if (phone) {
-          const cleanPhone = phone.replace(/[^0-9]/g, '');
-          console.log(`[main] Requesting 8-digit WhatsApp pairing code for +${cleanPhone}...`);
-          const code = await sock.requestPairingCode(cleanPhone);
-          const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-          console.log('\n========================================');
-          console.log(`  WHATSAPP 8-DIGIT PAIRING CODE: ${formattedCode}`);
-          console.log('========================================\n');
-
-          if (supabase) {
-            await supabase.from('gods_virtue_config').update({
-              pairing_code: formattedCode,
-              updated_at: new Date().toISOString(),
-            }).eq('id', 'primary');
-          }
-        } else {
-          console.log('[main] Open the web dashboard at /admin/gods-virtue to enter your phone number for an 8-digit pairing code.');
-        }
-      } catch (pairErr) {
-        console.warn('[main] Pairing code generation warning:', pairErr.message);
-      }
-    }, 4000);
+    console.log('[main] Account not yet linked. Waiting for pairing code request from dashboard or QR scan.');
+    setTimeout(() => {
+      checkAndGeneratePairingCode();
+    }, 2500);
   }
 
   // Handle Credentials Updates
@@ -189,12 +212,14 @@ async function startBot() {
     if (qr) {
       console.log('\n[main] Scan QR Code (or use 8-Digit Pairing Code on Dashboard):');
       qrcode.generate(qr, { small: true });
+      // When QR is ready, WhatsApp servers are ready for pairing codes
+      checkAndGeneratePairingCode();
     }
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-      console.warn(`[main] WhatsApp connection closed (code: ${statusCode}). Reconnecting: ${shouldReconnect}`);
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+      console.warn(`[main] WhatsApp connection closed (code: ${statusCode}). Logged out: ${isLoggedOut}`);
 
       if (supabase) {
         await supabase.from('gods_virtue_config').update({
@@ -203,12 +228,20 @@ async function startBot() {
         }).eq('id', 'primary');
       }
 
-      if (shouldReconnect) {
-        await sleep(3000);
-        startBot();
-      } else {
-        console.error('[main] Account logged out. Please request a new pairing code from the dashboard.');
+      if (isLoggedOut) {
+        console.warn('[main] Session logged out / invalid. Purging stale credentials to allow fresh pairing...');
+        await clearSession(supabase, process.env.SESSION_DIR || './session_auth');
+        if (supabase) {
+          await supabase.from('gods_virtue_config').update({
+            pairing_code: null,
+            phone_number: null,
+          }).eq('id', 'primary');
+        }
       }
+
+      // ALWAYS reconnect and keep fresh socket active so dashboard pairing works immediately
+      await sleep(3000);
+      startBot();
     } else if (connection === 'open') {
       const botPhone = sock.user?.id?.split(':')[0] || 'Unknown';
       console.log('\n======================================================');
@@ -473,6 +506,11 @@ async function startBot() {
 setInterval(async () => {
   await syncConfigFromCloud();
 
+  // If unlinked, dynamically check if user requested a pairing code from the dashboard
+  if (sock && !sock.authState?.creds?.registered) {
+    await checkAndGeneratePairingCode();
+  }
+
   // 1. Send Heartbeat & Periodic Group Sync
   if (supabase && sock?.user) {
     await supabase.from('gods_virtue_config').update({
@@ -609,7 +647,7 @@ setInterval(async () => {
       console.warn('[schedule] Scheduler error:', schedErr.message);
     }
   }
-}, 30000);
+}, 10000);
 
 
 // ─── Health Check HTTP Server (For Render / Cloud Web Services) ───

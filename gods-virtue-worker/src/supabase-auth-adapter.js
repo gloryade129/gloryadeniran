@@ -10,6 +10,28 @@ import fs from 'fs/promises';
 import path from 'path';
 import { initAuthCreds, BufferJSON } from '@whiskeysockets/baileys';
 
+/**
+ * Clears corrupted or logged-out session from local disk and Supabase
+ */
+export async function clearSession(supabase, sessionDir = './session_auth') {
+  try {
+    const files = await fs.readdir(sessionDir);
+    for (const f of files) {
+      await fs.unlink(path.join(sessionDir, f)).catch(() => {});
+    }
+    console.log('[auth-adapter] Cleared local session files.');
+  } catch {}
+
+  if (supabase) {
+    try {
+      await supabase.from('gods_virtue_sessions').delete().eq('session_id', 'default');
+      console.log('[auth-adapter] Cleared remote Supabase session keys for default.');
+    } catch (e) {
+      console.warn('[auth-adapter] Failed to clear Supabase sessions:', e.message);
+    }
+  }
+}
+
 export async function useSupabaseAuthState(supabase, sessionDir = './session_auth') {
   // Ensure local session directory exists
   await fs.mkdir(sessionDir, { recursive: true });
@@ -32,13 +54,17 @@ export async function useSupabaseAuthState(supabase, sessionDir = './session_aut
           .select('key_id, value')
           .eq('session_id', 'default');
 
-        if (data && data.length > 0) {
+        // Only restore if we have valid credentials AND associated keys (not just an orphaned creds file)
+        if (data && data.length > 1) {
           console.log(`[auth-adapter] Restoring ${data.length} session items from Supabase...`);
           for (const item of data) {
             const dest = path.join(sessionDir, `${item.key_id}.json`);
             await fs.writeFile(dest, JSON.stringify(item.value), 'utf-8');
           }
           console.log('[auth-adapter] Session restored successfully from Supabase!');
+        } else if (data && data.length === 1) {
+          console.log('[auth-adapter] Detected partial/orphaned session (1 item). Discarding to prevent 401 handshake loop.');
+          await clearSession(supabase, sessionDir);
         }
       }
     } catch (err) {
@@ -69,7 +95,7 @@ export async function useSupabaseAuthState(supabase, sessionDir = './session_aut
           key_id: 'creds',
           value: JSON.parse(serialized),
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'session_id,key_id' });
       }
     } catch (err) {
       console.warn('[auth-adapter] Save creds warning:', err.message);
@@ -92,6 +118,7 @@ export async function useSupabaseAuthState(supabase, sessionDir = './session_aut
         return data;
       },
       set: async (data) => {
+        const upsertBatch = [];
         for (const category in data) {
           for (const id in data[category]) {
             const val = data[category][id];
@@ -102,17 +129,13 @@ export async function useSupabaseAuthState(supabase, sessionDir = './session_aut
               const str = JSON.stringify(val, BufferJSON.replacer);
               await fs.writeFile(filePath, str, 'utf-8');
               if (supabase) {
-                supabase
-                  .from('gods_virtue_sessions')
-                  .upsert({
-                    session_id: 'default',
-                    data_type: 'key',
-                    key_id: `${category}-${id}`,
-                    value: JSON.parse(str),
-                    updated_at: new Date().toISOString(),
-                  })
-                  .then(() => {})
-                  .catch(() => {});
+                upsertBatch.push({
+                  session_id: 'default',
+                  data_type: 'key',
+                  key_id: `${category}-${id}`,
+                  value: JSON.parse(str),
+                  updated_at: new Date().toISOString(),
+                });
               }
             } else {
               try {
@@ -120,6 +143,13 @@ export async function useSupabaseAuthState(supabase, sessionDir = './session_aut
               } catch {}
             }
           }
+        }
+        if (supabase && upsertBatch.length > 0) {
+          supabase
+            .from('gods_virtue_sessions')
+            .upsert(upsertBatch, { onConflict: 'session_id,key_id' })
+            .then(() => {})
+            .catch((e) => console.warn('[auth-adapter] Key sync error:', e.message));
         }
       },
     },

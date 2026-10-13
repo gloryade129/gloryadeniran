@@ -65,11 +65,12 @@ INSERT INTO gods_virtue_config (
 -- Multi-device WhatsApp authentication keys (Baileys creds sync across restarts)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS gods_virtue_sessions (
-    session_id VARCHAR(50) PRIMARY KEY DEFAULT 'default',
+    session_id VARCHAR(50) NOT NULL DEFAULT 'default',
     data_type VARCHAR(50) NOT NULL,                      -- 'creds' or 'key'
     key_id VARCHAR(255) NOT NULL,
     value JSONB NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (session_id, key_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_gv_sessions_lookup ON gods_virtue_sessions(session_id, data_type, key_id);
