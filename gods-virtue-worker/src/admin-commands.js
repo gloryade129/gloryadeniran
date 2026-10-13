@@ -308,6 +308,45 @@ export async function handleAdminCommand({
       return true;
     }
 
+    // ─── Automated Schedule Management from DM ───
+    case '.schedule': {
+      const targetId = args[0];
+      const state = (args[1] || '').toLowerCase();
+      if (!targetId || (state !== 'on' && state !== 'off')) {
+        await reply(`Usage: .schedule <group_number> <on|off> [lock_time] [open_time]\nExample: .schedule 1 on 22:00 06:00\nExample: .schedule 1 off`);
+        return true;
+      }
+      const targetGroup = resolveGroup(targetId, cachedGroups);
+      if (!targetGroup) {
+        await reply(`Group "${targetId}" not found. Send .groups to view numbered list.`);
+        return true;
+      }
+
+      const shouldEnable = state === 'on';
+      const lockTime = args[2] || targetGroup.auto_lock_time || '22:00';
+      const openTime = args[3] || targetGroup.auto_open_time || '06:00';
+
+      targetGroup.schedule_enabled = shouldEnable;
+      targetGroup.auto_lock_time = lockTime;
+      targetGroup.auto_open_time = openTime;
+
+      if (supabase) {
+        await supabase
+          .from('gods_virtue_groups')
+          .update({
+            schedule_enabled: shouldEnable,
+            auto_lock_time: lockTime,
+            auto_open_time: openTime,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('group_jid', targetGroup.group_jid);
+      }
+      await reply(
+        `[SCHEDULE UPDATED] Daily lock schedule for "${targetGroup.group_name}": ${shouldEnable ? `ENABLED (Auto-Lock: ${lockTime}, Auto-Open: ${openTime})` : 'DISABLED'}.`
+      );
+      return true;
+    }
+
     // ─── Broadcast from DM ───
     case '.broadcast': {
       if (args.length < 2) {
@@ -400,7 +439,8 @@ export async function handleAdminCommand({
         `• .sync          -> Force instant group & rights refresh\n` +
         `• .lock <num>    -> Lock group (admin-only messages)\n` +
         `• .open <num>    -> Open group (all members can chat)\n` +
-        `• .whitelist <num> on/off -> Toggle bot monitoring\n\n` +
+        `• .whitelist <num> on/off -> Toggle bot monitoring\n` +
+        `• .schedule <num> on/off [lock] [open] -> Auto daily lock schedule\n\n` +
         `EMERGENCY\n` +
         `• .pause         -> Emergency freeze on all replies\n` +
         `• .resume        -> Restore normal operations\n\n` +

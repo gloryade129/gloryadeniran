@@ -203,9 +203,11 @@ export async function updateGroupSettings(groupJid, settings) {
       } else {
         const errText = await res.text();
         console.warn('[gods-virtue-db] Supabase updateGroupSettings PATCH error:', res.status, errText);
+        throw new Error(`Database error (${res.status}): ${errText}`);
       }
     } catch (e) {
       console.warn('[gods-virtue-db] Supabase updateGroupSettings error:', e.message);
+      throw e;
     }
   }
 

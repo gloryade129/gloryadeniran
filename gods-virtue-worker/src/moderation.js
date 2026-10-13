@@ -6,6 +6,8 @@
  * automated welcome greetings, and natural language admin commands.
  */
 
+import { areJidsSameUser } from '@whiskeysockets/baileys';
+
 const URL_REGEX = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(chat\.whatsapp\.com\/[a-zA-Z0-9]+)|(wa\.me\/[0-9]+)|(t\.me\/[a-zA-Z0-9_]+)/gi;
 
 export function containsDisallowedLink(text = '') {
@@ -18,7 +20,10 @@ export function containsDisallowedLink(text = '') {
 export async function isGroupAdmin(sock, groupJid, userJid) {
   try {
     const meta = await sock.groupMetadata(groupJid);
-    const participant = meta.participants.find((p) => p.id === userJid || p.id.split(':')[0] === userJid.split(':')[0]);
+    const participant = meta.participants.find((p) => 
+      areJidsSameUser(p.id, userJid) || 
+      (p.id || '').split('@')[0]?.split(':')[0] === (userJid || '').split('@')[0]?.split(':')[0]
+    );
     return Boolean(participant && (participant.admin === 'admin' || participant.admin === 'superadmin'));
   } catch (err) {
     console.warn('[moderation] Failed to verify group admin status:', err.message);

@@ -98,6 +98,15 @@ CREATE TABLE IF NOT EXISTS gods_virtue_groups (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all columns exist even if the table was created in an earlier migration
+ALTER TABLE gods_virtue_groups ADD COLUMN IF NOT EXISTS schedule_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE gods_virtue_groups ADD COLUMN IF NOT EXISTS auto_lock_time VARCHAR(10) DEFAULT '22:00';
+ALTER TABLE gods_virtue_groups ADD COLUMN IF NOT EXISTS auto_open_time VARCHAR(10) DEFAULT '06:00';
+ALTER TABLE gods_virtue_groups ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE gods_virtue_groups ADD COLUMN IF NOT EXISTS bot_is_admin BOOLEAN DEFAULT false;
+ALTER TABLE gods_virtue_groups ADD COLUMN IF NOT EXISTS instructions TEXT DEFAULT NULL;
+ALTER TABLE gods_virtue_groups ADD COLUMN IF NOT EXISTS custom_rules TEXT DEFAULT NULL;
+
 -- ----------------------------------------------------------------------------
 -- 4. Table: gods_virtue_contacts
 -- Linked WhatsApp contacts synced from the device
@@ -227,3 +236,9 @@ BEGIN
     DROP POLICY IF EXISTS "gv_announcements_all" ON gods_virtue_announcements;
     CREATE POLICY "gv_announcements_all" ON gods_virtue_announcements FOR ALL USING (true) WITH CHECK (true);
 END $$;
+
+-- ----------------------------------------------------------------------------
+-- Notify PostgREST to refresh schema cache immediately
+-- ----------------------------------------------------------------------------
+NOTIFY pgrst, 'reload schema';
+

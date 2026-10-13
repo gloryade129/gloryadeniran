@@ -14,6 +14,7 @@ import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   Browsers,
+  areJidsSameUser,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import { createClient } from '@supabase/supabase-js';
@@ -104,12 +105,17 @@ async function syncAllGroups(force = false) {
 
   try {
     const groups = await sock.groupFetchAllParticipating();
-    const myPhone = (sock.user?.id || '').split('@')[0]?.split(':')[0];
+    const myId = sock.user?.id;
+    const myLid = sock.user?.lid;
+    const myPhone = (myId || '').split('@')[0]?.split(':')[0];
 
     for (const [jid, metadata] of Object.entries(groups)) {
       const isAdmin = metadata.participants?.some((p) => {
-        const participantPhone = (p.id || '').split('@')[0]?.split(':')[0];
-        return participantPhone === myPhone && (p.admin === 'admin' || p.admin === 'superadmin');
+        const isMe =
+          (myId && areJidsSameUser(p.id, myId)) ||
+          (myLid && areJidsSameUser(p.id, myLid)) ||
+          (myPhone && (p.id || '').split('@')[0]?.split(':')[0] === myPhone);
+        return isMe && (p.admin === 'admin' || p.admin === 'superadmin');
       }) || false;
 
       const existing = groupSettingsCache.get(jid);
