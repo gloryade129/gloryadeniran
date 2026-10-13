@@ -89,10 +89,19 @@ async function syncConfigFromCloud() {
 
 // ─── Primary Bot Socket Lifecycle ───
 let sock = null;
+let lastGroupSyncTime = 0;
+const GROUP_SYNC_COOLDOWN_MS = 45000; // 45 seconds minimum between automated scans
 
 // Sync all participating WhatsApp groups to Supabase
-async function syncAllGroups() {
+async function syncAllGroups(force = false) {
   if (!sock?.user || !supabase) return;
+
+  const now = Date.now();
+  if (!force && now - lastGroupSyncTime < GROUP_SYNC_COOLDOWN_MS) {
+    return; // Rate limit protection
+  }
+  lastGroupSyncTime = now;
+
   try {
     const groups = await sock.groupFetchAllParticipating();
     const myPhone = (sock.user?.id || '').split('@')[0]?.split(':')[0];
@@ -479,19 +488,14 @@ async function startBot() {
         groupSettings,
       });
     }
-
-    // Auto-sync group data when participants/roles change
-    await syncAllGroups();
   });
 
-  // ─── Listen to Group Updates (Joining new groups or subject changes) ───
+  // ─── Listen to Group Updates (Joining new groups) ───
   sock.ev.on('groups.upsert', async (newGroups) => {
-    console.log(`[groups] New group upsert event detected (${newGroups?.length || 0} groups), syncing...`);
-    await syncAllGroups();
-  });
-
-  sock.ev.on('groups.update', async () => {
-    await syncAllGroups();
+    if (newGroups && newGroups.length > 0) {
+      console.log(`[groups] Joined ${newGroups.length} new group(s), syncing...`);
+      await syncAllGroups(true);
+    }
   });
 
   // ─── Sync WhatsApp Contacts to Supabase ───
@@ -614,7 +618,7 @@ setInterval(async () => {
               console.log(`[action] Group opened: ${act.target_jid}`);
               actionSuccess = true;
             } else if (act.action_type === 'sync_all') {
-              await syncAllGroups();
+              await syncAllGroups(true);
               actionSuccess = true;
             } else if (act.action_type === 'sync_contacts') {
               actionSuccess = true; // triggered by contacts.upsert listener

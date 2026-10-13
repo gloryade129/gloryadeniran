@@ -219,7 +219,7 @@ export async function handleAdminCommand({
 
     case '.sync': {
       await reply(`[SYNC INITIATED] Scanning participating WhatsApp groups and synchronizing with Supabase...`);
-      await syncAllGroups();
+      await syncAllGroups(true);
       await reply(`[SYNC COMPLETE] All groups and administrative rights refreshed successfully.`);
       return true;
     }
