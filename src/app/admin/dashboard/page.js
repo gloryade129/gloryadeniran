@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { upload } from '@vercel/blob/client';
 import styles from './dashboard.module.css';
+import GodsVirtuePanel from '@/components/admin/GodsVirtuePanel';
 
 const isVideoUrl = (url) => {
   if (!url) return false;
@@ -37,7 +38,7 @@ const HoverVideo = ({ src, className, style }) => {
       muted
       playsInline
       loop
-      preload="metadata"
+      preload="none"
       style={style || { width: '100%', height: '100%', objectFit: 'cover' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -895,6 +896,7 @@ export default function Dashboard() {
           <nav className={styles.sidebarNav}>
             {[
               { id: 'overview', label: 'OVERVIEW' },
+              { id: 'gods_virtue', label: "GOD'S VIRTUE (WA)" },
               { id: 'portfolio', label: 'PORTFOLIO' },
               { id: 'subscribers', label: 'LEADS & SUBSCRIBERS', count: subscribers.length },
               { id: 'experience', label: 'EXPERIENCE' },
@@ -1644,6 +1646,10 @@ export default function Dashboard() {
                 </>
               )}
             </div>
+          )}
+
+          {activeTab === 'gods_virtue' && (
+            <GodsVirtuePanel />
           )}
         </div>
       </main>
