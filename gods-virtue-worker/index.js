@@ -175,7 +175,7 @@ async function startBot() {
     } else if (connection === 'open') {
       const botPhone = sock.user?.id?.split(':')[0] || 'Unknown';
       console.log('\n======================================================');
-      console.log(`🕊️ "God's Virtue" is LIVE on WhatsApp! Linked to +${botPhone}`);
+      console.log(`[LIVE] "God's Virtue" is connected to WhatsApp! Linked to +${botPhone}`);
       console.log('======================================================\n');
 
       if (supabase) {
@@ -226,6 +226,15 @@ async function startBot() {
         const isGroup = jid.endsWith('@g.us');
         const senderJid = isGroup ? m.key.participant || m.participant : jid;
         const senderName = m.pushName || 'Friend';
+
+        // STRICT WHITELIST: ignore groups that are not explicitly monitored
+        if (isGroup) {
+          const gSettings = groupSettingsCache.get(jid);
+          if (!gSettings || !gSettings.is_monitored) {
+            continue; // drop silently — privacy enforced
+          }
+        }
+
 
         // Extract message text content
         const messageText =
@@ -378,7 +387,38 @@ async function startBot() {
       });
     }
   });
+
+  // ─── Sync WhatsApp Contacts to Supabase ───
+  const syncContactsBatch = async (contactList) => {
+    if (!supabase || !contactList || contactList.length === 0) return;
+    try {
+      const contactRecords = contactList
+        .filter((c) => c.id && c.id.endsWith('@s.whatsapp.net'))
+        .map((c) => ({
+          jid: c.id,
+          name: c.name || c.notify || c.verifiedName || null,
+          phone: c.id.split('@')[0],
+          is_business: Boolean(c.isBusiness),
+          updated_at: new Date().toISOString(),
+        }));
+      if (contactRecords.length > 0) {
+        await supabase.from('gods_virtue_contacts').upsert(contactRecords, { onConflict: 'jid' });
+        console.log(`[contacts] Synced ${contactRecords.length} contacts to Supabase.`);
+      }
+    } catch (cErr) {
+      console.warn('[contacts] Sync error:', cErr.message);
+    }
+  };
+
+  sock.ev.on('contacts.upsert', async (contacts) => {
+    await syncContactsBatch(contacts);
+  });
+
+  sock.ev.on('contacts.update', async (updates) => {
+    await syncContactsBatch(updates);
+  });
 }
+
 
 // ─── Background Tasks: Broadcasts & Heartbeat ───
 setInterval(async () => {
@@ -411,7 +451,7 @@ setInterval(async () => {
           for (const targetJid of targetJids) {
             try {
               await sock.sendMessage(targetJid, {
-                text: `📢 *${ann.title.toUpperCase()}*\n\n${ann.announcement_text}`,
+                text: `${ann.title.toUpperCase()}\n\n${ann.announcement_text}`,
               });
               await sleep(2000); // 2s pause between groups to prevent burst flag
             } catch (bErr) {
@@ -429,7 +469,118 @@ setInterval(async () => {
       console.warn('[broadcast] Check error:', annErr.message);
     }
   }
+
+  // 3. Process Queued Actions from Dashboard
+  if (supabase && sock?.user) {
+    try {
+      const { data: pendingActions } = await supabase
+        .from('gods_virtue_actions')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true })
+        .limit(10);
+
+      if (pendingActions && pendingActions.length > 0) {
+        for (const act of pendingActions) {
+          let actionSuccess = false;
+          try {
+            if (act.action_type === 'lock_group' && act.target_jid) {
+              await sock.groupSettingUpdate(act.target_jid, 'announcement');
+              // Update cache
+              if (groupSettingsCache.has(act.target_jid)) {
+                groupSettingsCache.get(act.target_jid).is_locked = true;
+              }
+              console.log(`[action] Group locked: ${act.target_jid}`);
+              actionSuccess = true;
+            } else if (act.action_type === 'open_group' && act.target_jid) {
+              await sock.groupSettingUpdate(act.target_jid, 'not_announcement');
+              if (groupSettingsCache.has(act.target_jid)) {
+                groupSettingsCache.get(act.target_jid).is_locked = false;
+              }
+              console.log(`[action] Group opened: ${act.target_jid}`);
+              actionSuccess = true;
+            } else if (act.action_type === 'sync_all') {
+              const groups = await sock.groupFetchAllParticipating();
+              for (const [jid, metadata] of Object.entries(groups)) {
+                const grpRecord = {
+                  group_jid: jid,
+                  group_name: metadata.subject,
+                  member_count: metadata.participants?.length || 0,
+                  bot_is_admin: metadata.participants?.some(
+                    (p) => (p.id === sock.user?.id || p.id?.split(':')[0] === sock.user?.id?.split(':')[0]) &&
+                    (p.admin === 'admin' || p.admin === 'superadmin')
+                  ) || false,
+                };
+                if (!groupSettingsCache.has(jid)) {
+                  grpRecord.is_monitored = false; // new groups default to unmonitored
+                  grpRecord.anti_link_enabled = true;
+                  grpRecord.auto_welcome_enabled = true;
+                  grpRecord.max_strikes = 3;
+                } else {
+                  Object.assign(grpRecord, groupSettingsCache.get(jid));
+                }
+                groupSettingsCache.set(jid, grpRecord);
+                await supabase.from('gods_virtue_groups').upsert(grpRecord, { onConflict: 'group_jid' });
+              }
+              console.log(`[action] Sync complete: ${Object.keys(groups).length} groups refreshed`);
+              actionSuccess = true;
+            } else if (act.action_type === 'sync_contacts') {
+              actionSuccess = true; // triggered by contacts.upsert listener
+            } else {
+              console.warn(`[action] Unknown action type: ${act.action_type}`);
+              actionSuccess = true; // mark unknown as executed to avoid loop
+            }
+          } catch (actErr) {
+            console.error(`[action] Failed to execute ${act.action_type}:`, actErr.message);
+          }
+          // Mark action as executed or failed
+          await supabase
+            .from('gods_virtue_actions')
+            .update({
+              status: actionSuccess ? 'executed' : 'failed',
+            })
+            .eq('id', act.id);
+        }
+      }
+    } catch (actQueueErr) {
+      console.warn('[action] Queue poll error:', actQueueErr.message);
+    }
+  }
+
+  // 4. Scheduled Auto Lock / Open Groups
+  if (supabase && sock?.user) {
+    try {
+      const nowHHmm = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      for (const [groupJid, settings] of groupSettingsCache.entries()) {
+        if (!settings.schedule_enabled || !settings.is_monitored) continue;
+        const shouldLock = settings.auto_lock_time && settings.auto_lock_time === nowHHmm;
+        const shouldOpen = settings.auto_open_time && settings.auto_open_time === nowHHmm;
+        if (shouldLock && !settings.is_locked) {
+          try {
+            await sock.groupSettingUpdate(groupJid, 'announcement');
+            settings.is_locked = true;
+            await supabase.from('gods_virtue_groups').update({ is_locked: true }).eq('group_jid', groupJid);
+            console.log(`[schedule] Auto-locked group ${groupJid} at ${nowHHmm}`);
+          } catch (lockErr) {
+            console.warn(`[schedule] Auto-lock failed for ${groupJid}:`, lockErr.message);
+          }
+        } else if (shouldOpen && settings.is_locked) {
+          try {
+            await sock.groupSettingUpdate(groupJid, 'not_announcement');
+            settings.is_locked = false;
+            await supabase.from('gods_virtue_groups').update({ is_locked: false }).eq('group_jid', groupJid);
+            console.log(`[schedule] Auto-opened group ${groupJid} at ${nowHHmm}`);
+          } catch (openErr) {
+            console.warn(`[schedule] Auto-open failed for ${groupJid}:`, openErr.message);
+          }
+        }
+      }
+    } catch (schedErr) {
+      console.warn('[schedule] Scheduler error:', schedErr.message);
+    }
+  }
 }, 30000);
+
 
 // Start Service
 startBot().catch((err) => console.error('[main] Fatal bot startup error:', err));

@@ -15,6 +15,7 @@ export default function GodsVirtuePanel() {
     is_active: true,
     is_connected: false,
     phone_number: '',
+    account_name: "God's Virtue",
     pairing_code: null,
     system_prompt: '',
     temperature: 0.70,
@@ -35,6 +36,10 @@ export default function GodsVirtuePanel() {
   const [groups, setGroups] = useState([]);
   const [editingGroup, setEditingGroup] = useState(null);
 
+  // Contacts
+  const [contacts, setContacts] = useState([]);
+  const [contactSearch, setContactSearch] = useState('');
+
   // Logs & Violations
   const [logs, setLogs] = useState([]);
   const [logFilter, setLogFilter] = useState('all');
@@ -48,7 +53,7 @@ export default function GodsVirtuePanel() {
   const [announcements, setAnnouncements] = useState([]);
 
   // AI Prompt Playground
-  const [testMessage, setTestMessage] = useState('Hello God\'s Virtue! What advice do you have for someone starting a new tech venture?');
+  const [testMessage, setTestMessage] = useState('Hello God\'s Virtue. What advice do you have for someone starting a new venture?');
   const [playgroundOutput, setPlaygroundOutput] = useState('');
   const [testingAi, setTestingAi] = useState(false);
 
@@ -60,9 +65,10 @@ export default function GodsVirtuePanel() {
   // Initial Data Fetch
   const fetchAllData = useCallback(async () => {
     try {
-      const [statusRes, groupsRes, logsRes, annRes] = await Promise.all([
+      const [statusRes, groupsRes, contactsRes, logsRes, annRes] = await Promise.all([
         fetch('/api/gods-virtue/status'),
         fetch('/api/gods-virtue/groups'),
+        fetch('/api/gods-virtue/contacts'),
         fetch(`/api/gods-virtue/logs?filter=${logFilter === 'all' ? '' : logFilter}`),
         fetch('/api/gods-virtue/broadcast'),
       ]);
@@ -74,6 +80,10 @@ export default function GodsVirtuePanel() {
       if (groupsRes.ok) {
         const gData = await groupsRes.json();
         if (gData.groups) setGroups(gData.groups);
+      }
+      if (contactsRes.ok) {
+        const cData = await contactsRes.json();
+        if (cData.contacts) setContacts(cData.contacts);
       }
       if (logsRes.ok) {
         const lData = await logsRes.json();
@@ -113,7 +123,7 @@ export default function GodsVirtuePanel() {
       const data = await res.json();
       if (data.success) {
         setConfig(prev => ({ ...prev, is_active: nextState }));
-        showToast(nextState ? '🕊️ God\'s Virtue resumed auto-replies.' : '⚠️ Emergency Kill-Switch Activated! Auto-replies paused.');
+        showToast(nextState ? 'God\'s Virtue resumed auto-replies.' : 'Emergency Kill-Switch Activated: Auto-replies paused.');
       }
     } catch (err) {
       alert('Failed to toggle kill-switch: ' + err.message);
@@ -136,7 +146,7 @@ export default function GodsVirtuePanel() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('Pairing requested! Start the persistent bot worker to view your code.');
+        showToast('Pairing requested. Start the persistent bot worker to view your code.');
         fetchAllData();
       }
     } catch (err) {
@@ -152,7 +162,7 @@ export default function GodsVirtuePanel() {
       navigator.clipboard.writeText(config.pairing_code.replace(/[^A-Za-z0-9]/g, ''));
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2500);
-      showToast('Copied pairing code to clipboard!');
+      showToast('Copied pairing code to clipboard.');
     }
   };
 
@@ -168,7 +178,7 @@ export default function GodsVirtuePanel() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✓ AI instructions & anti-ban settings saved!');
+        showToast('AI instructions and anti-ban settings saved.');
       }
     } catch (err) {
       alert('Failed to save config: ' + err.message);
@@ -177,7 +187,7 @@ export default function GodsVirtuePanel() {
     }
   };
 
-  // Save Group Settings
+  // Save Group Settings & Schedules
   const handleSaveGroup = async (groupJid, updates) => {
     try {
       const res = await fetch('/api/gods-virtue/groups', {
@@ -188,11 +198,31 @@ export default function GodsVirtuePanel() {
       const data = await res.json();
       if (data.success) {
         setGroups(prev => prev.map(g => g.group_jid === groupJid ? { ...g, ...updates } : g));
-        showToast('✓ Group moderation settings updated!');
+        showToast('Group settings updated.');
         setEditingGroup(null);
       }
     } catch (err) {
       alert('Failed to update group: ' + err.message);
+    }
+  };
+
+  // Instant Group Action: Lock or Open Group
+  const handleGroupAction = async (action, groupJid) => {
+    try {
+      const res = await fetch('/api/gods-virtue/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, targetJid: groupJid }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'Action executed.');
+        setGroups(prev => prev.map(g => g.group_jid === groupJid ? { ...g, is_locked: action === 'lock_group' } : g));
+      } else {
+        alert(data.error || 'Failed to execute group action.');
+      }
+    } catch (err) {
+      alert('Error triggering group action: ' + err.message);
     }
   };
 
@@ -209,7 +239,7 @@ export default function GodsVirtuePanel() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('✓ Broadcast announcement queued successfully!');
+        showToast('Broadcast announcement queued successfully.');
         setBroadcastData({ target_group_jid: '', title: '', announcement_text: '' });
         fetchAllData();
       }
@@ -224,7 +254,7 @@ export default function GodsVirtuePanel() {
   const handleTestPrompt = async () => {
     if (!testMessage.trim()) return;
     setTestingAi(true);
-    setPlaygroundOutput('Thinking with configured virtues & wisdom...');
+    setPlaygroundOutput('Evaluating prompt with configured virtues and wisdom...');
     try {
       const res = await fetch('/api/gods-virtue/test-prompt', {
         method: 'POST',
@@ -248,9 +278,16 @@ export default function GodsVirtuePanel() {
     }
   };
 
+  const monitoredCount = groups.filter(g => g.is_monitored).length;
+  const adminCount = groups.filter(g => g.bot_is_admin).length;
+  const filteredContacts = contacts.filter(c => 
+    (c.name || '').toLowerCase().includes(contactSearch.toLowerCase()) ||
+    (c.phone || '').includes(contactSearch)
+  );
+
   return (
     <div className={styles.panel}>
-      {/* ─── Toast Feedback ─── */}
+      {/* Toast Feedback */}
       {toastMsg && (
         <div style={{
           position: 'fixed',
@@ -260,8 +297,8 @@ export default function GodsVirtuePanel() {
           border: '1px solid var(--lime)',
           color: 'var(--white)',
           padding: '12px 20px',
-          borderRadius: 8,
-          fontSize: 13,
+          borderRadius: 6,
+          fontSize: 12,
           fontFamily: 'var(--mono)',
           boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
           zIndex: 9999,
@@ -273,87 +310,126 @@ export default function GodsVirtuePanel() {
         </div>
       )}
 
-      {/* ─── Top Master Status Bar ─── */}
+      {/* Top Master Status & Account Details Card */}
       <div className={styles.statusBar}>
         <div className={styles.statusLeft}>
+          <div className={styles.accountAvatar}>
+            {(config.account_name || "GV").substring(0, 2).toUpperCase()}
+          </div>
+
+          <div className={styles.statusMeta}>
+            <div className={styles.botTitle}>
+              {config.account_name || config.bot_name || "God's Virtue"}
+            </div>
+            <div className={styles.botPhone}>
+              {config.phone_number ? `+${config.phone_number}` : 'Account not linked'}
+            </div>
+          </div>
+
           {config.is_connected ? (
             <span className={styles.badgeLive}>
               <span className={styles.pulseDot} />
-              LIVE ON WHATSAPP
+              CONNECTED_TO_WHATSAPP
             </span>
           ) : !config.is_active ? (
             <span className={styles.badgePaused}>
               <span className={styles.pulseDot} />
-              PAUSED (EMERGENCY)
+              EMERGENCY_PAUSED
             </span>
           ) : (
             <span className={styles.badgeOffline}>
               <span className={styles.pulseDot} />
-              WORKER OFFLINE
+              SOCKET_DISCONNECTED
             </span>
           )}
-
-          <div className={styles.statusMeta}>
-            <div className={styles.botTitle}>🕊️ {config.bot_name || "God\u2019s Virtue"}</div>
-            <div className={styles.botPhone}>
-              {config.phone_number ? `Linked Phone: +${config.phone_number}` : 'No phone linked yet'}
-            </div>
-          </div>
         </div>
 
         <div className={styles.statusRight}>
           <button
             onClick={handleToggleKillSwitch}
             className={`${styles.killSwitchBtn} ${config.is_active ? styles.killSwitchActive : styles.killSwitchPaused}`}
-            title="Emergency Kill-Switch: Pause all automated WhatsApp replies immediately"
+            title="Emergency Kill-Switch: Instantly pause or resume bot auto-replies"
           >
-            {config.is_active ? '⏸️ PAUSE BOT (KILL-SWITCH)' : '▶️ RESUME BOT'}
+            {config.is_active ? '[PAUSE BOT]' : '[RESUME BOT]'}
           </button>
         </div>
       </div>
 
-      {/* ─── Sub Navigation ─── */}
+      {/* Metrics Strip */}
+      <div className={styles.metricsStrip}>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>MONITORED GROUPS</span>
+          <div className={styles.metricValue}>{monitoredCount} / {groups.length}</div>
+          <span className={styles.metricSubtext}>WHITELIST ACTIVE</span>
+        </div>
+
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>ADMIN PRIVILEGES</span>
+          <div className={styles.metricValue}>{adminCount}</div>
+          <span className={styles.metricSubtext}>CAN LOCK &amp; MODERATE</span>
+        </div>
+
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>SYNCED CONTACTS</span>
+          <div className={styles.metricValue}>{contacts.length}</div>
+          <span className={styles.metricSubtext}>WHATSAPP DIRECTORY</span>
+        </div>
+
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>SIMULATED TYPING</span>
+          <div className={styles.metricValue}>{config.wpm_typing_speed} WPM</div>
+          <span className={styles.metricSubtext}>ANTI-BAN ACTIVE</span>
+        </div>
+      </div>
+
+      {/* Sub Navigation */}
       <div className={styles.subTabs}>
         <button
           onClick={() => setSubTab('pairing')}
           className={`${styles.tabBtn} ${subTab === 'pairing' ? styles.tabBtnActive : ''}`}
         >
-          📱 1. LINKING & PAIRING
-        </button>
-        <button
-          onClick={() => setSubTab('persona')}
-          className={`${styles.tabBtn} ${subTab === 'persona' ? styles.tabBtnActive : ''}`}
-        >
-          🧠 2. AI PERSONA & PROMPT
+          [1. LINKING &amp; PAIRING]
         </button>
         <button
           onClick={() => setSubTab('groups')}
           className={`${styles.tabBtn} ${subTab === 'groups' ? styles.tabBtnActive : ''}`}
         >
-          🛡️ 3. GROUP MODERATION ({groups.length})
+          [2. GROUPS &amp; MODERATION ({groups.length})]
+        </button>
+        <button
+          onClick={() => setSubTab('contacts')}
+          className={`${styles.tabBtn} ${subTab === 'contacts' ? styles.tabBtnActive : ''}`}
+        >
+          [3. CONTACTS ({contacts.length})]
+        </button>
+        <button
+          onClick={() => setSubTab('persona')}
+          className={`${styles.tabBtn} ${subTab === 'persona' ? styles.tabBtnActive : ''}`}
+        >
+          [4. AI PERSONA &amp; RULES]
         </button>
         <button
           onClick={() => setSubTab('logs')}
           className={`${styles.tabBtn} ${subTab === 'logs' ? styles.tabBtnActive : ''}`}
         >
-          📜 4. AUDIT & MESSAGE LOGS ({logs.length})
+          [5. AUDIT LOGS ({logs.length})]
         </button>
         <button
           onClick={() => setSubTab('broadcast')}
           className={`${styles.tabBtn} ${subTab === 'broadcast' ? styles.tabBtnActive : ''}`}
         >
-          📢 5. GROUP BROADCASTS
+          [6. BROADCASTS]
         </button>
       </div>
 
-      {/* ─── TAB 1: WhatsApp Linking & Pairing ─── */}
+      {/* TAB 1: WhatsApp Linking & Account Details */}
       {subTab === 'pairing' && (
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <div>
-              <div className={styles.cardTitle}>WhatsApp Account Connection</div>
+              <div className={styles.cardTitle}>WhatsApp Account Linking</div>
               <div className={styles.cardSubtitle}>
-                Link &quot;God&apos;s Virtue&quot; to your dedicated WhatsApp account using an 8-Digit Pairing Code (no QR camera scan required).
+                Link God&apos;s Virtue using an 8-Digit Pairing Code without needing to scan with a camera.
               </div>
             </div>
           </div>
@@ -361,15 +437,15 @@ export default function GodsVirtuePanel() {
           <div className={styles.pairingGrid}>
             <div className={styles.pairingBox}>
               <div className={styles.pairingTitle}>
-                <span>Option A: 8-Digit Phone Pairing Code (Recommended)</span>
+                Option A: 8-Digit Phone Pairing Code (Recommended)
               </div>
               <p className={styles.instructions}>
-                Enter your WhatsApp number with international country code (no `+` or spaces). Click &quot;Generate Code&quot;, then open WhatsApp on your phone:
+                Enter your WhatsApp phone number with international country code (no `+` or spaces). Click &quot;Request Code&quot;, then open WhatsApp on your phone:
               </p>
               <div className={styles.instructions}>
                 <ol>
                   <li>Open <strong>WhatsApp</strong> on your phone</li>
-                  <li>Tap <strong>Settings</strong> (or 3 dots) &rarr; <strong>Linked Devices</strong></li>
+                  <li>Tap <strong>Settings</strong> &rarr; <strong>Linked Devices</strong></li>
                   <li>Tap <strong>Link a Device</strong> &rarr; <strong>Link with phone number instead</strong></li>
                   <li>Type the 8-digit code shown below</li>
                 </ol>
@@ -398,38 +474,41 @@ export default function GodsVirtuePanel() {
                     {config.pairing_code}
                   </div>
                   <button onClick={copyPairingCode} className={styles.btnSecondary}>
-                    {copiedCode ? '✓ Copied' : '📋 Copy Code'}
+                    {copiedCode ? 'Copied' : 'Copy Code'}
                   </button>
                 </div>
               ) : (
                 <div style={{ fontSize: 12, color: 'var(--gray-3)', fontFamily: 'var(--mono)', textAlign: 'center', padding: '16px 0' }}>
-                  {config.is_connected ? '🟢 Account is currently linked and active!' : 'Awaiting code request or worker start...'}
+                  {config.is_connected ? 'Account is currently linked and active.' : 'Awaiting code request or worker start...'}
                 </div>
               )}
             </div>
 
             <div className={styles.pairingBox}>
               <div className={styles.pairingTitle}>
-                <span>Option B: Anti-Ban Health & Worker Status</span>
+                Account &amp; Anti-Ban Health Parameters
               </div>
               <div className={styles.instructions}>
                 <p>
-                  <strong>Current Socket Status:</strong> {config.is_connected ? '🟢 Connected (Active WebSocket)' : '🔴 Disconnected'}
+                  <strong>Socket Status:</strong> {config.is_connected ? 'Connected (Multi-Device Active)' : 'Disconnected'}
                 </p>
                 <p style={{ marginTop: 8 }}>
-                  <strong>Simulated Human Latency:</strong> {config.min_delay_ms / 1000}s – {config.max_delay_ms / 1000}s jitter before replying.
+                  <strong>Linked Account:</strong> {config.phone_number ? `+${config.phone_number}` : 'None'}
                 </p>
                 <p style={{ marginTop: 8 }}>
-                  <strong>Simulated Typing Speed:</strong> ~{config.wpm_typing_speed} words per minute.
+                  <strong>Human Delay Window:</strong> {config.min_delay_ms / 1000}s – {config.max_delay_ms / 1000}s jitter before replying.
                 </p>
                 <p style={{ marginTop: 8 }}>
-                  <strong>Burst Protection:</strong> Max {config.burst_limit_per_min} messages/min to keep account safe.
+                  <strong>Simulated Typing Speed:</strong> {config.wpm_typing_speed} words per minute.
+                </p>
+                <p style={{ marginTop: 8 }}>
+                  <strong>Burst Limit:</strong> Max {config.burst_limit_per_min} messages/min per chat.
                 </p>
               </div>
 
               <div style={{ marginTop: 'auto', paddingTop: 16 }}>
                 <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--gray-2)', marginBottom: 8 }}>
-                  HOW TO RUN BOT WORKER:
+                  WORKER START COMMAND:
                 </div>
                 <pre style={{
                   background: 'var(--bg-2)',
@@ -440,7 +519,7 @@ export default function GodsVirtuePanel() {
                   color: 'var(--lime)',
                   overflowX: 'auto'
                 }}>
-cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
+cd gods-virtue-worker{'\n'}npm run dev
                 </pre>
               </div>
             </div>
@@ -448,14 +527,262 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
         </div>
       )}
 
-      {/* ─── TAB 2: AI Persona, System Prompt & Anti-Ban Timing ─── */}
+      {/* TAB 2: Groups, Whitelist Selection, Lock/Unlock & Schedules */}
+      {subTab === 'groups' && (
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div>
+              <div className={styles.cardTitle}>WhatsApp Groups &amp; Moderation Center</div>
+              <div className={styles.cardSubtitle}>
+                Select which groups God&apos;s Virtue is permitted to see and moderate. Control group lock/unlock states and automated schedules.
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.groupsGrid}>
+            {groups.length === 0 ? (
+              <div className={styles.emptyState}>
+                No groups discovered yet. Once the bot worker is linked, groups will automatically populate here.
+              </div>
+            ) : (
+              groups.map(group => (
+                <div key={group.group_jid} className={`${styles.groupCard} ${group.is_monitored ? styles.groupCardActive : ''}`}>
+                  <div className={styles.groupCardHeader}>
+                    <div>
+                      <div className={styles.groupName}>{group.group_name || 'WhatsApp Group'}</div>
+                      <div className={styles.groupJid}>{group.group_jid}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span className={`${styles.badgePill} ${group.bot_is_admin ? styles.badgeAdmin : styles.badgeMember}`}>
+                        {group.bot_is_admin ? '[ADMIN]' : '[MEMBER]'}
+                      </span>
+                      {group.bot_is_admin && (
+                        <span className={`${styles.badgeLockStatus} ${group.is_locked ? styles.badgeLocked : styles.badgeOpen}`}>
+                          {group.is_locked ? '[LOCKED]' : '[OPEN]'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Whitelist Visibility Switch */}
+                  <div className={styles.toggleRow} style={{ background: group.is_monitored ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-2)', border: group.is_monitored ? '1px solid var(--lime)' : '1px solid var(--border)' }}>
+                    <div>
+                      <div className={styles.toggleLabel}>MODERATE THIS GROUP (WHITELIST)</div>
+                      <div className={styles.toggleDesc}>
+                        {group.is_monitored 
+                          ? 'Active: Bot reads and moderates this group.' 
+                          : 'Ignored: Bot is strictly blind to this group for privacy.'}
+                      </div>
+                    </div>
+                    <label className={styles.switch}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(group.is_monitored)}
+                        onChange={e => handleSaveGroup(group.group_jid, { is_monitored: e.target.checked })}
+                      />
+                      <span className={styles.slider} />
+                    </label>
+                  </div>
+
+                  {/* If monitored, show active controls */}
+                  {group.is_monitored && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {/* Instant Lock / Open Actions (If Admin) */}
+                      {group.bot_is_admin && (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => handleGroupAction('lock_group', group.group_jid)}
+                            className={styles.btnActionLock}
+                            style={{ flex: 1 }}
+                          >
+                            [LOCK GROUP NOW]
+                          </button>
+                          <button
+                            onClick={() => handleGroupAction('open_group', group.group_jid)}
+                            className={styles.btnActionOpen}
+                            style={{ flex: 1 }}
+                          >
+                            [OPEN GROUP NOW]
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Automated Daily Schedule Box */}
+                      <div className={styles.scheduleBox}>
+                        <div className={styles.toggleRow} style={{ padding: 0, background: 'transparent', border: 'none' }}>
+                          <div>
+                            <div className={styles.toggleLabel} style={{ fontSize: 12 }}>Automated Daily Lock Schedule</div>
+                            <div className={styles.toggleDesc}>Lock and open group automatically at fixed hours.</div>
+                          </div>
+                          <label className={styles.switch}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(group.schedule_enabled)}
+                              onChange={e => handleSaveGroup(group.group_jid, { schedule_enabled: e.target.checked })}
+                            />
+                            <span className={styles.slider} />
+                          </label>
+                        </div>
+
+                        {group.schedule_enabled && (
+                          <div className={styles.timeRow} style={{ marginTop: 8 }}>
+                            <div className={styles.field}>
+                              <label className={styles.label}>AUTO-LOCK TIME</label>
+                              <input
+                                type="time"
+                                defaultValue={group.auto_lock_time || "22:00"}
+                                id={`alt-${group.group_jid}`}
+                                className={styles.input}
+                                onBlur={e => handleSaveGroup(group.group_jid, { auto_lock_time: e.target.value })}
+                              />
+                            </div>
+                            <div className={styles.field}>
+                              <label className={styles.label}>AUTO-OPEN TIME</label>
+                              <input
+                                type="time"
+                                defaultValue={group.auto_open_time || "06:00"}
+                                id={`aot-${group.group_jid}`}
+                                className={styles.input}
+                                onBlur={e => handleSaveGroup(group.group_jid, { auto_open_time: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Toggles */}
+                      <div className={styles.toggleRow} style={{ padding: '8px 12px' }}>
+                        <span className={styles.toggleLabel} style={{ fontSize: 12 }}>Anti-Link Defense Shield</span>
+                        <label className={styles.switch}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(group.anti_link_enabled)}
+                            onChange={e => handleSaveGroup(group.group_jid, { anti_link_enabled: e.target.checked })}
+                          />
+                          <span className={styles.slider} />
+                        </label>
+                      </div>
+
+                      <div className={styles.toggleRow} style={{ padding: '8px 12px' }}>
+                        <span className={styles.toggleLabel} style={{ fontSize: 12 }}>Auto-Welcome New Members</span>
+                        <label className={styles.switch}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(group.auto_welcome_enabled)}
+                            onChange={e => handleSaveGroup(group.group_jid, { auto_welcome_enabled: e.target.checked })}
+                          />
+                          <span className={styles.slider} />
+                        </label>
+                      </div>
+
+                      {/* Custom Directives / Instructions Editor */}
+                      {editingGroup === group.group_jid ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                          <label className={styles.label}>CUSTOM GROUP INSTRUCTIONS</label>
+                          <textarea
+                            defaultValue={group.instructions || ''}
+                            id={`inst-${group.group_jid}`}
+                            rows={3}
+                            placeholder="e.g. Focus on academic discussions, lock at 10 PM, welcome newcomers..."
+                            className={styles.textarea}
+                            style={{ minHeight: 80, fontSize: 12 }}
+                          />
+
+                          <label className={styles.label}>WELCOME MESSAGE GREETING</label>
+                          <textarea
+                            defaultValue={group.welcome_message || ''}
+                            id={`wm-${group.group_jid}`}
+                            rows={3}
+                            className={styles.textarea}
+                            style={{ minHeight: 80, fontSize: 12 }}
+                          />
+
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button onClick={() => setEditingGroup(null)} className={styles.btnSecondary}>
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => {
+                                const instVal = document.getElementById(`inst-${group.group_jid}`)?.value;
+                                const wmVal = document.getElementById(`wm-${group.group_jid}`)?.value;
+                                handleSaveGroup(group.group_jid, { instructions: instVal, welcome_message: wmVal });
+                              }}
+                              className={styles.btnPrimary}
+                            >
+                              Save Directives
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingGroup(group.group_jid)}
+                          className={styles.btnSecondary}
+                          style={{ width: '100%', marginTop: 4 }}
+                        >
+                          Edit Group Instructions &amp; Greeting
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: WhatsApp Contacts Directory */}
+      {subTab === 'contacts' && (
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div>
+              <div className={styles.cardTitle}>WhatsApp Contacts Directory ({contacts.length})</div>
+              <div className={styles.cardSubtitle}>
+                Contacts synced directly from the linked WhatsApp account.
+              </div>
+            </div>
+
+            <div style={{ width: 240 }}>
+              <input
+                type="text"
+                placeholder="Search contacts..."
+                value={contactSearch}
+                onChange={e => setContactSearch(e.target.value)}
+                className={styles.input}
+              />
+            </div>
+          </div>
+
+          <div className={styles.contactsTable}>
+            {filteredContacts.length === 0 ? (
+              <div className={styles.emptyState}>
+                {contacts.length === 0 ? 'No contacts synced yet. Start the bot worker to synchronize contacts.' : 'No contacts matching search query.'}
+              </div>
+            ) : (
+              filteredContacts.map(c => (
+                <div key={c.jid || c.phone} className={styles.contactRow}>
+                  <div>
+                    <div className={styles.contactName}>{c.name || 'WhatsApp Contact'}</div>
+                    <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--gray-3)' }}>{c.jid}</div>
+                  </div>
+                  <div className={styles.contactPhone}>
+                    +{c.phone}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: AI Persona, Prompt & Rules */}
       {subTab === 'persona' && (
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <div>
-              <div className={styles.cardTitle}>AI Brain, Persona & Anti-Ban Parameters</div>
+              <div className={styles.cardTitle}>AI Persona, System Prompt &amp; Anti-Ban Controls</div>
               <div className={styles.cardSubtitle}>
-                Fine-tune how &quot;God&apos;s Virtue&quot; speaks, its Christian virtues, and human simulation parameters.
+                Instruct God&apos;s Virtue on character, rules, Christian virtues, and human simulation timing.
               </div>
             </div>
           </div>
@@ -463,21 +790,21 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
           <form onSubmit={handleSaveConfig} className={styles.formGrid}>
             <div className={styles.field} style={{ gridColumn: '1 / -1' }}>
               <label className={styles.label}>
-                <span>MASTER SYSTEM PROMPT & PERSONA INSTRUCTIONS</span>
+                <span>MASTER SYSTEM PROMPT</span>
                 <span>{config.system_prompt?.length || 0} chars</span>
               </label>
               <textarea
                 value={config.system_prompt || ''}
                 onChange={e => setConfig(prev => ({ ...prev, system_prompt: e.target.value }))}
                 className={styles.textarea}
-                placeholder="Instruct God's Virtue on how to speak, scriptures to reference, tone of humility and wisdom..."
+                placeholder="Instruct God's Virtue on how to speak, tone of humility, scriptures, and group rules..."
                 rows={6}
               />
             </div>
 
             <div className={styles.field}>
               <label className={styles.label}>
-                <span>AI CREATIVITY (TEMPERATURE): {config.temperature}</span>
+                <span>TEMPERATURE (CREATIVITY): {config.temperature}</span>
                 <span>0.0 = Rigid | 1.0 = Creative</span>
               </label>
               <div className={styles.rangeRow}>
@@ -495,8 +822,8 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
 
             <div className={styles.field}>
               <label className={styles.label}>
-                <span>TYPING SPEED SIMULATION: {config.wpm_typing_speed} WPM</span>
-                <span>Human typing presence delay</span>
+                <span>SIMULATED TYPING SPEED: {config.wpm_typing_speed} WPM</span>
+                <span>Human presence calculation</span>
               </label>
               <div className={styles.rangeRow}>
                 <input
@@ -513,7 +840,7 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
 
             <div className={styles.field}>
               <label className={styles.label}>
-                <span>MIN HUMAN REACTION DELAY: {(config.min_delay_ms || 2500) / 1000}s</span>
+                <span>MIN HUMAN JITTER: {(config.min_delay_ms || 2500) / 1000}s</span>
               </label>
               <div className={styles.rangeRow}>
                 <input
@@ -530,7 +857,7 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
 
             <div className={styles.field}>
               <label className={styles.label}>
-                <span>MAX HUMAN REACTION DELAY: {(config.max_delay_ms || 6500) / 1000}s</span>
+                <span>MAX HUMAN JITTER: {(config.max_delay_ms || 6500) / 1000}s</span>
               </label>
               <div className={styles.rangeRow}>
                 <input
@@ -548,7 +875,7 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
             <div className={styles.toggleRow}>
               <div>
                 <div className={styles.toggleLabel}>Mention-Only in Groups</div>
-                <div className={styles.toggleDesc}>Only speaks when tagged (@God&apos;s Virtue) or replied to. Prevents spamming groups.</div>
+                <div className={styles.toggleDesc}>Only speaks when tagged or replied to. Prevents spamming groups.</div>
               </div>
               <label className={styles.switch}>
                 <input
@@ -562,8 +889,8 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
 
             <div className={styles.toggleRow}>
               <div>
-                <div className={styles.toggleLabel}>Auto-Reply to 1-on-1 DMs</div>
-                <div className={styles.toggleDesc}>Responds to all direct personal messages like a thoughtful spiritual companion.</div>
+                <div className={styles.toggleLabel}>Auto-Reply in Direct 1-on-1 Chats</div>
+                <div className={styles.toggleDesc}>Responds to all direct personal messages like a thoughtful companion.</div>
               </div>
               <label className={styles.switch}>
                 <input
@@ -577,17 +904,17 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
 
             <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
               <button type="submit" disabled={saving} className={styles.btnPrimary}>
-                {saving ? 'Saving...' : '💾 Save Persona & Anti-Ban Rules'}
+                {saving ? 'Saving...' : 'Save Persona &amp; Rules'}
               </button>
             </div>
           </form>
 
           {/* Interactive Persona Playground */}
-          <div className={styles.playgroundBox} style={{ marginTop: 16 }}>
-            <div className={styles.cardTitle}>🧪 Test Prompt Playground</div>
-            <div className={styles.cardSubtitle}>
-              Send a test message to evaluate how &quot;God&apos;s Virtue&quot; responds with your current prompt before replying on WhatsApp.
-            </div>
+          <div className={styles.pairingBox} style={{ marginTop: 16 }}>
+            <div className={styles.pairingTitle}>Test Prompt Playground</div>
+            <p className={styles.instructions}>
+              Evaluate how God&apos;s Virtue responds with your current prompt before replying on WhatsApp.
+            </p>
 
             <div className={styles.inputGroup} style={{ marginTop: 8 }}>
               <input
@@ -603,7 +930,17 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
             </div>
 
             {playgroundOutput && (
-              <div className={styles.chatPreviewArea}>
+              <div style={{
+                background: 'var(--bg-2)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: 14,
+                fontSize: 13,
+                color: 'var(--white)',
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                marginTop: 8
+              }}>
                 <strong>God&apos;s Virtue:</strong>
                 <p style={{ marginTop: 6 }}>{playgroundOutput}</p>
               </div>
@@ -612,144 +949,26 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
         </div>
       )}
 
-      {/* ─── TAB 3: Group Moderation & Shield Settings ─── */}
-      {subTab === 'groups' && (
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <div>
-              <div className={styles.cardTitle}>WhatsApp Groups & Shield Settings</div>
-              <div className={styles.cardSubtitle}>
-                Control anti-link enforcement, automated welcome messages, and member strike tolerances for each group.
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.groupsGrid}>
-            {groups.length === 0 ? (
-              <div className={styles.emptyState}>
-                No monitored groups yet. Once the bot joins a group, it will automatically populate here!
-              </div>
-            ) : (
-              groups.map(group => (
-                <div key={group.group_jid} className={styles.groupCard}>
-                  <div className={styles.groupCardHeader}>
-                    <div>
-                      <div className={styles.groupName}>{group.group_name || 'WhatsApp Group'}</div>
-                      <div className={styles.groupJid}>{group.group_jid}</div>
-                    </div>
-                    <span className={styles.pillBadge}>
-                      {group.bot_is_admin ? '🛡️ BOT IS ADMIN' : 'MEMBER'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div className={styles.toggleRow} style={{ padding: '8px 12px' }}>
-                      <span className={styles.toggleLabel}>🛡️ Anti-Link Shield</span>
-                      <label className={styles.switch}>
-                        <input
-                          type="checkbox"
-                          checked={group.anti_link_enabled}
-                          onChange={e => handleSaveGroup(group.group_jid, { anti_link_enabled: e.target.checked })}
-                        />
-                        <span className={styles.slider} />
-                      </label>
-                    </div>
-
-                    <div className={styles.toggleRow} style={{ padding: '8px 12px' }}>
-                      <span className={styles.toggleLabel}>👋 Auto-Welcome Members</span>
-                      <label className={styles.switch}>
-                        <input
-                          type="checkbox"
-                          checked={group.auto_welcome_enabled}
-                          onChange={e => handleSaveGroup(group.group_jid, { auto_welcome_enabled: e.target.checked })}
-                        />
-                        <span className={styles.slider} />
-                      </label>
-                    </div>
-
-                    <div className={styles.toggleRow} style={{ padding: '8px 12px' }}>
-                      <span className={styles.toggleLabel}>⚠️ Strikes Before Kick</span>
-                      <select
-                        value={group.max_strikes || 3}
-                        onChange={e => handleSaveGroup(group.group_jid, { max_strikes: parseInt(e.target.value, 10) })}
-                        style={{
-                          background: 'var(--bg-2)',
-                          color: 'var(--white)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 6,
-                          padding: '4px 8px',
-                          fontSize: 12,
-                          fontFamily: 'var(--mono)'
-                        }}
-                      >
-                        <option value={1}>1 Strike (Immediate)</option>
-                        <option value={2}>2 Strikes</option>
-                        <option value={3}>3 Strikes (Standard)</option>
-                        <option value={5}>5 Strikes</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {editingGroup === group.group_jid ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <textarea
-                        defaultValue={group.welcome_message}
-                        id={`wm-${group.group_jid}`}
-                        rows={3}
-                        className={styles.textarea}
-                        style={{ minHeight: 80, fontSize: 12 }}
-                      />
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button onClick={() => setEditingGroup(null)} className={styles.btnSecondary}>
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => {
-                            const val = document.getElementById(`wm-${group.group_jid}`)?.value;
-                            handleSaveGroup(group.group_jid, { welcome_message: val });
-                          }}
-                          className={styles.btnPrimary}
-                        >
-                          Save Greeting
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setEditingGroup(group.group_jid)}
-                      className={styles.btnSecondary}
-                      style={{ width: '100%' }}
-                    >
-                      ✏️ Edit Welcome Message Template
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ─── TAB 4: Live Message Stream & Audit Logs ─── */}
+      {/* TAB 5: Live Message Stream & Audit Logs */}
       {subTab === 'logs' && (
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <div>
-              <div className={styles.cardTitle}>Live Message & Moderation Audit Stream</div>
+              <div className={styles.cardTitle}>Live Message &amp; Moderation Stream</div>
               <div className={styles.cardSubtitle}>
-                Real-time record of conversations processed, anti-ban simulated typing times, and moderation actions.
+                Real-time audit of conversations processed in whitelisted groups and chats.
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
               {['all', 'group', 'dm', 'violation'].map(f => (
                 <button
                   key={f}
                   onClick={() => setLogFilter(f)}
                   className={`${styles.tabBtn} ${logFilter === f ? styles.tabBtnActive : ''}`}
-                  style={{ padding: '4px 10px', fontSize: 11 }}
+                  style={{ padding: '4px 10px', fontSize: 10 }}
                 >
-                  {f.toUpperCase()}
+                  [{f.toUpperCase()}]
                 </button>
               ))}
             </div>
@@ -758,14 +977,14 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
           <div className={styles.logsList}>
             {logs.length === 0 ? (
               <div className={styles.emptyState}>
-                No messages logged yet. As conversations occur on WhatsApp, they will stream here in real time.
+                No messages logged yet. As conversations occur in whitelisted groups, they will stream here in real time.
               </div>
             ) : (
               logs.map(log => (
                 <div key={log.id} className={styles.logRow}>
                   <div className={styles.logRowHeader}>
                     <div className={styles.logSender}>
-                      {log.is_group ? `👥 [${log.chat_name || 'Group'}]` : '👤 [Private DM]'} {log.sender_name || log.sender_jid}
+                      {log.is_group ? `[GROUP: ${log.chat_name || 'Group'}]` : '[DIRECT DM]'} {log.sender_name || log.sender_jid}
                     </div>
                     <div className={styles.logTime}>
                       {new Date(log.created_at).toLocaleTimeString()}
@@ -784,8 +1003,8 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
 
                   <div className={styles.logMeta}>
                     <span>STATUS: {log.status?.toUpperCase()}</span>
-                    {log.latency_ms > 0 && <span>HUMAN JITTER: {log.latency_ms}ms</span>}
-                    {log.simulated_typing_ms > 0 && <span>TYPING PRESENCE: {log.simulated_typing_ms}ms</span>}
+                    {log.latency_ms > 0 && <span>REACTION: {log.latency_ms}ms</span>}
+                    {log.simulated_typing_ms > 0 && <span>TYPING: {log.simulated_typing_ms}ms</span>}
                   </div>
                 </div>
               ))
@@ -794,14 +1013,14 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
         </div>
       )}
 
-      {/* ─── TAB 5: Group Broadcasts & Announcements ─── */}
+      {/* TAB 6: Broadcast Announcements */}
       {subTab === 'broadcast' && (
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <div>
-              <div className={styles.cardTitle}>Broadcast & Announcement Desk</div>
+              <div className={styles.cardTitle}>Group Broadcast Desk</div>
               <div className={styles.cardSubtitle}>
-                Compose devotionals, reminders, or community announcements and broadcast them to monitored WhatsApp groups.
+                Dispatch announcements or devotionals to whitelisted WhatsApp groups.
               </div>
             </div>
           </div>
@@ -822,7 +1041,7 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
                 className={styles.input}
               >
                 <option value="">All Monitored Groups</option>
-                {groups.map(g => (
+                {groups.filter(g => g.is_monitored).map(g => (
                   <option key={g.group_jid} value={g.group_jid}>
                     {g.group_name} ({g.group_jid})
                   </option>
@@ -856,14 +1075,14 @@ cd gods-virtue-worker{'\n'}npm install{'\n'}npm run dev
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
               <button type="submit" disabled={saving} className={styles.btnPrimary}>
-                {saving ? 'Dispatching...' : '📢 Dispatch Broadcast Announcement'}
+                {saving ? 'Dispatching...' : 'Dispatch Broadcast'}
               </button>
             </div>
           </form>
 
           {announcements.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <div className={styles.cardTitle} style={{ fontSize: 14, marginBottom: 12 }}>Recent Broadcasts</div>
+              <div className={styles.cardTitle} style={{ fontSize: 13, marginBottom: 12 }}>RECENT BROADCASTS</div>
               <div className={styles.logsList}>
                 {announcements.map(a => (
                   <div key={a.id} className={styles.logRow}>

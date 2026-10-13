@@ -17,6 +17,8 @@ const DEFAULT_CONFIG = {
   is_active: true,
   is_connected: false,
   phone_number: null,
+  account_name: "God's Virtue",
+  profile_picture_url: null,
   pairing_code: null,
   pairing_requested_at: null,
   system_prompt: 'You are "God\'s Virtue", a wise, articulate, and uplifting AI assistant and WhatsApp group administrator. You converse with genuine Christian virtues, humility, and sound wisdom. You speak like a thoughtful, caring human—never robotic, without sterile disclaimers or walls of asterisks. Keep answers concise, natural, and helpful. STRICT EMOJI POLICY: Do NOT use emojis in your responses under any circumstances, unless the administrator explicitly trains or instructs you to use minimal and sensible emojis. In groups, you befriend members, answer questions politely when tagged, and gently maintain order.',
@@ -44,9 +46,16 @@ let memoryGroups = [
     max_strikes: 3,
     member_count: 42,
     bot_is_admin: true,
+    is_locked: false,
+    schedule_enabled: false,
+    auto_lock_time: "22:00",
+    auto_open_time: "06:00",
+    instructions: "General tech discussions and wholesome fellowship.",
     updated_at: new Date().toISOString()
   }
 ];
+let memoryContacts = [];
+let memoryActions = [];
 let memoryLogs = [];
 let memoryViolations = [];
 let memoryAnnouncements = [];
@@ -125,7 +134,7 @@ export async function requestPairingCode(phoneNumber) {
 
   return await updateBotConfig({
     phone_number: cleanPhone,
-    pairing_code: null, // Clear any previous code while waiting
+    pairing_code: null,
     pairing_requested_at: new Date().toISOString(),
   });
 }
@@ -140,7 +149,7 @@ export async function toggleKillSwitch(isActive) {
 }
 
 /**
- * 5. Get Monitored Groups
+ * 5. Get Groups (Participating and Monitored)
  */
 export async function getMonitoredGroups() {
   if (isSupabaseConfigured()) {
@@ -166,7 +175,7 @@ export async function getMonitoredGroups() {
 }
 
 /**
- * 6. Update Group Settings
+ * 6. Update Group Settings, Schedules & Whitelist Status
  */
 export async function updateGroupSettings(groupJid, settings) {
   const now = new Date().toISOString();
@@ -205,7 +214,106 @@ export async function updateGroupSettings(groupJid, settings) {
 }
 
 /**
- * 7. Get Message Audit Logs
+ * 7. Queue Realtime Operational Directive (Lock/Unlock, Sync, etc.)
+ */
+export async function queueGroupAction(actionType, targetJid, payload = {}) {
+  const item = {
+    id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    action_type: actionType,
+    target_jid: targetJid,
+    payload,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/gods_virtue_actions`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify(item),
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        return Array.isArray(rows) && rows.length > 0 ? rows[0] : item;
+      }
+    } catch (e) {
+      console.warn('[gods-virtue-db] Supabase queueGroupAction error:', e.message);
+    }
+  }
+
+  memoryActions.unshift(item);
+  return item;
+}
+
+/**
+ * 8. Get Contacts
+ */
+export async function getContacts({ limit = 100 } = {}) {
+  if (isSupabaseConfigured()) {
+    try {
+      const res = await fetch(`${supabaseUrl}/rest/v1/gods_virtue_contacts?select=*&order=name.asc&limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        cache: 'no-store',
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows)) return rows;
+      }
+    } catch (e) {
+      console.warn('[gods-virtue-db] Supabase getContacts error:', e.message);
+    }
+  }
+
+  return memoryContacts.slice(0, limit);
+}
+
+/**
+ * 9. Upsert Synced Contacts
+ */
+export async function upsertContacts(contacts) {
+  if (!Array.isArray(contacts) || contacts.length === 0) return [];
+  const now = new Date().toISOString();
+  const formatted = contacts.map(c => ({
+    jid: c.jid || c.id,
+    name: c.name || c.notify || 'Contact',
+    phone: (c.jid || c.id || '').split('@')[0],
+    is_business: Boolean(c.is_business),
+    updated_at: now,
+  }));
+
+  if (isSupabaseConfigured()) {
+    try {
+      await fetch(`${supabaseUrl}/rest/v1/gods_virtue_contacts`, {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify(formatted),
+      });
+    } catch (e) {
+      console.warn('[gods-virtue-db] Supabase upsertContacts error:', e.message);
+    }
+  }
+
+  memoryContacts = formatted;
+  return formatted;
+}
+
+/**
+ * 10. Get Message Audit Logs
  */
 export async function getAuditLogs({ limit = 50, filter = null } = {}) {
   if (isSupabaseConfigured()) {
@@ -236,7 +344,7 @@ export async function getAuditLogs({ limit = 50, filter = null } = {}) {
 }
 
 /**
- * 8. Insert Audit Log
+ * 11. Insert Audit Log
  */
 export async function createAuditLog(logData) {
   const item = {
@@ -267,7 +375,7 @@ export async function createAuditLog(logData) {
 }
 
 /**
- * 9. Get Group Violations & Strikes
+ * 12. Get Group Violations & Strikes
  */
 export async function getViolations({ limit = 50 } = {}) {
   if (isSupabaseConfigured()) {
@@ -293,37 +401,7 @@ export async function getViolations({ limit = 50 } = {}) {
 }
 
 /**
- * 10. Record a Member Violation / Strike
- */
-export async function recordViolation(violationData) {
-  const item = {
-    ...violationData,
-    id: violationData.id || `viol-${Date.now()}`,
-    created_at: new Date().toISOString(),
-  };
-
-  if (isSupabaseConfigured()) {
-    try {
-      await fetch(`${supabaseUrl}/rest/v1/gods_virtue_violations`, {
-        method: 'POST',
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(item),
-      });
-    } catch (e) {
-      console.warn('[gods-virtue-db] Supabase recordViolation error:', e.message);
-    }
-  }
-
-  memoryViolations.unshift(item);
-  return item;
-}
-
-/**
- * 11. Get Announcements
+ * 13. Get Announcements
  */
 export async function getAnnouncements() {
   if (isSupabaseConfigured()) {
@@ -349,7 +427,7 @@ export async function getAnnouncements() {
 }
 
 /**
- * 12. Create / Schedule Broadcast Announcement
+ * 14. Create / Schedule Broadcast Announcement
  */
 export async function createAnnouncement({ target_group_jid, target_group_name, title, announcement_text, scheduled_at }) {
   const item = {
