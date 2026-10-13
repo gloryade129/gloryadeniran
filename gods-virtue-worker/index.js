@@ -290,8 +290,10 @@ async function startBot() {
         }).eq('id', 'primary');
       }
 
-      // Sync active groups immediately
-      await syncAllGroups();
+      // Allow 4 seconds for WhatsApp initial handshake to settle before first group scan
+      setTimeout(() => {
+        syncAllGroups(true).catch(() => {});
+      }, 4000);
     }
   });
 
