@@ -206,18 +206,23 @@ export default function GodsVirtuePanel() {
     }
   };
 
-  // Instant Group Action: Lock or Open Group
+  // Instant Group Action: Lock or Open Group, or Sync All
   const handleGroupAction = async (action, groupJid) => {
     try {
       const res = await fetch('/api/gods-virtue/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, targetJid: groupJid }),
+        body: JSON.stringify({ action, targetJid: groupJid || null }),
       });
       const data = await res.json();
       if (data.success) {
         showToast(data.message || 'Action executed.');
-        setGroups(prev => prev.map(g => g.group_jid === groupJid ? { ...g, is_locked: action === 'lock_group' } : g));
+        if (action === 'sync_all') {
+          setTimeout(fetchAllData, 1500);
+          setTimeout(fetchAllData, 4000);
+        } else if (groupJid) {
+          setGroups(prev => prev.map(g => g.group_jid === groupJid ? { ...g, is_locked: action === 'lock_group' } : g));
+        }
       } else {
         alert(data.error || 'Failed to execute group action.');
       }
@@ -530,19 +535,52 @@ cd gods-virtue-worker{'\n'}npm run dev
       {/* TAB 2: Groups, Whitelist Selection, Lock/Unlock & Schedules */}
       {subTab === 'groups' && (
         <div className={styles.card}>
-          <div className={styles.cardHeader}>
+          <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div className={styles.cardTitle}>WhatsApp Groups &amp; Moderation Center</div>
               <div className={styles.cardSubtitle}>
                 Select which groups God&apos;s Virtue is permitted to see and moderate. Control group lock/unlock states and automated schedules.
               </div>
             </div>
+            <button
+              onClick={() => handleGroupAction('sync_all')}
+              style={{
+                background: 'var(--lime)',
+                color: '#000',
+                fontWeight: 700,
+                fontSize: 11,
+                padding: '8px 14px',
+                borderRadius: 6,
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--mono)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              [SYNC GROUPS NOW]
+            </button>
           </div>
 
           <div className={styles.groupsGrid}>
             {groups.length === 0 ? (
-              <div className={styles.emptyState}>
-                No groups discovered yet. Once the bot worker is linked, groups will automatically populate here.
+              <div className={styles.emptyState} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 32, textAlign: 'center' }}>
+                <div>No groups discovered yet. If you recently added the bot to a group, click the button below to sync all groups.</div>
+                <button
+                  onClick={() => handleGroupAction('sync_all')}
+                  style={{
+                    background: 'var(--lime)',
+                    color: '#000',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--mono)',
+                  }}
+                >
+                  [SYNC GROUPS NOW]
+                </button>
               </div>
             ) : (
               groups.map(group => (

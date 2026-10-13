@@ -1,19 +1,22 @@
+# Use official Node LTS image
 FROM node:20-alpine
 
-# Set working directory
-WORKDIR /app
+# Create app directory
+WORKDIR /usr/src/app
 
-# Copy dependency specifications
+# Install production dependencies only
 COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Install production dependencies
-RUN npm ci --only=production
-
-# Copy application source
+# Copy source code
 COPY . .
 
-# Expose healthcheck/webhook port if needed
-EXPOSE 3000
+# Add non‑root user for security
+RUN addgroup -S app && adduser -S -G app app
+USER app
 
-# Run worker process
+# Expose (optional) any ports – none needed for a background worker
+# EXPOSE 3000
+
+# Start the worker
 CMD ["node", "index.js"]

@@ -89,6 +89,41 @@ async function syncConfigFromCloud() {
 // ─── Primary Bot Socket Lifecycle ───
 let sock = null;
 
+// Sync all participating WhatsApp groups to Supabase
+async function syncAllGroups() {
+  if (!sock?.user || !supabase) return;
+  try {
+    const groups = await sock.groupFetchAllParticipating();
+    const myPhone = (sock.user?.id || '').split('@')[0]?.split(':')[0];
+
+    for (const [jid, metadata] of Object.entries(groups)) {
+      const isAdmin = metadata.participants?.some((p) => {
+        const participantPhone = (p.id || '').split('@')[0]?.split(':')[0];
+        return participantPhone === myPhone && (p.admin === 'admin' || p.admin === 'superadmin');
+      }) || false;
+
+      const existing = groupSettingsCache.get(jid) || {};
+      const grpRecord = {
+        group_jid: jid,
+        group_name: metadata.subject || 'WhatsApp Group',
+        member_count: metadata.participants?.length || 0,
+        bot_is_admin: isAdmin,
+        is_monitored: existing.is_monitored !== undefined ? existing.is_monitored : true,
+        anti_link_enabled: existing.anti_link_enabled !== undefined ? existing.anti_link_enabled : true,
+        auto_welcome_enabled: existing.auto_welcome_enabled !== undefined ? existing.auto_welcome_enabled : true,
+        max_strikes: existing.max_strikes || 3,
+        updated_at: new Date().toISOString(),
+      };
+
+      groupSettingsCache.set(jid, { ...existing, ...grpRecord });
+      await supabase.from('gods_virtue_groups').upsert(grpRecord, { onConflict: 'group_jid' });
+    }
+    console.log(`[groups] Synced ${Object.keys(groups).length} groups to Supabase.`);
+  } catch (gErr) {
+    console.warn('[groups] Sync warning:', gErr.message);
+  }
+}
+
 async function startBot() {
   await syncConfigFromCloud();
 
@@ -188,29 +223,8 @@ async function startBot() {
         }).eq('id', 'primary');
       }
 
-      // Sync active groups
-      try {
-        const groups = await sock.groupFetchAllParticipating();
-        for (const [jid, metadata] of Object.entries(groups)) {
-          if (!groupSettingsCache.has(jid)) {
-            const grpRecord = {
-              group_jid: jid,
-              group_name: metadata.subject,
-              is_monitored: true,
-              anti_link_enabled: true,
-              auto_welcome_enabled: true,
-              max_strikes: 3,
-              member_count: metadata.participants?.length || 0,
-            };
-            groupSettingsCache.set(jid, grpRecord);
-            if (supabase) {
-              await supabase.from('gods_virtue_groups').upsert(grpRecord);
-            }
-          }
-        }
-      } catch (gErr) {
-        console.warn('[main] Group fetch warning:', gErr.message);
-      }
+      // Sync active groups immediately
+      await syncAllGroups();
     }
   });
 
@@ -387,6 +401,19 @@ async function startBot() {
         groupSettings,
       });
     }
+
+    // Auto-sync group data when participants/roles change
+    await syncAllGroups();
+  });
+
+  // ─── Listen to Group Updates (Joining new groups or subject changes) ───
+  sock.ev.on('groups.upsert', async (newGroups) => {
+    console.log(`[groups] New group upsert event detected (${newGroups?.length || 0} groups), syncing...`);
+    await syncAllGroups();
+  });
+
+  sock.ev.on('groups.update', async () => {
+    await syncAllGroups();
   });
 
   // ─── Sync WhatsApp Contacts to Supabase ───
@@ -425,11 +452,14 @@ async function startBot() {
 setInterval(async () => {
   await syncConfigFromCloud();
 
-  // 1. Send Heartbeat
+  // 1. Send Heartbeat & Periodic Group Sync
   if (supabase && sock?.user) {
     await supabase.from('gods_virtue_config').update({
       last_heartbeat: new Date().toISOString(),
     }).eq('id', 'primary');
+
+    // Automatically discover newly added groups or admin role changes
+    await syncAllGroups();
   }
 
   // 2. Check for Scheduled Broadcast Announcements
@@ -501,29 +531,7 @@ setInterval(async () => {
               console.log(`[action] Group opened: ${act.target_jid}`);
               actionSuccess = true;
             } else if (act.action_type === 'sync_all') {
-              const groups = await sock.groupFetchAllParticipating();
-              for (const [jid, metadata] of Object.entries(groups)) {
-                const grpRecord = {
-                  group_jid: jid,
-                  group_name: metadata.subject,
-                  member_count: metadata.participants?.length || 0,
-                  bot_is_admin: metadata.participants?.some(
-                    (p) => (p.id === sock.user?.id || p.id?.split(':')[0] === sock.user?.id?.split(':')[0]) &&
-                    (p.admin === 'admin' || p.admin === 'superadmin')
-                  ) || false,
-                };
-                if (!groupSettingsCache.has(jid)) {
-                  grpRecord.is_monitored = false; // new groups default to unmonitored
-                  grpRecord.anti_link_enabled = true;
-                  grpRecord.auto_welcome_enabled = true;
-                  grpRecord.max_strikes = 3;
-                } else {
-                  Object.assign(grpRecord, groupSettingsCache.get(jid));
-                }
-                groupSettingsCache.set(jid, grpRecord);
-                await supabase.from('gods_virtue_groups').upsert(grpRecord, { onConflict: 'group_jid' });
-              }
-              console.log(`[action] Sync complete: ${Object.keys(groups).length} groups refreshed`);
+              await syncAllGroups();
               actionSuccess = true;
             } else if (act.action_type === 'sync_contacts') {
               actionSuccess = true; // triggered by contacts.upsert listener

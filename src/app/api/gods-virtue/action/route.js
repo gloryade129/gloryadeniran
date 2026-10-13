@@ -5,8 +5,12 @@ export async function POST(req) {
   try {
     const { action, targetJid, payload } = await req.json();
 
-    if (!action || !targetJid) {
-      return NextResponse.json({ error: 'Action type and targetJid are required.' }, { status: 400 });
+    if (!action) {
+      return NextResponse.json({ error: 'Action type is required.' }, { status: 400 });
+    }
+
+    if (action !== 'sync_all' && action !== 'sync_contacts' && !targetJid) {
+      return NextResponse.json({ error: 'targetJid is required for this action.' }, { status: 400 });
     }
 
     if (action === 'lock_group') {
