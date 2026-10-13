@@ -181,6 +181,8 @@ export async function updateGroupSettings(groupJid, settings) {
   const now = new Date().toISOString();
   const payload = { ...settings, updated_at: now };
 
+  let updatedRow = null;
+
   if (isSupabaseConfigured()) {
     try {
       const res = await fetch(`${supabaseUrl}/rest/v1/gods_virtue_groups?group_jid=eq.${encodeURIComponent(groupJid)}`, {
@@ -195,19 +197,26 @@ export async function updateGroupSettings(groupJid, settings) {
       });
       if (res.ok) {
         const rows = await res.json();
-        return Array.isArray(rows) && rows.length > 0 ? rows[0] : payload;
+        if (Array.isArray(rows) && rows.length > 0) {
+          updatedRow = rows[0];
+        }
+      } else {
+        const errText = await res.text();
+        console.warn('[gods-virtue-db] Supabase updateGroupSettings PATCH error:', res.status, errText);
       }
     } catch (e) {
       console.warn('[gods-virtue-db] Supabase updateGroupSettings error:', e.message);
     }
   }
 
+  // Always keep in-memory cache synchronized
   const idx = memoryGroups.findIndex(g => g.group_jid === groupJid);
+  const result = updatedRow || { ...payload, group_jid: groupJid };
   if (idx >= 0) {
-    memoryGroups[idx] = { ...memoryGroups[idx], ...payload };
+    memoryGroups[idx] = { ...memoryGroups[idx], ...result };
     return memoryGroups[idx];
   } else {
-    const newGroup = { group_jid: groupJid, group_name: 'WhatsApp Group', ...payload };
+    const newGroup = { group_name: 'WhatsApp Group', ...result };
     memoryGroups.unshift(newGroup);
     return newGroup;
   }

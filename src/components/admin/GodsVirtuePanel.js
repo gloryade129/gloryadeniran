@@ -189,6 +189,9 @@ export default function GodsVirtuePanel() {
 
   // Save Group Settings & Schedules
   const handleSaveGroup = async (groupJid, updates) => {
+    // Optimistic UI update immediately
+    setGroups(prev => prev.map(g => g.group_jid === groupJid ? { ...g, ...updates } : g));
+
     try {
       const res = await fetch('/api/gods-virtue/groups', {
         method: 'POST',
@@ -197,12 +200,17 @@ export default function GodsVirtuePanel() {
       });
       const data = await res.json();
       if (data.success) {
-        setGroups(prev => prev.map(g => g.group_jid === groupJid ? { ...g, ...updates } : g));
         showToast('Group settings updated.');
-        setEditingGroup(null);
+        if (data.group) {
+          setGroups(prev => prev.map(g => g.group_jid === groupJid ? { ...g, ...data.group } : g));
+        }
+      } else {
+        alert('Failed to update group: ' + (data.error || 'Server error'));
+        fetchAllData();
       }
     } catch (err) {
       alert('Failed to update group: ' + err.message);
+      fetchAllData();
     }
   };
 

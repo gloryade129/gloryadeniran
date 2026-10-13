@@ -103,21 +103,45 @@ async function syncAllGroups() {
         return participantPhone === myPhone && (p.admin === 'admin' || p.admin === 'superadmin');
       }) || false;
 
-      const existing = groupSettingsCache.get(jid) || {};
-      const grpRecord = {
-        group_jid: jid,
-        group_name: metadata.subject || 'WhatsApp Group',
-        member_count: metadata.participants?.length || 0,
-        bot_is_admin: isAdmin,
-        is_monitored: existing.is_monitored !== undefined ? existing.is_monitored : true,
-        anti_link_enabled: existing.anti_link_enabled !== undefined ? existing.anti_link_enabled : true,
-        auto_welcome_enabled: existing.auto_welcome_enabled !== undefined ? existing.auto_welcome_enabled : true,
-        max_strikes: existing.max_strikes || 3,
-        updated_at: new Date().toISOString(),
-      };
+      const existing = groupSettingsCache.get(jid);
 
-      groupSettingsCache.set(jid, { ...existing, ...grpRecord });
-      await supabase.from('gods_virtue_groups').upsert(grpRecord, { onConflict: 'group_jid' });
+      if (existing) {
+        // Group already exists in DB: ONLY update WhatsApp-owned metadata
+        // NEVER overwrite user settings (is_monitored, anti_link_enabled, schedules, etc.)
+        const metaUpdate = {
+          group_name: metadata.subject || existing.group_name || 'WhatsApp Group',
+          member_count: metadata.participants?.length || 0,
+          bot_is_admin: isAdmin,
+          updated_at: new Date().toISOString(),
+        };
+
+        Object.assign(existing, metaUpdate);
+
+        await supabase
+          .from('gods_virtue_groups')
+          .update(metaUpdate)
+          .eq('group_jid', jid);
+      } else {
+        // Newly discovered group: insert with initial defaults
+        const newRecord = {
+          group_jid: jid,
+          group_name: metadata.subject || 'WhatsApp Group',
+          member_count: metadata.participants?.length || 0,
+          bot_is_admin: isAdmin,
+          is_monitored: false,
+          anti_link_enabled: true,
+          auto_welcome_enabled: true,
+          max_strikes: 3,
+          schedule_enabled: false,
+          auto_lock_time: '22:00',
+          auto_open_time: '06:00',
+          is_locked: false,
+          updated_at: new Date().toISOString(),
+        };
+
+        groupSettingsCache.set(jid, newRecord);
+        await supabase.from('gods_virtue_groups').upsert(newRecord, { onConflict: 'group_jid' });
+      }
     }
     console.log(`[groups] Synced ${Object.keys(groups).length} groups to Supabase.`);
   } catch (gErr) {
