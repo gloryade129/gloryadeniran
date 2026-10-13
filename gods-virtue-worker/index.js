@@ -32,6 +32,7 @@ import {
   processAntiLinkViolation,
   sendWelcomeGreeting,
 } from './src/moderation.js';
+import { handleAdminCommand } from './src/admin-commands.js';
 
 // ─── Initialize Supabase Client ───
 const supabaseUrl = process.env.NEXT_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -234,22 +235,14 @@ async function startBot() {
 
     for (const m of messages) {
       try {
-        // Skip messages sent by the bot itself
-        if (m.key.fromMe) continue;
-
         const jid = m.key.remoteJid;
+        if (!jid) continue;
+
         const isGroup = jid.endsWith('@g.us');
         const senderJid = isGroup ? m.key.participant || m.participant : jid;
+        const senderPhone = (senderJid || '').split('@')[0]?.split(':')[0];
+        const botPhone = (sock.user?.id || '').split('@')[0]?.split(':')[0];
         const senderName = m.pushName || 'Friend';
-
-        // STRICT WHITELIST: ignore groups that are not explicitly monitored
-        if (isGroup) {
-          const gSettings = groupSettingsCache.get(jid);
-          if (!gSettings || !gSettings.is_monitored) {
-            continue; // drop silently — privacy enforced
-          }
-        }
-
 
         // Extract message text content
         const messageText =
@@ -259,6 +252,34 @@ async function startBot() {
           '';
 
         if (!messageText.trim()) continue;
+
+        // ─── Direct Admin Command Handling (.prefix) in DM ───
+        if (!isGroup && messageText.trim().startsWith('.')) {
+          const handled = await handleAdminCommand({
+            sock,
+            m,
+            senderJid,
+            senderPhone,
+            messageText,
+            botPhone,
+            botConfig,
+            supabase,
+            groupSettingsCache,
+            syncAllGroups,
+          });
+          if (handled) continue;
+        }
+
+        // Skip messages sent by the bot itself
+        if (m.key.fromMe) continue;
+
+        // STRICT WHITELIST: ignore groups that are not explicitly monitored
+        if (isGroup) {
+          const gSettings = groupSettingsCache.get(jid);
+          if (!gSettings || !gSettings.is_monitored) {
+            continue; // drop silently — privacy enforced
+          }
+        }
 
         // Emergency Kill-Switch Check
         if (!botConfig.is_active) {
