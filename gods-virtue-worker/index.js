@@ -6,6 +6,7 @@
  * anti-ban human presence simulation, group moderation, and Supabase sync.
  */
 
+import http from 'http';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -581,6 +582,27 @@ setInterval(async () => {
   }
 }, 30000);
 
+
+// ─── Health Check HTTP Server (For Render / Cloud Web Services) ───
+const PORT = process.env.PORT || 8080;
+const server = http.createServer((req, res) => {
+  if (req.url === '/' || req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      service: "God's Virtue WhatsApp Worker",
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString()
+    }));
+  } else {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+});
+
+server.listen(PORT, () => {
+  console.log(`[healthcheck] HTTP server listening on port ${PORT} (Render Free Tier compatible)`);
+});
 
 // Start Service
 startBot().catch((err) => console.error('[main] Fatal bot startup error:', err));
