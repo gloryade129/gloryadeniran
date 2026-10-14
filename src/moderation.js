@@ -20,19 +20,46 @@ export function containsDisallowedLink(text = '') {
 }
 
 /**
- * Checks if a participant is an admin in the group
+ * Checks if a participant is an admin in the group.
+ *
+ * Group metadata can expose the same person in up to three forms — `id` (lid or
+ * phone), `jid` (phone-number form) and `lid` (privacy-ID form) — and a message
+ * key can carry either form depending on the group's addressing mode, so ALL
+ * forms are compared before deciding.
+ *
+ * Metadata is cached for 60s (a link-bearing message must not force a network
+ * round-trip each time).
+ *
+ * @returns {Promise<true|false|null>} `null` when the status could NOT be
+ * determined (metadata unavailable). Callers must treat null as "unknown", never
+ * as "not admin", so a transient error can never punish an admin.
  */
+const groupMetaCache = new Map(); // groupJid -> { meta, fetchedAt }
+const GROUP_META_CACHE_TTL_MS = 60000;
+const digitsOf = (jid) => String(jid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
+
 export async function isGroupAdmin(sock, groupJid, userJid) {
   try {
-    const meta = await sock.groupMetadata(groupJid);
-    const participant = meta.participants.find((p) => 
-      areJidsSameUser(p.id, userJid) || 
-      (p.id || '').split('@')[0]?.split(':')[0] === (userJid || '').split('@')[0]?.split(':')[0]
+    let meta;
+    const cached = groupMetaCache.get(groupJid);
+    if (cached && Date.now() - cached.fetchedAt < GROUP_META_CACHE_TTL_MS) {
+      meta = cached.meta;
+    } else {
+      meta = await sock.groupMetadata(groupJid);
+      groupMetaCache.set(groupJid, { meta, fetchedAt: Date.now() });
+    }
+
+    const userDigits = digitsOf(userJid);
+    if (!userDigits) return false;
+    const participant = (meta.participants || []).find((p) =>
+      [p.id, p.jid, p.lid].filter(Boolean).some(
+        (form) => areJidsSameUser(form, userJid) || digitsOf(form) === userDigits
+      )
     );
     return Boolean(participant && (participant.admin === 'admin' || participant.admin === 'superadmin'));
   } catch (err) {
-    console.warn('[moderation] Failed to verify group admin status:', err.message);
-    return false;
+    console.warn(`[moderation] Could not verify admin status of ${userJid} in ${groupJid} (treating as unknown):`, err.message);
+    return null;
   }
 }
 

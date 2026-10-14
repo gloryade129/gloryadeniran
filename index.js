@@ -938,7 +938,11 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
 
           if (groupSettings.anti_link_enabled && containsDisallowedLink(messageText)) {
             const isAdmin = await isGroupAdmin(sock, jid, senderJid);
-            if (!isAdmin) {
+            if (isAdmin === null) {
+              // Admin status could not be verified (metadata fetch failed).
+              // Never punish on a guess — admins are always allowed to post links.
+              console.warn(`[moderation] Link check skipped for ${senderName} in ${jid}: admin status could not be verified.`);
+            } else if (!isAdmin) {
               console.log(`[moderation] Disallowed link detected from ${senderName} in ${jid}`);
               await processAntiLinkViolation({
                 sock,
@@ -952,6 +956,7 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
               });
               continue; // Do not process AI response for unauthorized links
             }
+            // isAdmin === true -> group admins may post links; fall through to normal handling
           }
 
           // Buffer message for evening community summary recap
@@ -1475,47 +1480,109 @@ async function cleanStaleContacts() {
 }
 
 // ─── WhatsApp Status Distribution Engine ───
+// NOTE: Baileys encodes EVERY status viewer as <digits>@s.whatsapp.net before the
+// fan-out (see relayMessage in messages-send.js), so only genuine phone-number JIDs
+// are safe to pass — raw @lid (privacy-ID) JIDs would be corrupted into fake phone
+// numbers and break the send. Modern group metadata is largely LID-based, which is
+// why contacts + configured admin phones carry most of the audience.
 async function getStatusAudienceJids(socketInstance) {
   const audience = new Set();
-  // 1. All saved contacts
+  let fromContacts = 0;
+  let fromGroups = 0;
+  let skippedLids = 0;
+
+  const addPn = (digits) => {
+    if (digits && digits.length >= 7) audience.add(`${digits}@s.whatsapp.net`);
+  };
+  const pnDigitsOf = (jid) => (jid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
+
+  // 1. Saved contacts — prefer the JID, but fall back to the stored phone number:
+  //    rows captured from LID-based chats keep a real phone in `phone` even when
+  //    `jid` is an @lid address.
   if (supabase) {
     try {
-      const { data: contacts } = await supabase.from('gods_virtue_contacts').select('jid');
+      const { data: contacts } = await supabase.from('gods_virtue_contacts').select('jid, phone');
       if (contacts) {
         contacts.forEach(c => {
-          if (c.jid && c.jid.endsWith('@s.whatsapp.net') && !c.jid.includes('status') && !c.jid.includes('broadcast')) {
-            audience.add(c.jid);
+          const jid = c.jid || '';
+          if (jid.includes('status') || jid.includes('broadcast')) return;
+          if (jid.endsWith('@s.whatsapp.net')) {
+            addPn(pnDigitsOf(jid));
+            fromContacts++;
+          } else if (c.phone) {
+            addPn(String(c.phone).replace(/\D/g, ''));
+            fromContacts++;
+          } else {
+            skippedLids++;
           }
         });
       }
     } catch {}
   }
-  // 2. All participants across monitored groups
+
+  // 2. All participants across monitored groups — prefer the phone-number form:
+  //    Baileys exposes `jid` (phone) alongside `id`/`lid`, and lid-addressed
+  //    groups only yield phone numbers through that field.
   for (const [gJid] of groupSettingsCache.entries()) {
     try {
       const meta = await socketInstance.groupMetadata(gJid).catch(() => null);
       if (meta?.participants) {
         meta.participants.forEach(p => {
-          const jid = p.id || p.jid;
-          if (jid && jid.endsWith('@s.whatsapp.net')) {
-            audience.add(jid);
+          const candidates = [p.jid, p.id].filter(Boolean);
+          for (const candidate of candidates) {
+            if (candidate.endsWith('@s.whatsapp.net')) {
+              addPn(pnDigitsOf(candidate));
+              fromGroups++;
+              return;
+            }
+            if (!candidate.includes('@')) {
+              const bareDigits = candidate.replace(/\D/g, '');
+              if (bareDigits.length >= 7) {
+                addPn(bareDigits);
+                fromGroups++;
+                return;
+              }
+            }
           }
+          skippedLids++;
         });
       }
     } catch {}
   }
-  // 3. Bot's own number
+
+  // 3. Configured admins/owner — guarantees the operator always sees posted statuses
+  ['ADMIN_PHONE', 'OWNER_PHONE'].forEach((envName) => {
+    (process.env[envName] || '').split(',').forEach((entry) => {
+      const digits = entry.replace(/\D/g, '');
+      if (digits) addPn(digits);
+    });
+  });
+
+  // 4. Bot's own number
   if (socketInstance.user?.id) {
-    const myJid = socketInstance.user.id.split(':')[0] + '@s.whatsapp.net';
-    audience.add(myJid);
+    addPn(pnDigitsOf(socketInstance.user.id));
   }
-  return Array.from(audience);
+
+  const viewerJids = Array.from(audience);
+  console.log(
+    `[status] Audience: ${viewerJids.length} viewer(s) — contacts: ${fromContacts}, group members: ${fromGroups}` +
+    (skippedLids > 0 ? `, skipped ${skippedLids} @lid entries (no phone number available)` : '')
+  );
+  return viewerJids;
 }
 
 async function postWhatsAppStatus(socketInstance, { imageBuffer, text, caption }) {
   if (!socketInstance?.user) return false;
   try {
     const audienceJids = await getStatusAudienceJids(socketInstance);
+    if (audienceJids.length <= 1) {
+      console.warn(
+        '[status] Aborted: the viewer list only contains the bot itself, so nobody would see this status. ' +
+        'Set OWNER_PHONE / ADMIN_PHONE in the worker environment, and import the exported .vcf into the ' +
+        'bot\'s phonebook to give it a real audience.'
+      );
+      return false;
+    }
     console.log(`[status] Distributing status broadcast to ${audienceJids.length} contacts/members...`);
 
     const options = {
