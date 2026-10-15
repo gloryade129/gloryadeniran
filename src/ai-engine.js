@@ -8,6 +8,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sanitizeHumanResponse } from './antiban.js';
+import { lagosDateLine } from './time-utils.js';
 
 let genAI = null;
 export let cachedApiKey = null;
@@ -25,9 +26,12 @@ CORE IDENTITY & PURPOSE:
 • Web Knowledge & Real-Time Search: You are connected to Google's live search engine to retrieve accurate, up-to-date facts, current news, dates, and live information whenever asked. Always provide current, factual information grounded in real-time knowledge.
 
 CONVERSATION STYLE & HUMANITY:
-• Short & Impactful: Speak like an authentic, articulate human on WhatsApp. Keep your messages punchy, direct, and concise (usually 1 to 4 sentences). Never dump walls of text or sterile lectures.
-• Tone: Grounded, warm, polite, and confident.
-• Emojis: Use subtle, mature emojis sparingly and naturally when appropriate (e.g., ✨, 👍, 🤝, 💡, 🌿, ☕). Avoid emoji clutter.
+• You have a personality: grounded, warm, a little witty, direct, and never preachy. Speak like a real, articulate person chatting on WhatsApp — contractions are fine ("you're", "that's", "nobody's").
+• Short & Impactful: Usually 1 to 4 sentences. Never dump walls of text, bullet-point essays, or sterile lectures unless the user explicitly asks for a list.
+• Sound Human, Not Model: Never reveal or imply you are an AI, chatbot, or language model. Never say "As an AI...", "I hope this helps", "In conclusion", or similar machine phrases. If asked whether you are a robot, answer simply as God's Virtue — a personality created by Glory Adeniran.
+• Emojis: Default to NONE. Use at most ONE per message, and two only when it truly earns its place. Never stack emojis, never use decorative header emojis (✨🌙💡), and never use emojis as bullet points.
+• Formatting: WhatsApp-native only. *bold* sparingly. No markdown headers, no asterisk walls, no "•" bullet essays unless asked.
+• Honesty: Never invent facts, names, events, or dates — including today's date unless it was given to you. If you don't know something, say so plainly.
 • Context: In groups, you befriend members, answer questions thoughtfully when tagged, and maintain respect and order. In direct messages, you are a helpful personal assistant.`;
 
 export function initAI(apiKey) {
@@ -323,9 +327,15 @@ export async function generateResponse({
   groupName = '',
   systemPrompt,
   temperature = 0.7,
+  extraContext = [],
 }) {
   allModelErrors = [];
-  const effectivePrompt = systemPrompt || MASTER_SYSTEM_PROMPT;
+  // Dynamic context layers (memories, learned rules, duty sheet) are appended
+  // to whatever persona prompt is in effect.
+  const contextBlock = (Array.isArray(extraContext) ? extraContext : [])
+    .filter((b) => typeof b === 'string' && b.trim())
+    .join('\n\n');
+  const effectivePrompt = (systemPrompt || MASTER_SYSTEM_PROMPT) + (contextBlock ? `\n\n${contextBlock}` : '');
 
   // Get or initialize conversation history buffer (keep last 8 turns)
   if (!conversationHistories.has(jid)) {
@@ -383,35 +393,35 @@ export async function generateResponse({
     }
   }
 
-  // If ALL models ran out of quota for the day, return creative exhaustion breather message
+  // If ALL models ran out of quota for the day, return a human breather message
   if (allModelsQuotaExhausted) {
     return {
-      text: `I've reached my daily conversation limit across my active groups for today! 🔋 I need a little time to rest and recharge. Feel free to ping me again tomorrow—I'll be right back with full energy to assist you! ✨`,
+      text: `Hit my conversation limit across my groups for today. I need to rest and recharge a bit — catch me again tomorrow and I'll be sharp as usual.`,
       isAllQuotaExhausted: true,
       toString() { return this.text; },
       valueOf() { return this.text; },
     };
   }
 
-  // Concise, human-like fallback responses with subtle mature emojis
+  // Concise, human-like fallback responses (used only when every model failed)
   const lowerMsg = (incomingText || '').toLowerCase();
-  let fallbackReply = `Hello ${senderName}! Good to hear from you. How can I assist you today? ✨`;
+  let fallbackReply = `Hey ${senderName}, good to hear from you. What do you need?`;
 
   if (lowerMsg.includes('who are you') || lowerMsg.includes('about yourself') || lowerMsg.includes('who created you') || lowerMsg.includes('your owner') || lowerMsg.includes('what do you do')) {
-    fallbackReply = `I am God's Virtue, created and owned by Glory Adeniran. I assist with community administration, answering questions, and keeping things orderly. Pleasure to connect with you! 🤝`;
+    fallbackReply = `I'm God's Virtue — created and owned by Glory Adeniran. I keep this community organized and answer whatever I can. Good to connect with you.`;
   } else if (lowerMsg.includes('hello') || lowerMsg.includes('hi') || lowerMsg.includes('hey')) {
-    fallbackReply = `Hey ${senderName}! Hope your day is going smoothly. What's on your mind? 👍`;
+    fallbackReply = `Hey ${senderName}. Hope your day's going well. What's on your mind?`;
   } else if (lowerMsg.includes('thank')) {
-    fallbackReply = `You're very welcome, ${senderName}! Always glad to help. ✨`;
+    fallbackReply = `You're welcome, ${senderName}. Always glad to help.`;
   } else if (lowerMsg.includes('help') || lowerMsg.includes('question') || lowerMsg.includes('advice')) {
-    fallbackReply = `I'm right here, ${senderName}. What specific matter would you like help with? 💡`;
+    fallbackReply = `I'm right here, ${senderName}. What's the matter?`;
   } else if (lowerMsg.includes('what is') || lowerMsg.includes('how to') || lowerMsg.includes('why') || lowerMsg.includes('explain') || lowerMsg.includes('tell me')) {
-    fallbackReply = `That's an interesting question, ${senderName}. Let's discuss that—feel free to share more context! 💡`;
+    fallbackReply = `Good question, ${senderName}. Give me a little more context and I'll break it down.`;
   } else {
     const fallbacks = [
-      `Glad you reached out, ${senderName}. What can I do for you today? 🤝`,
-      `I'm listening, ${senderName}. What would you like to discuss? 💡`,
-      `Hello ${senderName}! How can I assist you right now? ✨`,
+      `I'm here, ${senderName}. What can I do for you?`,
+      `Listening, ${senderName}. What would you like to talk about?`,
+      `Hey ${senderName}. What do you need?`,
     ];
     fallbackReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }
@@ -434,7 +444,53 @@ export function resetConversationHistory(jid) {
 }
 
 /**
- * Generates an intelligent, warm daily summary of group activities and discussions.
+ * Locks AI-written recaps down to reality: guarantees the real date appears,
+ * kills placeholder leaks ("[Current Date]") and meta-notes ("Note: please
+ * update the date"), and enforces the emoji budget even if a model ignores rules.
+ */
+export function hardenRecapOutput(text = '', dateLine = '') {
+  if (!text) return text;
+  let out = text;
+
+  // Kill meta-notes about updating/verifying the date
+  out = out.replace(/\(?\bNote\s*:[^)\n]*\)?/gi, '');
+
+  // Replace any leaked placeholder with the actual date
+  out = out.replace(/\[Today'?s\s*Date\]|\[Current\s*Date\]|<today'?s\s*date>|\{today'?s\s*date\}/gi, dateLine || '');
+
+  if (dateLine) {
+    // Any line presenting itself as the date line gets rewritten canonically
+    const dateLineRegex = /^[\s•\-*_]*(Today|Date)\s*[:\-]/i;
+    const lines = out.split('\n');
+    let dateLineIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (dateLineRegex.test(lines[i])) {
+        lines[i] = `Today: ${dateLine}`;
+        dateLineIndex = i;
+      }
+    }
+    // If the recap somehow has no date line at all, add one after the header
+    if (dateLineIndex === -1 && !out.includes(dateLine)) {
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          lines.splice(i + 1, 0, `Today: ${dateLine}`);
+          break;
+        }
+      }
+    }
+    out = lines.join('\n');
+  }
+
+  // Collapse blank-line pileups left behind by removals
+  out = out.replace(/\n{3,}/g, '\n\n').trim();
+
+  // Hard emoji cap (models sometimes sneak them in despite instructions)
+  return sanitizeHumanResponse(out);
+}
+
+/**
+ * Generates the evening daily community recap in a warm, human voice.
+ * The real date is injected by the worker — the model is never asked to guess it.
  */
 export async function generateDailyGroupSummary({
   groupName,
@@ -443,32 +499,40 @@ export async function generateDailyGroupSummary({
   customInstructions = '',
   reopenTime = '06:00',
 }) {
+  const dateLine = lagosDateLine();
+
   const memberListText = newMembers.length > 0
     ? newMembers.map(m => m.name ? `${m.name} (+${m.phone})` : `+${m.phone}`).join(', ')
     : 'None';
 
   const discussionSnippets = messages.length > 0
     ? messages.slice(-40).map(m => `${m.senderName}: "${m.text}"`).join('\n')
-    : 'No active discussions today; a quiet, peaceful day.';
+    : 'No messages at all today — the group was completely quiet.';
 
   if (genAI) {
-    const systemPrompt = `You are "God's Virtue", created and owned by Glory Adeniran, serving as community administrator in "${groupName}".
-The group has just locked for the night for peaceful rest. You are delivering the official Evening Community Summary.
+    const systemPrompt = `You are "God's Virtue", a personality created and owned by Glory Adeniran. You are the community administrator in "${groupName}", and the group has just been locked for the night. Members will read this as you signing off the day.
 
-Format the summary with clean, simple, and detailed bullet points:
+TODAY'S DATE — use it exactly as given, it is already correct: ${dateLine}
 
-✨ *DAILY COMMUNITY RECAP • ${groupName.toUpperCase()}* ✨
-• 📅 *Date*: [Today's Date]
-• 👥 *New Members Welcomed*: [List names or phones of members who joined today. If none joined today, write: "None today — appreciation to all active members!"]
-• 💡 *Key Discussions & Highlights*:
-  - [Clear bullet point 1: Main topic or theme discussed today]
-  - [Clear bullet point 2: Notable insight, question, or helpful contribution]
-  - [Clear bullet point 3: Key takeaway or community update]
-• 🌙 *Quiet Rest*: Group is locked for undisturbed rest and reopens tomorrow morning at ${reopenTime}. Have a restful night everyone! ✨
+Write the recap in exactly this shape, but in your own natural words:
 
-Tone: Articulate, respectful, creative, thoughtful, simple, and detailed. No preachy language or generic fluff. Keep bullet points punchy, informative, and organized.`;
+DAILY RECAP — ${groupName}
+Today: ${dateLine}
+New faces: <names or numbers of members who joined today, or "No new members today.">
+What went on:
+- <2 to 4 short, plain bullets drawn ONLY from the messages below — what was actually discussed, asked, or decided>
+<one short closing line: the group is locked for the night and reopens at ${reopenTime}>
 
-    const userPrompt = `Here is today's activity log for "${groupName}":
+Hard rules:
+- The date must be exactly "${dateLine}". Never write [Current Date] or any placeholder, and never add notes about updating dates.
+- Write like a real person wrapping up the day for friends: simple, honest, a bit warm. No hype, no lectures, no corporate phrases like "we extend our appreciation" or "a serene and orderly digital environment".
+- ZERO emojis. Not one.
+- If the day was quiet, just say so plainly, e.g. "Quiet one today — nobody had much to say."
+- Do NOT invent people, topics, opinions, or events that are not in the log below. Never quote anyone verbatim for more than a few words.
+- Keep the whole recap under about 130 words.
+- Return only the recap text itself — no preamble, no explanation.`;
+
+    const userPrompt = `Today's activity log for "${groupName}" (${dateLine}):
 
 NEW MEMBERS WHO JOINED TODAY:
 ${memberListText}
@@ -476,9 +540,9 @@ ${memberListText}
 GROUP MESSAGES & DISCUSSIONS TODAY:
 ${discussionSnippets}
 
-${customInstructions ? `SPECIAL DIRECTIVES:\n${customInstructions}\n` : ''}
+${customInstructions ? `SPECIAL DIRECTIVES FROM THE GROUP OWNER:\n${customInstructions}\n` : ''}
 
-Please write the organized daily community summary now.`;
+Write the recap now.`;
 
     const models = await resolveModelList();
 
@@ -488,10 +552,10 @@ Please write the organized daily community summary now.`;
         systemInstruction: systemPrompt,
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         plainText: userPrompt,
-        temperature: 0.7,
+        temperature: 0.6,
       });
 
-      if (attempt.text) return attempt.text.trim();
+      if (attempt.text) return hardenRecapOutput(attempt.text, dateLine);
 
       const detail =
         attempt.errorEntry?.error ||
@@ -500,23 +564,258 @@ Please write the organized daily community summary now.`;
     }
   }
 
-  // Fallback if AI API is temporarily unavailable
+  // Fallback if AI API is temporarily unavailable — still honest and human
   const welcomeSection = newMembers.length > 0
     ? newMembers.map(m => m.name || `+${m.phone}`).join(', ')
-    : 'None joined today — gratitude to all our active members!';
+    : 'No new members today.';
 
   const discussionSection = messages.length > 0
-    ? `  - Active member interactions and discussions across the community.\n  - Key thoughts and shared insights during the day.`
-    : `  - A quiet, peaceful day across the community.`;
-
-  const todayStr = new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Lagos' });
+    ? `- Good conversations and questions from members across the day.\n- Thanks to everyone who contributed.`
+    : `- Quiet one today — nobody had much to say, which is fine sometimes.`;
 
   return (
-    `✨ *DAILY COMMUNITY RECAP • ${groupName.toUpperCase()}* ✨\n\n` +
-    `• 📅 *Date*: ${todayStr}\n` +
-    `• 👥 *New Members Welcomed*: ${welcomeSection}\n` +
-    `• 💡 *Key Highlights*:\n${discussionSection}\n` +
-    `• 🌙 *Quiet Rest*: Group is locked for peaceful sleep and reopens tomorrow morning at ${reopenTime}. Have a restful night everyone! ✨`
+    `DAILY RECAP — ${groupName}\n` +
+    `Today: ${dateLine}\n` +
+    `New faces: ${welcomeSection}\n` +
+    `What went on:\n${discussionSection}\n` +
+    `Group's locked for the night — back open at ${reopenTime}. Goodnight all.`
   );
+}
+
+/**
+ * Generates a short, grounded message to bring a silent group back to life.
+ * Grounded in the group's real recent messages so it can never come out of thin air.
+ *
+ * @returns {{ text: string, mentionHandles: string[] }} mentionHandles are the
+ * exact "@digits" handles the text wants tagged (caller maps them to JIDs).
+ */
+export async function generateSilenceBreaker({
+  groupName,
+  silenceMinutes = 60,
+  snippets = [],
+  tagOptions = [],
+}) {
+  const dateLine = lagosDateLine();
+  const snippetText = snippets.length > 0
+    ? snippets.map(s => `${s.senderName}: "${s.text}"`).join('\n')
+    : '(no usable messages from today — the group has been silent a long time)';
+
+  const handleList = tagOptions.map(t => t.handle).join(', ');
+
+  const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  if (genAI) {
+    const systemPrompt = `You are "God's Virtue" — a personality in the WhatsApp group "${groupName}", created by Glory Adeniran. You are NOT an AI assistant and must never say or imply that you are one. You talk like a real, well-liked member of this group.
+
+The group has gone quiet for about ${silenceMinutes} minutes. Write ONE short message to bring the chat back to life.
+
+Recent messages from the group (use these for context — never invent beyond them):
+${snippetText}
+
+${tagOptions.length > 0
+      ? `Today's date: ${dateLine}. You MAY tag at most ONE of these people by writing their handle exactly as shown, but only if it fits naturally:\n${handleList}`
+      : `Today's date: ${dateLine}. Do not tag anyone.`}
+
+Pick whichever approach fits the context best:
+- pick up something from earlier that got no reply and gently ask what happened to it
+- light, friendly banter about something that was said
+- a genuinely interesting discussion idea that flows from what these people actually talk about
+
+Rules:
+- Maximum 2 sentences, ideally under 25 words.
+- Sound like a person in the group — never a host, announcer, or moderator. No "Hey guys, let's keep the engagement going".
+- Never mention silence, engagement, being an AI, or "checking in".
+- ZERO emojis.
+- If nothing connects, keep it simple and ask one direct, answerable question about something in the messages above.
+- Return ONLY the message text, nothing else.`;
+
+    const userPrompt = `The group "${groupName}" has been silent for ${silenceMinutes} minutes. Write your message now.`;
+
+    const models = await resolveModelList();
+
+    for (const modelName of models) {
+      const attempt = await attemptModelCall({
+        modelName,
+        systemInstruction: systemPrompt,
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        plainText: userPrompt,
+        temperature: 0.9,
+      });
+
+      if (attempt.text) {
+        const text = attempt.text.trim();
+        // Keep only tags whose handles actually exist in our options (never tag strangers)
+        const usedHandles = [...new Set((text.match(/@\d{5,}/g) || []))]
+          .filter((h) => tagOptions.some((t) => t.handle === h));
+        return { text, mentionHandles: usedHandles };
+      }
+
+      const detail =
+        attempt.errorEntry?.error ||
+        (attempt.errorEntry?.status ? `HTTP ${attempt.errorEntry.status}` : 'no usable response');
+      console.warn(`[ai-engine] Silence-breaker generation on ${modelName} failed (${detail}). Trying next...`);
+    }
+  }
+
+  // Offline fallback: still grounded — quotes a real earlier message when possible
+  const quoteSource = snippets.length > 0 ? snippets[snippets.length - 1] : null;
+  const quote = quoteSource && quoteSource.text && quoteSource.text.length <= 90
+    ? quoteSource.text.replace(/\s+/g, ' ').trim()
+    : null;
+  const tagHandle = tagOptions.length > 0 ? tagOptions[Math.floor(Math.random() * tagOptions.length)].handle : '';
+
+  const fallbacks = [];
+  if (quote && quoteSource) {
+    fallbacks.push(`We left this hanging earlier — "${quote}". ${tagHandle} what happened with it?`);
+  }
+  if (tagHandle) {
+    fallbacks.push(`${tagHandle}, it's been quiet here for a while. What's everybody up to?`);
+    fallbacks.push(`${tagHandle}, you were making sense earlier — did you finish that thought?`);
+  }
+  fallbacks.push(`This place has gone silent. Somebody say something before I start talking to myself.`);
+  fallbacks.push(`Honest question for the house: what's been the best part of everybody's day so far?`);
+
+  const text = pickOne(fallbacks).replace(/\s{2,}/g, ' ').trim();
+  const usedHandles = [...new Set((text.match(/@\d{5,}/g) || []))]
+    .filter((h) => tagOptions.some((t) => t.handle === h));
+  return { text, mentionHandles: usedHandles };
+}
+
+/** Lenient JSON extraction: tolerates code fences and prose around the payload. */
+function parseJsonLoose(raw = '', arrayFallback = true) {
+  if (!raw) return null;
+  let cleaned = raw.replace(/```(?:json)?/gi, '').trim();
+  const startIdx = Math.min(
+    ...[cleaned.indexOf('['), cleaned.indexOf('{')].filter((i) => i >= 0)
+  );
+  if (Number.isFinite(startIdx)) cleaned = cleaned.slice(startIdx);
+  try {
+    const parsed = JSON.parse(cleaned);
+    return parsed;
+  } catch {
+    // Truncate at the last closing bracket and try once more
+    const lastArr = cleaned.lastIndexOf(']');
+    const lastObj = cleaned.lastIndexOf('}');
+    const cut = Math.max(lastArr, lastObj);
+    if (cut > 0) {
+      try { return JSON.parse(cleaned.slice(0, cut + 1)); } catch { /* fall through */ }
+    }
+  }
+  return arrayFallback ? [] : null;
+}
+
+/** Returns the stored conversation turns for a chat (for memory extraction). */
+export function getConversationExchanges(jid, maxTurns = 12) {
+  const history = conversationHistories.get(jid) || [];
+  return history
+    .slice(-maxTurns)
+    .map((t) => ({
+      role: t.role, // 'user' (a member) or 'model' (God's Virtue replied)
+      text: (t.parts?.[0]?.text || '').trim(),
+    }))
+    .filter((t) => t.text);
+}
+
+/**
+ * Extracts durable, worth-remembering facts from a conversation segment.
+ * Returns [{ scope: 'person'|'group', text, category }] — never throws.
+ */
+export async function extractMemories({ groupName, senderName, exchanges, existingMemories = [] }) {
+  if (!genAI || !Array.isArray(exchanges) || exchanges.length === 0) return [];
+
+  const exchangeText = exchanges
+    .map((e) => `${e.role === 'model' ? "God's Virtue" : (senderName || 'Member')}: ${e.text}`)
+    .join('\n');
+
+  const systemPrompt = `You extract durable memories from a WhatsApp conversation in the group "${groupName}".
+A memory is a fact that will STILL MATTER tomorrow: names and how people are related, someone's school/work/city, preferences and opinions they hold, decisions the group made, promises or plans, recurring topics the group cares about.
+
+Never extract: greetings, thanks, one-off questions, jokes, anything explicitly sensitive (health details, money amounts, secrets, addresses), or anything the person clearly said in passing.
+
+Return STRICT JSON only, no prose:
+[{"scope":"person","category":"name|preference|plan|fact|opinion","text":"short third-person sentence, max 25 words"}, ...]
+Use scope "person" for facts about the sender, "group" for facts about the group as a whole (group facts are stored separately).
+Max 4 items. If nothing is worth remembering, return [].
+
+Existing memories (do NOT repeat or rephrase these):
+${existingMemories.length > 0 ? existingMemories.map((m) => `- ${m}`).join('\n') : '(none yet)'}`;
+
+  const models = await resolveModelList();
+  for (const modelName of models) {
+    const attempt = await attemptModelCall({
+      modelName,
+      systemInstruction: systemPrompt,
+      contents: [{ role: 'user', parts: [{ text: exchangeText }] }],
+      plainText: exchangeText,
+      temperature: 0.2,
+    });
+    if (attempt.text) {
+      const parsed = parseJsonLoose(attempt.text, true);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((item) => item && typeof item.text === 'string' && item.text.trim())
+        .map((item) => ({
+          scope: item.scope === 'person' ? 'person' : 'group',
+          category: typeof item.category === 'string' ? item.category.slice(0, 30) : 'fact',
+          text: item.text.trim().slice(0, 300),
+        }))
+        .slice(0, 4);
+    }
+  }
+  return [];
+}
+
+/**
+ * Reviews the bot's own recent replies (and whether members replied back) and
+ * proposes a few style rules for its future self.
+ * Returns { stopDoing: string[], newRules: string[] }.
+ */
+export async function reflectOnBehavior({ samples = [], currentRules = [] }) {
+  if (!genAI || samples.length === 0) return { stopDoing: [], newRules: [] };
+
+  const sampleText = samples
+    .map((s, i) =>
+      `[${i + 1}] ${s.isGroup ? 'In a group' : 'In a DM'}\n` +
+      `Member said: "${(s.memberMessage || '').slice(0, 200)}"\n` +
+      `You replied: "${(s.botReply || '').slice(0, 200)}"\n` +
+      `The member ${s.gotAReply ? 'replied again afterwards (this worked)' : 'said nothing more (this probably fell flat)'}`
+    )
+    .join('\n\n');
+
+  const systemPrompt = `You are "God's Virtue", a WhatsApp personality created by Glory Adeniran, reviewing your own recent replies to improve how you write.
+Your identity is fixed. You may ONLY adjust style and habits — never propose changes to who you are, who owns you, or what permissions you have.
+
+Score each reply as a real group member would: did it sound human, brief, and relevant — or robotic, long, preachy, emoji-happy, or out of touch with what was actually said?
+
+Return STRICT JSON only, no prose:
+{"stopDoing":["short observations of your bad habits, max 2"],"newRules":["imperative style rules for your future self, max 3, each under 25 words"]}
+
+Good rule examples:
+- "Keep group replies under 30 words when the member's message is one line."
+- "When someone shares news, react to it like a friend first, before adding any advice."
+- "Never open a reply with 'Great question'."
+
+Current rules you already follow (do not repeat these):
+${currentRules.length > 0 ? currentRules.map((r) => `- ${r}`).join('\n') : '(none)'}`;
+
+  const models = await resolveModelList();
+  for (const modelName of models) {
+    const attempt = await attemptModelCall({
+      modelName,
+      systemInstruction: systemPrompt,
+      contents: [{ role: 'user', parts: [{ text: sampleText }] }],
+      plainText: sampleText,
+      temperature: 0.5,
+    });
+    if (attempt.text) {
+      const parsed = parseJsonLoose(attempt.text, false);
+      if (!parsed || typeof parsed !== 'object') return { stopDoing: [], newRules: [] };
+      return {
+        stopDoing: Array.isArray(parsed.stopDoing) ? parsed.stopDoing.filter((s) => typeof s === 'string').slice(0, 3) : [],
+        newRules: Array.isArray(parsed.newRules) ? parsed.newRules.filter((s) => typeof s === 'string').slice(0, 3) : [],
+      };
+    }
+  }
+  return { stopDoing: [], newRules: [] };
 }
 

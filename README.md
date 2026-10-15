@@ -63,6 +63,18 @@ Send any dot command (e.g. `.help`) in a private chat with the bot. Access is gr
 Common commands: `.help`, `.status`, `.groups`, `.sync`, `.lock <n>`, `.open <n>`, `.whitelist <n> on|off`, `.schedule <n> on|off`, `.pause` / `.resume`, `.dms on|off`, `.vcf`, `.meme`, `.tagall <msg>`, `.broadcast <n> <msg>`, `.instruct <rule>`, `.ask <prompt>`.
 
 > **First deploy?** Apply `supabase/gods-virtue-schema.sql` to your database first (it lives in the dashboard repo), otherwise admin authorizations cannot be persisted.
+>
+> **Upgrading an existing deployment?** Re-apply `supabase/gods-virtue-schema.sql` — it is idempotent (`CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`). Newer releases expect the `gods_virtue_group_members`, `gods_virtue_memories`, and `gods_virtue_learned_rules` tables plus the `silence_engagement_enabled` group column. Without them the worker still runs, but member joins are forgotten on restart and memories don't persist.
+
+---
+
+## 🧠 Built-In Brain Features
+
+- **Nightly community recap** — posted automatically as the group locks: real date, real new members, and a plain-words summary of the day's actual discussions.
+- **Reliable welcomes** — new members are detected from live group metadata (reconciled every ~5 minutes against a durable roster), so joins are noticed even across worker restarts.
+- **Conversation Starter** — when a group goes silent for an hour between 08:00–22:00 (Lagos), the bot drops one grounded line: a callback to something earlier, light banter, or a fresh discussion idea — sometimes tagging 1–2 people. Per-group toggle on the dashboard; `SILENCE_ENGAGEMENT=off` kills it globally.
+- **Long-term memory** — durable facts (names, preferences, plans) are learned from conversations and injected into future replies.
+- **Self-improvement** — at 03:30 Lagos daily, the bot reviews its own replies (and whether members replied back) and writes itself up to 3 style rules. Max 10 active, style-only, visible via `.learned`, clearable via `.learned clear`. Disable with `SELF_IMPROVEMENT=off`.
 
 ---
 

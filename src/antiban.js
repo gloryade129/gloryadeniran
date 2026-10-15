@@ -97,15 +97,52 @@ export async function simulateHumanPresence(sock, jid, messageKey, text, config 
 }
 
 /**
+ * Caps how many emoji a message may contain (default: 2 — "none, or one, two
+ * only if necessary"). Keeps the FIRST occurrences, strips the rest, and never
+ * corrupts kept ZWJ sequences (e.g. 👨‍👩‍👧) because each sequence matches atomically.
+ */
+const EMOJI_SEQUENCE_REGEX = /(?:\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}(?:\uFE0F)?)*)/gu;
+
+export function enforceEmojiBudget(text = '', maxAllowed = 2) {
+  if (typeof text !== 'string' || !text) return text;
+  const matches = [...text.matchAll(EMOJI_SEQUENCE_REGEX)];
+  if (matches.length <= maxAllowed) return text;
+
+  let result = '';
+  let cursor = 0;
+  let kept = 0;
+  for (const match of matches) {
+    const plainBetween = text.slice(cursor, match.index).replace(/[\uFE0F\u200D]/g, '');
+    result += plainBetween;
+    if (kept < maxAllowed) {
+      result += match[0];
+      kept++;
+    }
+    cursor = match.index + match[0].length;
+  }
+  result += text.slice(cursor).replace(/[\uFE0F\u200D]/g, '');
+  return result;
+}
+
+/**
  * Naturalizes text: removes AI cliches and disclaimers to preserve authentic human voice
  */
 export function sanitizeHumanResponse(text = '') {
   let cleaned = text
     .replace(/^As an AI( language model)?[,\.]?\s*/i, '')
     .replace(/^I am an AI assistant[,\.]?\s*/i, '')
+    .replace(/^Certainly[!,]?\s+/i, '')
+    .replace(/^Of course[!,]?\s+/i, '')
+    .replace(/^Sure[!,]?\s+(there|here|of|you|let|i|that|to)\b/i, (m, p1) => p1)
+    .replace(/\bI hope this helps[!.]?\s*/gi, '')
+    .replace(/\bIf you (have|need|require) (any )?(more|further|additional) (questions|assistance|help)[^.\n]*[.\n]?/gi, '')
+    .replace(/\bFeel free to (ask|reach out)[^.\n]*[.\n]?/gi, '')
     .replace(/\*\*\*+/g, '') // remove excessive markdown asterisks
     .replace(/\n{3,}/g, '\n\n') // normalize excessive newlines
     .trim();
+
+  // Hard emoji cap: no emoji unless a message genuinely earns one or two
+  cleaned = enforceEmojiBudget(cleaned, 2);
 
   return cleaned;
 }

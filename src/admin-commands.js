@@ -11,6 +11,8 @@ import crypto from 'node:crypto';
 import { generateResponse } from './ai-engine.js';
 import { sendBotIntroduction, sendGroupOpeningGreeting, sendDailyLockSummary } from './moderation.js';
 import { sleep } from './antiban.js';
+import { listLearnedRules, clearLearnedRules } from './self-improver.js';
+import { getMemoryStats, clearMemories } from './memory.js';
 
 // Cache of authorized admin phone numbers
 export const authorizedAdmins = new Set();
@@ -658,6 +660,41 @@ export async function handleAdminCommand({
       return true;
     }
 
+    // ─── Self-Improvement: learned style rules ───
+    case '.learned':
+    case '.learn': {
+      const sub = (args[0] || '').toLowerCase();
+      if (sub === 'clear' || sub === 'reset') {
+        await clearLearnedRules();
+        await reply(`[LEARNED RULES CLEARED]\n\nI've wiped every style rule I wrote for myself. The daily self-review will start fresh from tonight's reflection.`);
+        return true;
+      }
+      const rules = listLearnedRules();
+      if (rules.length === 0) {
+        await reply(`[LEARNED RULES]\n\nI haven't written any style rules for myself yet. The daily self-review runs at 3:30 AM and learns from how members actually respond to my replies.\n\nSend .learned clear to reset them anytime.`);
+        return true;
+      }
+      await reply(`[LEARNED RULES — ${rules.length} active]\n\nThese are the style rules I wrote for myself after reviewing my own replies:\n\n${rules.map((r) => `- ${r}`).join('\n')}\n\nSend .learned clear to wipe them all.`);
+      return true;
+    }
+
+    // ─── Long-Term Memory ───
+    case '.memories':
+    case '.memory': {
+      const sub = (args[0] || '').toLowerCase();
+      if (sub === 'clear' || sub === 'forget') {
+        const target = args[1] || '*';
+        await clearMemories(target);
+        await reply(`[MEMORIES CLEARED]\n\nWiped ${target === '*' ? 'all stored memories' : `memories for ${target}`}.`);
+        return true;
+      }
+      const stats = getMemoryStats();
+      await reply(
+        `[LONG-TERM MEMORY]\n\nSubjects remembered: ${stats.subjects}\nTotal memories: ${stats.total}\nDurable storage: ${stats.persistEnabled ? 'Supabase (survives restarts)' : 'In-memory only — apply the gods-virtue schema migration for durability'}\n\nMemories are learned automatically from conversations and used to make replies more personal. Send .memories clear to wipe them.`
+      );
+      return true;
+    }
+
     // ─── Broadcast from DM ───
     case '.broadcast': {
       if (args.length < 2) {
@@ -809,6 +846,11 @@ export async function handleAdminCommand({
         `• .verse         -> Daily Scripture & virtue reflection\n` +
         `• .prayer <topic> -> Compose focused, heartfelt prayer\n` +
         `• .ask <prompt>  -> Direct prompt to Gemini AI engine\n\n` +
+        `MEMORY & SELF-IMPROVEMENT\n` +
+        `• .learned       -> View style rules the bot wrote for itself\n` +
+        `• .learned clear -> Wipe all self-learned rules\n` +
+        `• .memories      -> Long-term memory stats\n` +
+        `• .memories clear [group|all] -> Wipe stored memories\n\n` +
         `Prefix any command with a dot (.) or talk naturally: "Virtue, tag all members and announce..."`
       );
       return true;

@@ -128,6 +128,8 @@ const server = http.createServer(async (req, res) => {
       announcements: pendingAnnouncements,
       lastAIError,
       allModelErrors,
+      memory: getMemoryStats(),
+      learnedRules: listLearnedRules(),
     }, null, 2));
   } else if (req.url === '/models') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -184,7 +186,7 @@ import { createClient } from '@supabase/supabase-js';
 import qrcode from 'qrcode-terminal';
 
 import { useSupabaseAuthState, clearSession } from './src/supabase-auth-adapter.js';
-import { initAI, generateResponse, MASTER_SYSTEM_PROMPT, cachedApiKey, lastAIError, allModelErrors } from './src/ai-engine.js';
+import { initAI, generateResponse, getConversationExchanges, MASTER_SYSTEM_PROMPT, cachedApiKey, lastAIError, allModelErrors } from './src/ai-engine.js';
 import {
   simulateHumanPresence,
   checkRateLimit,
@@ -201,6 +203,39 @@ import {
 } from './src/moderation.js';
 import { extractIntroducedName } from './src/name-extractor.js';
 import { handleAdminCommand, handleNaturalAdminInstruction, syncAuthorizedAdminsFromDb, isAuthorizedAdmin } from './src/admin-commands.js';
+import {
+  trackGroupActivity,
+  checkSilenceEngagement,
+  forgetEngagementMember,
+  forgetEngagementGroup,
+  getEngagementSnapshot,
+} from './src/engagement.js';
+import {
+  bindRosterClient,
+  loadMemberRoster,
+  reconcileGroupParticipants,
+  rememberMember,
+  forgetMember,
+  forgetGroup as forgetRosterGroup,
+} from './src/member-roster.js';
+import {
+  bindMemoryClient,
+  loadMemories,
+  recallFor,
+  buildMemoryContext,
+  noteExchangeForExtraction,
+  runMemoryExtraction,
+  getMemoryStats,
+} from './src/memory.js';
+import {
+  bindSelfImproverClient,
+  loadLearnedRules,
+  buildLearnedRulesContext,
+  runDailyReflection,
+  listLearnedRules,
+  clearLearnedRules,
+} from './src/self-improver.js';
+import { lagosDateLine, lagosHHmm } from './src/time-utils.js';
 
 // ─── Initialize Supabase Client ───
 const supabaseUrl = process.env.NEXT_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -216,6 +251,14 @@ if (supabaseUrl && supabaseKey) {
 
 // ─── Initialize Gemini AI ───
 initAI(process.env.GEMINI_API_KEY);
+
+// ─── Durable brain services: member roster, long-term memory, learned rules ───
+bindRosterClient(supabase);
+bindMemoryClient(supabase);
+bindSelfImproverClient(supabase);
+loadMemberRoster().catch((e) => console.warn('[roster] Boot load warning:', e?.message || e));
+loadMemories().catch((e) => console.warn('[memory] Boot load warning:', e?.message || e));
+loadLearnedRules().catch((e) => console.warn('[self-improver] Boot load warning:', e?.message || e));
 
 // ─── Local Configuration State ───
 let botConfig = {
@@ -238,8 +281,74 @@ const lastIntroSentTimes = new Map();
 const confirmedNameUsers = new Map(); // Map<senderJid, timestamp>
 const pendingGroupWelcomes = new Map(); // Map<groupJid, Set<participantJid>>
 const welcomedUserJids = new Set(); // Set of user JIDs who have been welcomed
-let lastHourlyWelcomeTime = Date.now();
+const WELCOME_BATCH_INTERVAL_MS = 5 * 60 * 1000; // welcome waves every ~5 minutes
+let lastWelcomeBatchTime = Date.now() - WELCOME_BATCH_INTERVAL_MS; // allow a first pass shortly after boot
 let lastDailyVcfKey = '';
+
+/** Queues members for the next welcome wave (deduped). */
+function queueWelcome(groupJid, participantJids) {
+  if (!participantJids || participantJids.length === 0) return;
+  if (!pendingGroupWelcomes.has(groupJid)) {
+    pendingGroupWelcomes.set(groupJid, new Set());
+  }
+  const groupPending = pendingGroupWelcomes.get(groupJid);
+  for (const p of participantJids) {
+    if (p) groupPending.add(p);
+  }
+}
+
+/** Records a join for the evening recap without duplicates. */
+function recordNewMember(groupJid, jid, phone) {
+  if (!jid) return;
+  const activity = getGroupDailyActivity(groupJid);
+  if (activity.newMembers.some((m) => m.jid === jid)) return;
+  activity.newMembers.push({
+    jid,
+    phone: phone || jid.split('@')[0]?.split(':')[0],
+    time: new Date().toISOString(),
+  });
+}
+
+// Process batched welcome greetings across all monitored groups (every ~5 minutes)
+async function processPendingWelcomes() {
+  if (!sock?.user) return;
+  for (const [groupJid, pendingSet] of pendingGroupWelcomes.entries()) {
+    if (!pendingSet || pendingSet.size === 0) continue;
+    const gSettings = groupSettingsCache.get(groupJid) || {};
+    if (!gSettings.is_monitored) continue;
+    // Explicit opt-out only — a missing flag counts as enabled
+    if (gSettings.auto_welcome_enabled === false || gSettings.auto_welcome_enabled === 'false' || gSettings.auto_welcome_enabled === 0) continue;
+
+    // If group is locked, HOLD welcomes until group unlocks in the morning!
+    if (gSettings.is_locked) {
+      console.log(`[welcome] Holding ${pendingSet.size} welcome(s) for locked group ${groupJid} until morning unlock.`);
+      continue;
+    }
+
+    const participantsToWelcome = Array.from(pendingSet);
+    pendingSet.clear();
+
+    let groupName = gSettings.group_name || 'our community';
+    try {
+      const meta = await sock.groupMetadata(groupJid).catch(() => null);
+      if (meta?.subject) groupName = meta.subject;
+    } catch {}
+
+    console.log(`[welcome] Dispatching batch welcome to ${participantsToWelcome.length} member(s) in "${groupName}"`);
+    await sendWelcomeGreeting({
+      sock,
+      groupJid,
+      participantJids: participantsToWelcome,
+      groupName,
+      groupSettings: gSettings,
+    });
+
+    const duty = getGroupDutyLog(groupJid);
+    duty.welcomes += participantsToWelcome.length;
+
+    participantsToWelcome.forEach(jid => welcomedUserJids.add(jid));
+  }
+}
 
 // Fired-slot guards for the daily auto lock / open scheduler.
 // These MUST live outside groupSettingsCache: syncConfigFromCloud() rebuilds every
@@ -310,6 +419,58 @@ function getGroupDailyActivity(groupJid) {
   return dailyGroupActivity.get(groupJid);
 }
 
+// Record of the bot's own automated duties, so its AI self can naturally relate
+// to the work it performs ("I'll post the recap when this group locks at 10").
+// Map<groupJid, { day: 'YYYY-MM-DD', welcomes: n, recaps: n, lastRecapAt: iso, nudges: n }>
+const botDutyLog = new Map();
+function getGroupDutyLog(groupJid) {
+  const today = lagosDateLine();
+  let entry = botDutyLog.get(groupJid);
+  if (!entry || entry.day !== today) {
+    entry = { day: today, welcomes: 0, recaps: 0, lastRecapAt: null, nudges: 0 };
+    botDutyLog.set(groupJid, entry);
+  }
+  return entry;
+}
+
+/**
+ * Builds the live "situation sheet" injected into every AI reply for a group:
+ * the real date/time, this group's schedule, and the bot's own recent duties.
+ */
+function buildBotDutySheet(groupJid) {
+  const gSettings = groupSettingsCache.get(groupJid) || {};
+  const duty = getGroupDutyLog(groupJid);
+  const snapshot = getEngagementSnapshot(groupJid);
+
+  const lines = [
+    `RIGHT NOW: It is ${lagosHHmm()} on ${lagosDateLine()} (Africa/Lagos).`,
+  ];
+
+  if (gSettings.schedule_enabled) {
+    lines.push(
+      `THIS GROUP'S SCHEDULE: it auto-locks for the night at ${gSettings.auto_lock_time || '22:00'} and reopens at ${gSettings.auto_open_time || '06:00'}. Right now the group is ${gSettings.is_locked ? 'LOCKED (only admins can post)' : 'OPEN'}.`
+    );
+  } else if (gSettings.is_locked) {
+    lines.push(`THIS GROUP IS CURRENTLY LOCKED (only admins can post).`);
+  }
+
+  const dutyBits = [];
+  if (duty.welcomes > 0) dutyBits.push(`welcomed ${duty.welcomes} new member(s) today`);
+  if (duty.recaps > 0) dutyBits.push(`posted today's recap${duty.lastRecapAt ? ` at ${duty.lastRecapAt}` : ''}`);
+  if (duty.nudges > 0) dutyBits.push(`started ${duty.nudges} conversation(s) when the group went quiet`);
+  if (dutyBits.length > 0) {
+    lines.push(`YOUR WORK TODAY HERE: you ${dutyBits.join(', ')}.`);
+  } else {
+    lines.push(`YOUR WORK HERE: you handle welcomes, the nightly recap, anti-link protection, and questions when tagged.`);
+  }
+
+  if (snapshot?.lastMessageAt) {
+    lines.push(`GROUP ACTIVITY: last member message was at ${snapshot.lastMessageAt.slice(11, 16)}.`);
+  }
+
+  return lines.join('\n');
+}
+
 // Sync config from Supabase
 async function syncConfigFromCloud() {
   if (!supabase) return;
@@ -321,14 +482,19 @@ async function syncConfigFromCloud() {
       .single();
 
     if (data) {
-      // Auto-upgrade legacy default prompt if still pointing to old preachy prompt
-      if (data.system_prompt && data.system_prompt.includes('genuine Christian virtues')) {
-        data.system_prompt = MASTER_SYSTEM_PROMPT;
+      // Auto-upgrade legacy persona prompts so tone/emoji rules stay current.
+      // Any [Admin Directive] lines the owner taught via .instruct are preserved.
+      const LEGACY_PROMPT_MARKERS = ['genuine Christian virtues', 'subtle mature emojis'];
+      if (data.system_prompt && LEGACY_PROMPT_MARKERS.some((marker) => data.system_prompt.includes(marker))) {
+        const directives = data.system_prompt
+          .split('\n')
+          .filter((line) => line.includes('[Admin Directive]:'));
+        data.system_prompt = MASTER_SYSTEM_PROMPT + (directives.length > 0 ? `\n${directives.join('\n')}` : '');
         await supabase
           .from('gods_virtue_config')
-          .update({ system_prompt: MASTER_SYSTEM_PROMPT })
+          .update({ system_prompt: data.system_prompt })
           .eq('id', 'primary');
-        console.log('[main] Upgraded legacy prompt to modern MASTER_SYSTEM_PROMPT in Supabase.');
+        console.log(`[main] Upgraded legacy persona prompt to modern MASTER_SYSTEM_PROMPT (${directives.length} admin directive(s) preserved).`);
       }
 
       if (botConfig.is_active !== data.is_active) {
@@ -354,42 +520,6 @@ async function syncConfigFromCloud() {
 let sock = null;
 let lastGroupSyncTime = 0;
 const GROUP_SYNC_COOLDOWN_MS = 300000; // 5 minutes minimum between automated scans to prevent rate-overlimit
-
-// Process hourly batched welcome greetings across all monitored groups
-async function processHourlyWelcomes() {
-  if (!sock?.user) return;
-  for (const [groupJid, pendingSet] of pendingGroupWelcomes.entries()) {
-    if (!pendingSet || pendingSet.size === 0) continue;
-    const gSettings = groupSettingsCache.get(groupJid) || {};
-    if (!gSettings.is_monitored || !gSettings.auto_welcome_enabled) continue;
-
-    // If group is locked, HOLD welcomes until group unlocks in the morning!
-    if (gSettings.is_locked) {
-      console.log(`[welcome] Holding ${pendingSet.size} welcome(s) for locked group ${groupJid} until morning unlock.`);
-      continue;
-    }
-
-    const participantsToWelcome = Array.from(pendingSet);
-    pendingSet.clear();
-
-    let groupName = gSettings.group_name || 'our community';
-    try {
-      const meta = await sock.groupMetadata(groupJid).catch(() => null);
-      if (meta?.subject) groupName = meta.subject;
-    } catch {}
-
-    console.log(`[welcome] Dispatching hourly batch welcome to ${participantsToWelcome.length} member(s) in "${groupName}"`);
-    await sendWelcomeGreeting({
-      sock,
-      groupJid,
-      participantJids: participantsToWelcome,
-      groupName,
-      groupSettings: gSettings,
-    });
-
-    participantsToWelcome.forEach(jid => welcomedUserJids.add(jid));
-  }
-}
 
 // Sync all participating WhatsApp groups to Supabase
 async function syncAllGroups(force = false) {
@@ -455,6 +585,25 @@ async function syncAllGroups(force = false) {
           await supabase.from('gods_virtue_groups').delete().eq('group_jid', jid);
         }
         continue;
+      }
+
+      // Reconcile membership against the durable roster: catches joins the live
+      // event missed (socket reconnects) and joins made while the worker was down.
+      try {
+        const participantIds = (metadata.participants || []).map((p) => p.id).filter(Boolean);
+        const botIdSet = botIds;
+        const isBotParticipant = (p) => isBotIdentifierMatch(p, botIdSet);
+        const joinedNow = reconcileGroupParticipants(jid, participantIds, isBotParticipant);
+        if (joinedNow.length > 0) {
+          for (const p of joinedNow) {
+            if (welcomedUserJids.has(p)) continue;
+            recordNewMember(jid, p);
+            queueWelcome(jid, [p]);
+          }
+          console.log(`[roster] Queued ${joinedNow.length} reconciled new member(s) in ${jid} for welcome.`);
+        }
+      } catch (reconcileErr) {
+        console.warn('[roster] Reconciliation warning:', reconcileErr.message);
       }
 
       const existing = groupSettingsCache.get(jid);
@@ -832,6 +981,7 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         const senderPhone = (senderJid || '').split('@')[0]?.split(':')[0];
         const botPhone = (sock.user?.id || '').split('@')[0]?.split(':')[0];
         const senderName = m.pushName || 'Friend';
+        const botIds = getBotIdentifiers(sock);
 
         // Extract message text content from unwrapped message
         const innerMsg = unwrapMessage(m.message);
@@ -846,13 +996,21 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           innerMsg?.listResponseMessage?.title ||
           '';
 
+        // Feed the silence-breaker engine with EVERY real member message in
+        // monitored groups — including images/stickers the bot won't reply to.
+        if (isGroup && !m.key.fromMe && senderJid && !isBotIdentifierMatch(senderJid, botIds)) {
+          trackGroupActivity(jid, senderJid, senderName, {
+            hasText: Boolean(messageText.trim()),
+            text: messageText,
+          });
+        }
+
         if (!messageText.trim()) continue;
 
         // ─── Critical Loop Protection: Skip messages sent by the bot itself ───
         if (m.key.fromMe) continue;
         if (m?.key?.id && botSentMessageIds.has(m.key.id)) continue;
 
-        const botIds = getBotIdentifiers(sock);
         if (senderJid && isBotIdentifierMatch(senderJid, botIds)) continue;
 
         // ─── Direct Admin Command Handling (.prefix) in DM or Group ───
@@ -1004,12 +1162,12 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
             try {
               if (isGroup) {
                 await sock.sendMessage(jid, {
-                  text: `Pleasure to meet you, @${senderPhone}! ✨ I have saved your contact as *${detectedName}* in our community directory. 🤝\n\nKindly save my number (+${botPhone}) on your phone as well so you can view our daily status updates and stay connected!`,
+                  text: `Good to meet you, @${senderPhone}. I've saved you as *${detectedName}* in the community directory.\n\nSave my number (+${botPhone}) so you can see our daily status updates too.`,
                   mentions: [senderJid],
                 }, { quoted: m });
               } else {
                 await sock.sendMessage(jid, {
-                  text: `Pleasure to meet you, *${detectedName}*! ✨ I have saved your contact to our directory. 🤝\n\nKindly save my number (+${botPhone}) on your phone as well so you can view our daily status updates and stay in touch!`,
+                  text: `Good to meet you, *${detectedName}*. I've saved you to the directory.\n\nSave my number (+${botPhone}) so you can see my daily status updates too.`,
                 }, { quoted: m });
               }
               console.log(`[contacts] Confirmed name save for "${detectedName}" (${senderPhone}) in ${isGroup ? 'Group' : 'DM'}`);
@@ -1064,6 +1222,14 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           groupName = groupSettingsCache.get(jid).group_name;
         }
 
+        // Dynamic context: what it remembers + rules it learned + its live duty sheet
+        const recalledMemories = recallFor({ groupJid: isGroup ? jid : null, senderJid, incomingText: messageText });
+        const extraContext = [
+          buildMemoryContext(recalledMemories),
+          buildLearnedRulesContext(),
+          isGroup ? buildBotDutySheet(jid) : `RIGHT NOW: It is ${lagosHHmm()} on ${lagosDateLine()} (Africa/Lagos).`,
+        ];
+
         const replyResult = await generateResponse({
           jid,
           senderName: effectiveSenderName,
@@ -1072,6 +1238,7 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           groupName,
           systemPrompt: botConfig.system_prompt,
           temperature: botConfig.temperature,
+          extraContext,
         });
 
         if (!replyResult) continue;
@@ -1136,6 +1303,18 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
             .then(() => {})
             .catch((e) => console.warn('[main] Log insert error:', e.message));
         }
+
+        // 8. Long-term memory pass (throttled): learn durable facts from this chat
+        if (noteExchangeForExtraction(jid)) {
+          const exchanges = getConversationExchanges(jid, 12);
+          runMemoryExtraction({
+            chatJid: jid,
+            senderJid,
+            groupName,
+            senderName: effectiveSenderName,
+            exchanges,
+          }).catch(() => {});
+        }
       } catch (msgErr) {
         console.error('[main] Error processing message:', msgErr);
       }
@@ -1179,27 +1358,20 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
       const humanParticipants = participants.filter((p) => !isBotIdentifierMatch(p, botIds) && !welcomedUserJids.has(p));
       if (humanParticipants.length === 0) return;
 
-      // Record new human members for the evening daily summary recap
-      const activity = getGroupDailyActivity(groupJid);
+      // Mark as known in the durable roster (so restarts/reconciliations never
+      // double-welcome them, and the recap can still list them after a redeploy)
       for (const p of humanParticipants) {
-        if (p) {
-          activity.newMembers.push({
-            jid: p,
-            phone: p.split('@')[0]?.split(':')[0],
-            time: new Date().toISOString(),
-          });
-        }
+        rememberMember(groupJid, p);
       }
 
-      // Buffer into hourly batch welcome queue (welcomes run once an hour)
-      if (!pendingGroupWelcomes.has(groupJid)) {
-        pendingGroupWelcomes.set(groupJid, new Set());
-      }
-      const groupPending = pendingGroupWelcomes.get(groupJid);
+      // Record new human members for the evening daily summary recap (deduped)
       for (const p of humanParticipants) {
-        groupPending.add(p);
+        recordNewMember(groupJid, p);
       }
-      console.log(`[moderation] Queued ${humanParticipants.length} new member(s) in "${groupJid}" for hourly batch welcome.`);
+
+      // Queue into the ~5-minute welcome batch
+      queueWelcome(groupJid, humanParticipants);
+      console.log(`[moderation] Queued ${humanParticipants.length} new member(s) in "${groupJid}" for the next welcome wave.`);
     } else if (action === 'promote') {
       const botIds = getBotIdentifiers(sock);
       const isBotTargeted = participants.some((p) => isBotIdentifierMatch(p, botIds));
@@ -1233,6 +1405,10 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         if (action === 'remove') {
           console.log(`[groups] Bot was removed from group ${groupJid}. Cleaning up database & cache...`);
           groupSettingsCache.delete(groupJid);
+          dailyGroupActivity.delete(groupJid);
+          botDutyLog.delete(groupJid);
+          forgetEngagementGroup(groupJid);
+          forgetRosterGroup(groupJid);
           if (supabase) {
             await supabase.from('gods_virtue_groups').delete().eq('group_jid', groupJid);
           }
@@ -1242,6 +1418,14 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           if (supabase) {
             await supabase.from('gods_virtue_groups').delete().eq('group_jid', groupJid);
           }
+        }
+      } else if (action === 'remove') {
+        // Regular members left: forget them so a future rejoin counts as new
+        for (const p of participants || []) {
+          if (!p) continue;
+          forgetMember(groupJid, p);
+          forgetEngagementMember(groupJid, p);
+          welcomedUserJids.delete(p);
         }
       }
     }
@@ -1927,6 +2111,9 @@ setInterval(async () => {
               botConfig,
               supabase,
             });
+            const duty = getGroupDutyLog(groupJid);
+            duty.recaps += 1;
+            duty.lastRecapAt = lagosHHmm();
             activity.newMembers = [];
             activity.messages = [];
           } catch (lockErr) {
@@ -1946,7 +2133,7 @@ setInterval(async () => {
             console.log(`[schedule] Auto-opened group ${groupJid} at Lagos time: ${lagosHHmm}`);
 
             // Flush any held batch welcomes that were buffered overnight
-            await processHourlyWelcomes();
+            await processPendingWelcomes();
           } catch (openErr) {
             console.warn(`[schedule] Auto-open failed for ${groupJid}:`, openErr.message);
           }
@@ -1992,13 +2179,12 @@ setInterval(async () => {
     }
   }
 
-  // 5. Hourly Batch Welcome Dispatcher (Runs once an hour)
+  // 5. Batch Welcome Dispatcher (Runs every ~5 minutes)
   if (sock?.user) {
     const now = Date.now();
-    if (now - lastHourlyWelcomeTime >= 3600000) {
-      lastHourlyWelcomeTime = now;
-      console.log('[welcome] Running hourly batch welcome check...');
-      await processHourlyWelcomes();
+    if (now - lastWelcomeBatchTime >= WELCOME_BATCH_INTERVAL_MS) {
+      lastWelcomeBatchTime = now;
+      await processPendingWelcomes();
     }
   }
 
@@ -2019,12 +2205,49 @@ setInterval(async () => {
       console.warn('[vcf] Scheduled VCF export error:', vcfErr.message);
     }
   }
+
+  // 7. Daily Self-Reflection at 03:30 Lagos (while every group is locked)
+  if (supabase) {
+    try {
+      const nowHHmm = lagosHHmm();
+      const dayKey = lagosDateLine();
+      if (nowHHmm >= '03:30' && nowHHmm < '03:45') {
+        const reflectionKey = `${dayKey}_0330_reflect`;
+        if (!firedScheduleSlots.has(reflectionKey)) {
+          markScheduleSlot(reflectionKey);
+          console.log('[self-improver] Running daily self-reflection over recent replies...');
+          const result = await runDailyReflection();
+          if (result.added.length > 0) {
+            console.log(`[self-improver] Learned ${result.added.length} new style rule(s):`);
+            result.added.forEach((r) => console.log(`[self-improver]   + ${r}`));
+          }
+          if (result.stopDoing.length > 0) {
+            console.log(`[self-improver] Noticed habits to stop: ${result.stopDoing.join(' | ')}`);
+          }
+        }
+      }
+    } catch (reflectErr) {
+      console.warn('[self-improver] Reflection scheduling error:', reflectErr.message);
+    }
+  }
   } catch (bgErr) {
     console.warn('[background] Scheduled loop error:', bgErr.message);
   } finally {
     isProcessingBackground = false;
   }
 }, 10000);
+
+// ─── Conversation Starter: silence breaker (checked once a minute) ───
+setInterval(() => {
+  if (!sock?.user) return;
+  checkSilenceEngagement({
+    sock,
+    groupSettingsCache,
+    botConfig,
+    supabase,
+    isBotJid: (jid) => isBotIdentifierMatch(jid, getBotIdentifiers(sock)),
+  }).catch((e) => console.warn('[engagement] Check error:', e?.message || e));
+}, 60000);
 
 
 // Start Service

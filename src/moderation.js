@@ -8,6 +8,13 @@
 
 import { areJidsSameUser } from '@whiskeysockets/baileys';
 import { generateDailyGroupSummary } from './ai-engine.js';
+import { getNewMembersSince } from './member-roster.js';
+import { lagosDayStartIso } from './time-utils.js';
+
+/** Explicit opt-outs only — a missing/undefined flag means "enabled". */
+export function isExplicitlyDisabled(value) {
+  return value === false || value === 'false' || value === 0 || value === '0';
+}
 
 // NOTE: no /g flag on purpose — a global regex keeps `lastIndex` between .test()
 // calls, which made every second link-bearing message pass the shield unchecked.
@@ -155,7 +162,7 @@ export async function sendWelcomeGreeting({
   groupName = 'our community',
   groupSettings = {},
 }) {
-  if (!groupSettings.auto_welcome_enabled) return;
+  if (isExplicitlyDisabled(groupSettings.auto_welcome_enabled)) return;
   if (!participantJids || participantJids.length === 0) return;
 
   const validJids = participantJids.filter(Boolean);
@@ -165,16 +172,17 @@ export async function sendWelcomeGreeting({
 
   // Base welcome message or warm default
   const baseGreeting = groupSettings.welcome_message?.trim() ||
-    `We are glad to have you join our community. You are warmly welcome! ✨`;
+    `You're welcome aboard. Glad to have you here.`;
 
-  // Rules & guidelines
+  // Guidelines, in plain human language
   let guidelines = [
-    `• Mutual Respect: Please treat everyone with kindness, patience, and mutual respect.`,
-    `• Community Protection: External advertising, spam, and unauthorized links are prohibited to keep our space safe for all.`
+    `Just a couple of things to note:`,
+    `- Treat everyone here with respect — kindness costs nothing.`,
+    `- No advertising, spam, or unsolicited links. Let's keep this space safe for everybody.`
   ];
 
   if (groupSettings.custom_rules?.trim()) {
-    guidelines.push(`• Guidelines: ${groupSettings.custom_rules.trim()}`);
+    guidelines.push(`- ${groupSettings.custom_rules.trim()}`);
   }
 
   // Daily lock/open schedule (if enabled)
@@ -182,16 +190,15 @@ export async function sendWelcomeGreeting({
   if (groupSettings.schedule_enabled) {
     const lockTime = groupSettings.auto_lock_time || '22:00';
     const openTime = groupSettings.auto_open_time || '06:00';
-    scheduleNote = `\n\nDaily Community Hours:\n• Group automatically locks for quiet rest at ${lockTime} and reopens at ${openTime} every day.`;
+    scheduleNote = `\n\nOne more thing: this group locks for quiet hours at ${lockTime} every night and opens again at ${openTime}.`;
   }
 
   // Request to reply with their names so contact can be saved
-  const nameRequest = `\n\nTo help us get to know you and save your contact, kindly reply with your name (right here in the group, or in a private DM to me)! 🤝`;
+  const nameRequest = `\n\nDrop your name here (or DM it to me) so I can save your contact properly.`;
 
   const fullMessage =
     `Welcome to ${groupName}, ${tags}!\n\n` +
     `${baseGreeting}\n\n` +
-    `Community Guidelines:\n` +
     `${guidelines.join('\n')}` +
     `${scheduleNote}` +
     `${nameRequest}`;
@@ -223,25 +230,23 @@ export async function sendBotIntroduction(sock, groupJid, groupName = 'our commu
     const lockTime = groupSettings?.auto_lock_time || '22:00';
     const openTime = groupSettings?.auto_open_time || '06:00';
     scheduleNote =
-      `\n\nDaily Community Schedule:\n` +
-      `• Group automatically locks for quiet rest at ${lockTime} and reopens at ${openTime} daily.`;
+      `\n\nJust so you know: this group locks for quiet hours at ${lockTime} every night and opens again at ${openTime}.`;
   }
 
   let rulesNote = '';
   if (groupSettings?.custom_rules?.trim()) {
-    rulesNote = `\n\nCommunity Guidelines:\n• ${groupSettings.custom_rules.trim()}`;
+    rulesNote = `\n\nCommunity guidelines:\n- ${groupSettings.custom_rules.trim()}`;
   }
 
   const introMessage =
-    `Hello and warm greetings to everyone in ${groupName}! ✨\n\n` +
-    `I am "God's Virtue", created by Glory Adeniran to serve as an assistant and administrator in this community.\n\n` +
-    `My role here is to keep our group organized, safe, and helpful for everyone:\n\n` +
-    `1. Welcoming Members: I greet newcomers, share guidelines, and help everyone settle in.\n` +
-    `2. Community Protection: I quietly protect our space from unsolicited spam, scams, and external links.\n` +
-    `3. Helpful Assistance: Whenever you have a question or need information, you can tag or mention me (@God's Virtue) anytime.` +
+    `Hello everyone in ${groupName}. I'm "God's Virtue" — created by Glory Adeniran to help run this community.\n\n` +
+    `In short, here's what I do here:\n` +
+    `1. I welcome new members and help them settle in.\n` +
+    `2. I keep the space clean — spam, scams, and unsolicited links get removed quietly.\n` +
+    `3. I answer questions when you tag me. Ask anything.\n` +
     `${rulesNote}` +
     `${scheduleNote}\n\n` +
-    `Let's keep this space productive, welcoming, and respectful for all. Glad to be here with you! 🤝`;
+    `Glad to be here with you all.`;
 
   try {
     await sock.sendMessage(groupJid, { text: introMessage });
@@ -259,9 +264,9 @@ export async function sendBotIntroduction(sock, groupJid, groupName = 'our commu
  */
 export async function sendGroupOpeningGreeting(sock, groupJid, groupName = 'our community') {
   const morningGreeting =
-    `Wakey Wakey, it's another beautiful day! ☀️\n\n` +
-    `Good morning, everyone in ${groupName}!\n\n` +
-    `Our group is now officially open for the day. Wishing everyone a productive, fulfilling, and successful day ahead! ✨`;
+    `Good morning, everyone in ${groupName}.\n\n` +
+    `The group is open again for the day. How was your night — sleep well?\n` +
+    `Anyone still stirring, say hello. Have a good one today.`;
 
   try {
     await sock.sendMessage(groupJid, { text: morningGreeting });
@@ -292,7 +297,10 @@ export async function sendDailyLockSummary({
 
     // 1. Resolve human names for new members from Supabase contacts if available
     const resolvedMembers = [];
+    const seenJids = new Set();
     for (const mem of newMembers) {
+      if (!mem?.jid || seenJids.has(mem.jid)) continue;
+      seenJids.add(mem.jid);
       let resolvedName = mem.name;
       if (!resolvedName && supabase) {
         try {
@@ -311,6 +319,55 @@ export async function sendDailyLockSummary({
       });
     }
 
+    // 1b. Belt & braces: the durable member roster knows who joined today even if
+    // the worker restarted mid-day and lost its in-memory activity buffer.
+    try {
+      const sinceIso = lagosDayStartIso();
+      const rosterJoins = await getNewMembersSince(groupJid, sinceIso);
+      for (const join of rosterJoins) {
+        if (!join?.jid || seenJids.has(join.jid)) continue;
+        seenJids.add(join.jid);
+        let resolvedName = join.name || null;
+        if (!resolvedName && supabase) {
+          try {
+            const { data } = await supabase
+              .from('gods_virtue_contacts')
+              .select('name')
+              .eq('jid', join.jid)
+              .maybeSingle();
+            if (data?.name) resolvedName = data.name;
+          } catch {}
+        }
+        resolvedMembers.push({ jid: join.jid, phone: join.phone || join.jid?.split('@')[0], name: resolvedName });
+      }
+    } catch (rosterErr) {
+      console.warn('[moderation] Roster new-member check warning:', rosterErr.message);
+    }
+
+    // 1c. If the in-memory message buffer is thin (typically after a restart),
+    // recover the day's discussions from the audit log instead of writing fiction.
+    let effectiveMessages = messages;
+    if (supabase && messages.length < 5) {
+      try {
+        const { data: logRows } = await supabase
+          .from('gods_virtue_logs')
+          .select('sender_name, incoming_text, created_at')
+          .eq('chat_jid', groupJid)
+          .eq('is_group', true)
+          .gte('created_at', lagosDayStartIso())
+          .order('created_at', { ascending: true })
+          .limit(50);
+        if (logRows && logRows.length > messages.length) {
+          effectiveMessages = logRows
+            .filter((r) => r.incoming_text && r.incoming_text.trim())
+            .map((r) => ({ senderName: r.sender_name || 'Member', senderJid: null, text: r.incoming_text, time: r.created_at }));
+          console.log(`[moderation] Recapped from audit log instead of memory (${effectiveMessages.length} messages recovered).`);
+        }
+      } catch (logErr) {
+        console.warn('[moderation] Log-based recap recovery warning:', logErr.message);
+      }
+    }
+
     const reopenTime = groupSettings?.auto_open_time || '06:00';
     const customInstructions = groupSettings?.instructions || '';
 
@@ -318,7 +375,7 @@ export async function sendDailyLockSummary({
     const summaryText = await generateDailyGroupSummary({
       groupName,
       newMembers: resolvedMembers,
-      messages,
+      messages: effectiveMessages,
       customInstructions,
       reopenTime,
     });
