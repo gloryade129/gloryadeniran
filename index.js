@@ -1454,17 +1454,41 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
                 auto_lock_time: '22:00',
                 auto_open_time: '06:00',
                 is_locked: false,
+                bot_is_admin: false,
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'group_jid' });
             } catch (upsertErr) {
               console.warn('[groups] Groups upsert error:', upsertErr.message);
             }
           }
+          // ── NEW: silently scrape this group's participants into contacts ───
+          try {
+            const meta = await sock.groupMetadata(grp.id).catch(() => null);
+            if (meta?.participants) {
+              const botIds = getBotIdentifiers(sock);
+              for (const p of meta.participants) {
+                if (p.isBot || isBotIdentifierMatch(p.id, botIds)) continue;
+                const jid = p.id || p.jid || p.lid || '';
+                const name = p.pushName || p.name || '';
+                const phone = (jid.split('@')[0]?.split(':')[0] || '').replace(/\D/g, '');
+                if (phone.length >= 7) {
+                  await supabase.from('gods_virtue_contacts').upsert({
+                    jid: jid,
+                    name: name,
+                    phone: phone,
+                    is_business: false,
+                    updated_at: new Date().toISOString(),
+                  }, { onConflict: 'jid' });
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[scan] group contact warning:', e.message);
+          }
+          // ----------------------------------------------------------------
         }
       }
       await syncAllGroups(true);
-      // NOTE: Bot never introduces itself by default when joining groups.
-      // Introduction is only triggered explicitly from dashboard or via .introduce command.
     }
   });
 

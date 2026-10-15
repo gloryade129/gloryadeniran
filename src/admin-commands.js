@@ -695,6 +695,49 @@ export async function handleAdminCommand({
       return true;
     }
 
+    case '.scanallcontacts': {
+      if (!supabase) {
+        await reply('[SCAN CONTACTS] Supabase not configured — cannot save contacts.');
+        return true;
+      }
+      let total = 0;
+      for (const [groupJid, gSettings] of groupSettingsCache.entries()) {
+        if (!gSettings.is_monitored) continue;
+        try {
+          const meta = await sock.groupMetadata(groupJid).catch(() => null);
+          if (!meta?.participants) continue;
+          const botIds = getBotIdentifiers(sock);
+          for (const p of meta.participants) {
+            if (p.isBot || isBotIdentifierMatch(p.id, botIds)) continue;
+            const jid = p.id || p.jid || p.lid || '';
+            const name = p.pushName || p.name || '';
+            const phone = (jid.split('@')[0]?.split(':')[0] || '').replace(/\D/g, '');
+            if (phone.length >= 7) {
+              const { data: exists } = await supabase
+                .from('gods_virtue_contacts')
+                .select('jid')
+                .eq('jid', jid)
+                .maybeSingle();
+              if (!exists) {
+                await supabase.from('gods_virtue_contacts').upsert({
+                  jid: jid,
+                  name: name,
+                  phone: phone,
+                  is_business: false,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'jid' });
+                total++;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[scanall] error for', groupJid, e.message);
+        }
+      }
+      await reply(`[SCAN CONTACTS] Scanned ${groupSettingsCache.size} groups — saved ${total} new contact(s) to Supabase.`);
+      return true;
+    }
+
     // ─── Broadcast from DM ───
     case '.broadcast': {
       if (args.length < 2) {
