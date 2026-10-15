@@ -69,12 +69,11 @@ function isQuotaExhaustedError(err) {
  * bad entry can never burn a round-trip on every incoming message.
  */
 const CANDIDATE_MODELS = [
-  'gemini-3.5-flash-lite',
-  'gemini-flash-latest',
-  'gemini-3.6-flash',
-  'gemini-3.8-flash',
   'gemini-2.5-flash',
   'gemini-2.5-pro',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
 ];
 
 const MODEL_LIST_TTL_MS = 6 * 60 * 60 * 1000; // re-verify served models every 6 hours
@@ -138,12 +137,30 @@ async function resolveModelList() {
 
 /**
  * Direct Google REST call that bypasses SDK quirks (used as the last attempt per model).
+ * Includes Google Search grounding for real-time info.
  */
-async function restGenerateContent({ modelName, systemInstruction, contents, plainText, temperature }) {
+async function restGenerateContent({ modelName, systemInstruction, contents, plainText, temperature, useSearch = true }) {
   const key = cachedApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!key) return { text: '', quotaError: false, errorEntry: null };
 
   const nowIso = () => new Date().toISOString();
+
+  const body = {
+    systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+    contents:
+      Array.isArray(contents) && contents.length > 0
+        ? contents
+        : [{ role: 'user', parts: [{ text: plainText }] }],
+    generationConfig: {
+      temperature: Number(temperature) || 0.7,
+      maxOutputTokens: 600,
+    },
+  };
+
+  // Enable Google Search grounding for real-time info
+  if (useSearch) {
+    body.tools = [{ googleSearchRetrieval: {} }];
+  }
 
   try {
     const res = await fetch(
@@ -151,17 +168,7 @@ async function restGenerateContent({ modelName, systemInstruction, contents, pla
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-          contents:
-            Array.isArray(contents) && contents.length > 0
-              ? contents
-              : [{ role: 'user', parts: [{ text: plainText }] }],
-          generationConfig: {
-            temperature: Number(temperature) || 0.7,
-            maxOutputTokens: 600,
-          },
-        }),
+        body: JSON.stringify(body),
       }
     );
 
@@ -201,13 +208,16 @@ async function restGenerateContent({ modelName, systemInstruction, contents, pla
  * Tries one model end-to-end: SDK multi-turn -> SDK single-turn -> REST fallback.
  * The REST fallback is skipped when the SDK already failed on quota, because
  * retrying the same exhausted key would only add latency.
+ * Includes Google Search grounding for real-time info.
  *
  * @returns {{ text: string, quotaError: boolean, errorEntry: object|null }}
  */
-async function attemptModelCall({ modelName, systemInstruction, contents, plainText, temperature }) {
+async function attemptModelCall({ modelName, systemInstruction, contents, plainText, temperature, useSearch = true }) {
   const generationConfig = {
     temperature: Number(temperature) || 0.7,
     maxOutputTokens: 600,
+    // Enable Google Search grounding via tools
+    tools: useSearch ? [{ googleSearchRetrieval: {} }] : undefined,
   };
 
   const extractText = (result) => {
@@ -314,6 +324,52 @@ function buildValidGeminiContents(rawHistory, currentMessage) {
   return sliced;
 }
 
+/**
+ * Builds valid Gemini contents with multimodal support (text + media).
+ * Similar to buildValidGeminiContents but accepts an array of parts for the current message.
+ */
+function buildValidGeminiContentsWithMedia(rawHistory, currentParts) {
+  const contents = [];
+
+  if (Array.isArray(rawHistory)) {
+    for (const turn of rawHistory) {
+      if (
+        (turn.role === 'user' || turn.role === 'model') &&
+        Array.isArray(turn.parts) &&
+        turn.parts[0]?.text &&
+        typeof turn.parts[0].text === 'string' &&
+        turn.parts[0].text.trim()
+      ) {
+        if (contents.length === 0) {
+          if (turn.role === 'user') {
+            contents.push({ role: 'user', parts: [{ text: turn.parts[0].text.trim() }] });
+          }
+        } else {
+          const lastRole = contents[contents.length - 1].role;
+          if (turn.role !== lastRole) {
+            contents.push({ role: turn.role, parts: [{ text: turn.parts[0].text.trim() }] });
+          }
+        }
+      }
+    }
+  }
+
+  // Ensure last item in history is not 'user', because current message is 'user'
+  while (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+    contents.pop();
+  }
+
+  // Keep last 6 history turns (3 back-and-forth pairs)
+  const sliced = contents.slice(-6);
+  while (sliced.length > 0 && sliced[0].role !== 'user') {
+    sliced.shift();
+  }
+
+  // Append current user message with all parts (text + media)
+  sliced.push({ role: 'user', parts: currentParts });
+  return sliced;
+}
+
 export let allModelErrors = [];
 
 /**
@@ -328,6 +384,7 @@ export async function generateResponse({
   systemPrompt,
   temperature = 0.7,
   extraContext = [],
+  media = null,
 }) {
   allModelErrors = [];
   // Dynamic context layers (memories, learned rules, duty sheet) are appended
@@ -343,16 +400,38 @@ export async function generateResponse({
   }
   const history = conversationHistories.get(jid);
 
-  // Format message with group context if applicable
+  // Build the current user message parts (text + optional media)
+  const userParts = [];
+  if (incomingText && incomingText.trim()) {
+    userParts.push({ text: incomingText });
+  }
+  if (media && media.buffer && media.mimeType) {
+    // Convert buffer to base64 for inline data
+    const base64 = media.buffer.toString('base64');
+    userParts.push({
+      inlineData: {
+        mimeType: media.mimeType,
+        data: base64,
+      },
+    });
+  }
+
+  // If no parts at all, don't proceed
+  if (userParts.length === 0) {
+    return { text: '', isAllQuotaExhausted: false };
+  }
+
+  // Format message with group context if applicable (for text-only history storage)
   const contextMessage = isGroup
-    ? `[Group Member "${senderName}" in "${groupName}"]: ${incomingText}`
-    : incomingText;
+    ? `[Group Member "${senderName}" in "${groupName}"]: ${incomingText || '[media]'}`
+    : incomingText || '[media]';
 
   let allModelsQuotaExhausted = false;
 
   if (genAI) {
     const models = await resolveModelList();
-    const validContents = buildValidGeminiContents(history, contextMessage);
+    // Build contents with multimodal support
+    const validContents = buildValidGeminiContentsWithMedia(history, userParts);
     let quotaFailures = 0;
 
     for (const modelName of models) {
@@ -365,6 +444,7 @@ export async function generateResponse({
       });
 
       if (attempt.text) {
+        // Store text-only version in history for context
         history.push({ role: 'user', parts: [{ text: contextMessage }] });
         history.push({ role: 'model', parts: [{ text: attempt.text }] });
         if (history.length > 12) history.splice(0, history.length - 12);

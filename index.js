@@ -754,6 +754,20 @@ async function startBot() {
     },
   });
 
+  // Helper to download media from WhatsApp (images, audio, stickers, videos, documents)
+async function downloadMedia(sock, msg) {
+  try {
+    if (!msg) return null;
+    const buffer = await sock.downloadMediaMessage(msg);
+    if (!buffer) return null;
+    const mimeType = msg.mimetype || msg.imageMessage?.mimetype || msg.audioMessage?.mimetype || msg.videoMessage?.mimetype || msg.documentMessage?.mimetype || msg.stickerMessage?.mimetype || 'application/octet-stream';
+    return { buffer: Buffer.from(buffer), mimeType };
+  } catch (e) {
+    console.warn('[media] Download failed:', e.message);
+    return null;
+  }
+}
+
   // Intercept sock.sendMessage to automatically track all sent message IDs and cache for decryption retries
   const originalSendMessage = sock.sendMessage.bind(sock);
   sock.sendMessage = async (...args) => {
@@ -996,6 +1010,25 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           innerMsg?.listResponseMessage?.title ||
           '';
 
+        // Detect media attachments
+        let media = null;
+        if (innerMsg?.imageMessage) {
+          media = await downloadMedia(sock, innerMsg);
+          if (media) media.type = 'image';
+        } else if (innerMsg?.audioMessage || innerMsg?.pttMessage) {
+          media = await downloadMedia(sock, innerMsg);
+          if (media) media.type = 'audio';
+        } else if (innerMsg?.stickerMessage) {
+          media = await downloadMedia(sock, innerMsg);
+          if (media) media.type = 'sticker';
+        } else if (innerMsg?.videoMessage) {
+          media = await downloadMedia(sock, innerMsg);
+          if (media) media.type = 'video';
+        } else if (innerMsg?.documentMessage) {
+          media = await downloadMedia(sock, innerMsg);
+          if (media) media.type = 'document';
+        }
+
         // Feed the silence-breaker engine with EVERY real member message in
         // monitored groups — including images/stickers the bot won't reply to.
         if (isGroup && !m.key.fromMe && senderJid && !isBotIdentifierMatch(senderJid, botIds)) {
@@ -1005,7 +1038,9 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           });
         }
 
-        if (!messageText.trim()) continue;
+        // If no text but has media, still process if addressed to bot
+        const hasMedia = Boolean(media);
+        if (!messageText.trim() && !hasMedia) continue;
 
         // ─── Critical Loop Protection: Skip messages sent by the bot itself ───
         if (m.key.fromMe) continue;
@@ -1239,6 +1274,7 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           systemPrompt: botConfig.system_prompt,
           temperature: botConfig.temperature,
           extraContext,
+          media,
         });
 
         if (!replyResult) continue;
