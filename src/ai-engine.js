@@ -441,6 +441,7 @@ export async function generateResponse({
         contents: validContents,
         plainText: contextMessage,
         temperature,
+        useSearch: true,
       });
 
       if (attempt.text) {
@@ -633,6 +634,7 @@ Write the recap now.`;
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         plainText: userPrompt,
         temperature: 0.6,
+        useSearch: false,
       });
 
       if (attempt.text) return hardenRecapOutput(attempt.text, dateLine);
@@ -720,6 +722,7 @@ Rules:
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
         plainText: userPrompt,
         temperature: 0.9,
+        useSearch: false,
       });
 
       if (attempt.text) {
@@ -828,6 +831,7 @@ ${existingMemories.length > 0 ? existingMemories.map((m) => `- ${m}`).join('\n')
       contents: [{ role: 'user', parts: [{ text: exchangeText }] }],
       plainText: exchangeText,
       temperature: 0.2,
+      useSearch: false,
     });
     if (attempt.text) {
       const parsed = parseJsonLoose(attempt.text, true);
@@ -886,6 +890,7 @@ ${currentRules.length > 0 ? currentRules.map((r) => `- ${r}`).join('\n') : '(non
       contents: [{ role: 'user', parts: [{ text: sampleText }] }],
       plainText: sampleText,
       temperature: 0.5,
+      useSearch: false,
     });
     if (attempt.text) {
       const parsed = parseJsonLoose(attempt.text, false);
