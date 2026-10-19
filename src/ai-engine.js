@@ -1199,20 +1199,17 @@ Write the recap now.`;
     if (generated) return hardenRecapOutput(generated, dateLine);
   }
 
-  // Fallback if AI API is temporarily unavailable — still honest and human
-  const welcomeSection = newMembers.length > 0
-    ? newMembers.map(m => m.name || `+${m.phone}`).join(', ')
-    : 'No new members today.';
-
-  const discussionSection = messages.length > 0
-    ? `- Good conversations and questions from members across the day.\n- Thanks to everyone who contributed.`
-    : `- Quiet one today — nobody had much to say, which is fine sometimes.`;
+  // AI unavailable: send only what we can verify. Never invent a discussion
+  // summary — the bot's rule is "no canned chat", and a fake "good
+  // conversations" bullet is exactly that. The lock notice itself is factual.
+  const newFaces = newMembers.length > 0
+    ? `New faces: ${newMembers.map(m => m.name || `+${m.phone}`).join(', ')}\n`
+    : '';
 
   return (
     `DAILY RECAP — ${groupName}\n` +
     `Today: ${dateLine}\n` +
-    `New faces: ${welcomeSection}\n` +
-    `What went on:\n${discussionSection}\n` +
+    newFaces +
     `Group's locked for the night — back open at ${reopenTime}. Goodnight all.`
   );
 }
