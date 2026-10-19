@@ -13,6 +13,27 @@ import { sendBotIntroduction, sendGroupOpeningGreeting, sendDailyLockSummary } f
 import { sleep } from './antiban.js';
 import { listLearnedRules, clearLearnedRules } from './self-improver.js';
 import { getMemoryStats, clearMemories } from './memory.js';
+import { getTimetableRow, setTimetableRow, getSemesterKey, DAY_ORDER } from './timetable.js';
+import {
+  addKnowledge,
+  listKnowledge,
+  deleteKnowledge,
+  searchKnowledge,
+  getKnowledgeStats,
+} from './knowledge.js';
+import {
+  parsePollPayload,
+  sendPoll,
+  scheduleReminder,
+  listReminders,
+  cancelReminder,
+  formatReminderWhen,
+  parseWhen,
+  getEngagementStats,
+} from './engagement-plus.js';
+import { makeImage, makeVoiceNote, getMediaToolStatus } from './media-tools.js';
+import { providerHealth } from './ai-providers.js';
+import { getModerationStats } from './moderation-plus.js';
 
 // Cache of authorized admin phone numbers
 export const authorizedAdmins = new Set();
@@ -133,6 +154,40 @@ function formatUptime(seconds) {
   return parts.join(' ');
 }
 
+/** Compact provider + feature health report for the owner. */
+function formatProviderReport() {
+  const health = providerHealth();
+  const lines = [];
+  for (const name of ['groq', 'gemini', 'cloudflare']) {
+    const info = health[name] || {};
+    const usage = info.usage || {};
+    const status = !info.configured
+      ? 'not configured'
+      : info.coolingDown
+        ? `PARKED (${info.coolingDown.reason || 'quota'} until ${info.coolingDown.until})`
+        : 'ready';
+    lines.push(
+      `${name.toUpperCase()}: ${status} | requests ${usage.requests || 0}, ok ${usage.successes || 0}, quota ${usage.quotaErrors || 0}, errors ${usage.errors || 0}`
+    );
+    if (info.deadModels?.length) lines.push(`  dead models: ${info.deadModels.slice(0, 4).join(', ')}`);
+    if (info.coolingModels?.length) {
+      lines.push(`  cooling: ${info.coolingModels.slice(0, 3).map((m) => `${m.model} (${m.reason})`).join(', ')}`);
+    }
+  }
+
+  const kb = getKnowledgeStats();
+  const engagement = getEngagementStats();
+  const moderation = getModerationStats();
+  const media = getMediaToolStatus();
+
+  lines.push('');
+  lines.push(`KNOWLEDGE BASE: ${kb.total} entries (${kb.global} global, ${kb.groupScoped} group-scoped)`);
+  lines.push(`REMINDERS: ${engagement.pendingLocalReminders} pending locally | DB persisted: ${engagement.remindersPersisted ? 'yes' : 'no'}`);
+  lines.push(`SMART MODERATION: ${moderation.trackedUsers} member(s) tracked in ${moderation.trackedGroups} group(s)`);
+  lines.push(`VOICE REPLIES: ${media.voiceReplies ? 'on' : 'off'} | IMAGE GEN: ${media.imageGeneration ? 'on' : 'off'}`);
+  return lines.join('\n');
+}
+
 /**
  * Resolves a group from a number index (1, 2, ...) or search text
  */
@@ -171,6 +226,8 @@ export async function handleAdminCommand({
   const parts = messageText.trim().split(/\s+/);
   const rawCmd = parts[0].toLowerCase();
   const args = parts.slice(1);
+  const rawArgs = messageText.trim().slice(rawCmd.length).trim();
+  const targetChat = m?.key?.remoteJid || senderJid;
   const cleanSender = senderPhone.replace(/\D/g, '');
 
   // Helper to send text reply back
@@ -779,6 +836,7 @@ export async function handleAdminCommand({
           systemPrompt: botConfig.system_prompt,
           temperature: 0.65,
         });
+        if (!reflection?.text) { await reply(`I couldn't generate that right now — my AI model is unavailable or out of quota. Please try again later.`); return true; }
         await reply(`[DAILY SCRIPTURAL VIRTUE]\n\n${reflection.text}`);
       } catch (vErr) {
         await reply(`Scripture generation error: ${vErr.message}`);
@@ -797,6 +855,7 @@ export async function handleAdminCommand({
           systemPrompt: botConfig.system_prompt,
           temperature: 0.70,
         });
+        if (!prayer?.text) { await reply(`I couldn't compose that right now — my AI model is unavailable or out of quota. Please try again later.`); return true; }
         await reply(`[PRAYER: ${topic.toUpperCase()}]\n\n${prayer.text}`);
       } catch (pErr) {
         await reply(`Prayer generation error: ${pErr.message}`);
@@ -818,6 +877,7 @@ export async function handleAdminCommand({
           systemPrompt: botConfig.system_prompt,
           temperature: botConfig.temperature || 0.70,
         });
+        if (!response?.text) { await reply(`I couldn't answer that right now — my AI model is unavailable or out of quota. Please try again later.`); return true; }
         await reply(`[GOD'S VIRTUE AI]\n\n${response.text}`);
       } catch (aErr) {
         await reply(`AI query error: ${aErr.message}`);
@@ -858,6 +918,113 @@ export async function handleAdminCommand({
     }
 
     // ─── Help Menu ───
+    case '.timetable':
+    case '.tt': {
+      const sub = (args[0] || '').toLowerCase();
+
+      // No argument: overview of every group that has an uploaded timetable
+      if (!sub) {
+        const rows = cachedGroups
+          .map((g) => ({ g, tt: getTimetableRow(g.group_jid) }))
+          .filter((x) => x.tt);
+        if (rows.length === 0) {
+          await reply(
+            `[TIMETABLE] No lecture timetable has been uploaded yet.\n\nOpen the dashboard and upload the timetable PDF next to the class group (Groups tab).`
+          );
+          return true;
+        }
+        let msg = `[LECTURE TIMETABLES: ${rows.length}]\n\n`;
+        rows.forEach(({ g, tt }, i) => {
+          const sem = tt.semester === 'rain' ? 'Rain' : 'Harmattan';
+          const state = tt.status === 'pending_parse' ? 'PARSING…' : (tt.is_active === false ? 'PAUSED' : 'ACTIVE');
+          msg += `${i + 1}. ${g.group_name || g.group_jid}\n   ${tt.label || 'Class'} • ${sem} semester • ${state}\n\n`;
+        });
+        msg +=
+          `Usage:\n` +
+          `• .timetable <num> -> view that group's weekly timetable\n` +
+          `• .timetable <num> semester harmattan|rain\n` +
+          `• .timetable <num> reminders on|off\n` +
+          `• .timetable <num> times <night HH:mm> <morning HH:mm>`;
+        await reply(msg);
+        return true;
+      }
+
+      const targetGroup = resolveGroup(args[0], cachedGroups);
+      if (!targetGroup) {
+        await reply(`Group "${args[0]}" not found. Send .groups to view the numbered list.`);
+        return true;
+      }
+
+      const row = getTimetableRow(targetGroup.group_jid);
+      if (!row) {
+        await reply(`No timetable is attached to "${targetGroup.group_name}". Upload one from the dashboard (Groups tab).`);
+        return true;
+      }
+
+      const action = (args[1] || '').toLowerCase();
+      const value = (args[2] || '').toLowerCase();
+      const persist = async (updates) => {
+        setTimetableRow({ ...row, ...updates });
+        if (supabase) {
+          try {
+            await supabase
+              .from('gods_virtue_timetables')
+              .update({ ...updates, updated_at: new Date().toISOString() })
+              .eq('group_jid', row.group_jid);
+          } catch (dbErr) {
+            console.warn('[admin-cmd] Timetable persist warning:', dbErr.message);
+          }
+        }
+      };
+
+      if (action === 'semester') {
+        if (!['harmattan', 'rain'].includes(value)) {
+          await reply(`Usage: .timetable ${args[0]} semester harmattan|rain`);
+          return true;
+        }
+        await persist({ semester: value });
+        await reply(`[TIMETABLE] Active semester for "${targetGroup.group_name}" set to ${value === 'rain' ? 'Rain (second)' : 'Harmattan (first)'}.`);
+        return true;
+      }
+
+      if (action === 'reminders') {
+        const on = ['on', 'true', 'yes', '1'].includes(value);
+        await persist({ is_active: on });
+        await reply(`[TIMETABLE] Lecture reminders for "${targetGroup.group_name}" ${on ? 'ENABLED' : 'PAUSED'}.`);
+        return true;
+      }
+
+      if (action === 'times') {
+        const night = args[2];
+        const morning = args[3];
+        if (!/^\d{2}:\d{2}$/.test(night || '') || !/^\d{2}:\d{2}$/.test(morning || '')) {
+          await reply(`Usage: .timetable ${args[0]} times 21:00 06:00`);
+          return true;
+        }
+        await persist({ night_reminder_time: night, morning_reminder_time: morning });
+        await reply(`[TIMETABLE] Reminder times for "${targetGroup.group_name}" set — night ${night}, morning ${morning}.`);
+        return true;
+      }
+
+      // Default: render the weekly grid for the active semester
+      const sem = getSemesterKey(row);
+      const sched = row.schedule?.[sem] || {};
+      const semName = sem === 'rain' ? 'Rain (second)' : 'Harmattan (first)';
+      const state = row.status === 'pending_parse' ? 'PARSING…' : (row.is_active === false ? 'PAUSED' : 'ACTIVE');
+      let msg = `[${row.label || targetGroup.group_name}]\n${semName} semester • ${state}\n\n`;
+      for (const day of DAY_ORDER.slice(0, 5)) {
+        const list = sched[day] || [];
+        const title = day[0].toUpperCase() + day.slice(1);
+        if (list.length === 0) {
+          msg += `${title}: —\n`;
+        } else {
+          msg += `${title}:\n` + list.map((l) => `  ${l.start}-${l.end} ${l.code} ${l.title}${l.venue ? ' (' + l.venue + ')' : ''}`).join('\n') + '\n';
+        }
+      }
+      await reply(msg);
+      return true;
+    }
+
     case '.help':
     case '.menu': {
       await reply(
@@ -889,13 +1056,222 @@ export async function handleAdminCommand({
         `• .verse         -> Daily Scripture & virtue reflection\n` +
         `• .prayer <topic> -> Compose focused, heartfelt prayer\n` +
         `• .ask <prompt>  -> Direct prompt to Gemini AI engine\n\n` +
+        `LECTURE TIMETABLE\n` +
+        `• .timetable     -> View uploaded class timetables & status\n` +
+        `• .timetable <num> semester harmattan|rain -> Switch active semester\n` +
+        `• .timetable <num> reminders on|off | times <HH:mm> <HH:mm>\n\n` +
         `MEMORY & SELF-IMPROVEMENT\n` +
         `• .learned       -> View style rules the bot wrote for itself\n` +
         `• .learned clear -> Wipe all self-learned rules\n` +
         `• .memories      -> Long-term memory stats\n` +
         `• .memories clear [group|all] -> Wipe stored memories\n\n` +
+        `KNOWLEDGE, POLLS & REMINDERS\n` +
+        `• .kb add Title | Content | tags -> Teach the bot a trusted fact\n` +
+        `• .kb list / .kb search <query> / .kb del <id>\n` +
+        `• .poll Question | Option 1 | Option 2 -> Send a WhatsApp poll\n` +
+        `• .remind 30m Message -> Set a reminder (30m, 2h, 18:30, tomorrow 09:00)\n` +
+        `• .reminders / .cancelremind <id>\n` +
+        `• .imagine <prompt> -> Generate an image (Cloudflare FLUX)\n` +
+        `• .voice [text] -> Test a TTS voice reply\n` +
+        `• .providers -> AI provider usage, health and feature flags\n\n` +
         `Prefix any command with a dot (.) or talk naturally: "Virtue, tag all members and announce..."`
       );
+      return true;
+    }
+
+    case '.kb': {
+      const sub = (args[0] || '').toLowerCase();
+      const isGroupChat = targetChat.endsWith('@g.us');
+      const scopeJid = isGroupChat ? targetChat : null;
+
+      if (sub === 'add') {
+        const payload = rawArgs.replace(/^add\s+/i, '');
+        const segments = payload.split('|').map((s) => s.trim());
+        if (segments.length < 2 || !segments[0] || !segments[1]) {
+          await reply(
+            '[KNOWLEDGE BASE]\n\nUsage:\n.kb add Title | Content | optional, tags\n\nExample:\n.kb add Service times | Sunday 9am, Wednesday 6pm | church, schedule'
+          );
+          return true;
+        }
+        try {
+          const result = await addKnowledge({
+            groupJid: scopeJid,
+            title: segments[0],
+            content: segments[1],
+            tags: segments[2] ? segments[2].split(',') : [],
+            createdBy: senderPhone,
+          });
+          if (result.duplicate) {
+            await reply(`[KNOWLEDGE BASE]\n\nThat entry already exists (id: ${result.entry.id}). No duplicate was added.`);
+          } else {
+            await reply(
+              `[KNOWLEDGE ADDED]\n\nScope: ${scopeJid ? 'this group' : 'global (all chats)'}\nTitle: ${result.entry.title}\nID: ${result.entry.id}` +
+              (result.persisted === false ? '\n\nNote: saved in memory only — apply the knowledge-base migration to persist it.' : '')
+            );
+          }
+        } catch (err) {
+          await reply(`[KNOWLEDGE ERROR]\n\n${err.message}`);
+        }
+        return true;
+      }
+
+      if (sub === 'list') {
+        const rows = await listKnowledge({ groupJid: scopeJid, limit: 20 });
+        if (rows.length === 0) {
+          await reply('[KNOWLEDGE BASE]\n\nNo entries yet. Add one with:\n.kb add Title | Content | tags');
+          return true;
+        }
+        const lines = rows.map((row, i) => `${i + 1}. ${row.title} (${row.groupJid ? 'group' : 'global'}) — ${row.id}`);
+        await reply(`[KNOWLEDGE BASE: ${rows.length} ENTRIES]\n\n${lines.join('\n')}\n\nDelete with: .kb del <id>`);
+        return true;
+      }
+
+      if (sub === 'search') {
+        const queryText = rawArgs.replace(/^search\s+/i, '');
+        if (!queryText) {
+          await reply('[KNOWLEDGE SEARCH]\n\nUsage: .kb search <question or keywords>');
+          return true;
+        }
+        const matches = await searchKnowledge({ groupJid: scopeJid, query: queryText, limit: 5 });
+        if (matches.length === 0) {
+          await reply(`[KNOWLEDGE SEARCH]\n\nNo match for "${queryText}".`);
+          return true;
+        }
+        const lines = matches.map((row, i) => `${i + 1}. ${row.title} (score ${row.score})\n${row.content.slice(0, 300)}`);
+        await reply(`[KNOWLEDGE SEARCH]\n\n${lines.join('\n\n')}`);
+        return true;
+      }
+
+      if (sub === 'del' || sub === 'delete' || sub === 'remove') {
+        const id = args[1];
+        if (!id) {
+          await reply('[KNOWLEDGE BASE]\n\nUsage: .kb del <id>');
+          return true;
+        }
+        const removed = await deleteKnowledge(id);
+        await reply(removed ? `[KNOWLEDGE REMOVED]\n\nEntry ${id} deleted.` : `[KNOWLEDGE BASE]\n\nEntry ${id} was not found.`);
+        return true;
+      }
+
+      await reply(
+        '[KNOWLEDGE BASE]\n\n' +
+        '.kb add Title | Content | tags  -> add an entry\n' +
+        '.kb list                        -> list entries\n' +
+        '.kb search <query>              -> test retrieval\n' +
+        '.kb del <id>                    -> remove an entry\n\n' +
+        'Tip: run it in a group to scope the entry to that group; run it in DM for global knowledge.'
+      );
+      return true;
+    }
+
+    case '.poll': {
+      try {
+        const payload = parsePollPayload(rawArgs);
+        await sendPoll({
+          sock,
+          jid: targetChat,
+          question: payload.question,
+          options: payload.options,
+          createdBy: senderPhone,
+        });
+      } catch (err) {
+        await reply(`[POLL]\n\n${err.message}`);
+      }
+      return true;
+    }
+
+    case '.remind': {
+      const match = rawArgs.match(/^(\S+)\s+([\s\S]+)$/);
+      if (!match) {
+        await reply(
+          '[REMINDERS]\n\nUsage: .remind <when> <message>\n\nExamples:\n.remind 30m Check the generator\n.remind 2h Call Brother Tunde\n.remind 18:30 Evening prayer\n.remind tomorrow 09:00 Team meeting'
+        );
+        return true;
+      }
+      const when = parseWhen(match[1]);
+      if (!when) {
+        await reply('[REMINDERS]\n\nI could not read that time. Use 30m, 2h, 1d, 18:30, today 18:30 or tomorrow 09:00.');
+        return true;
+      }
+      try {
+        const reminder = await scheduleReminder({
+          groupJid: targetChat,
+          message: match[2],
+          remindAt: when.date,
+          createdBy: senderPhone,
+        });
+        await reply(
+          `[REMINDER SET]\n\nWhen: ${formatReminderWhen(reminder.remind_at)}\nMessage: ${reminder.message}\nID: ${reminder.id}` +
+          (reminder.local ? '\n\nNote: saved in memory only — apply the reminders migration to survive restarts.' : '')
+        );
+      } catch (err) {
+        await reply(`[REMINDER ERROR]\n\n${err.message}`);
+      }
+      return true;
+    }
+
+    case '.reminders': {
+      const includeAll = (args[0] || '').toLowerCase() === 'all';
+      const rows = await listReminders({ groupJid: includeAll ? null : targetChat, limit: 20 });
+      if (rows.length === 0) {
+        await reply('[REMINDERS]\n\nNo pending reminders.');
+        return true;
+      }
+      const lines = rows.map((row, i) => `${i + 1}. ${formatReminderWhen(row.remind_at)} — ${row.message}\n   id: ${row.id}`);
+      await reply(`[PENDING REMINDERS: ${rows.length}]\n\n${lines.join('\n')}\n\nCancel with: .cancelremind <id>`);
+      return true;
+    }
+
+    case '.cancelremind': {
+      const id = args[0];
+      if (!id) {
+        await reply('[REMINDERS]\n\nUsage: .cancelremind <id>');
+        return true;
+      }
+      const cancelled = await cancelReminder(id);
+      await reply(cancelled ? `[REMINDER CANCELLED]\n\n${id}` : `[REMINDERS]\n\nCould not cancel ${id}. Check .reminders for the exact id.`);
+      return true;
+    }
+
+    case '.imagine': {
+      const prompt = rawArgs;
+      if (!prompt) {
+        await reply('[IMAGE GENERATION]\n\nUsage: .imagine a clean poster of a lion and a sunrise');
+        return true;
+      }
+      await reply('[IMAGE GENERATION]\n\nGenerating...');
+      const image = await makeImage(prompt);
+      if (!image) {
+        await reply('[IMAGE GENERATION UNAVAILABLE]\n\nCloudflare image generation is not configured or is parked after a quota error. Check Cloudflare credentials.');
+        return true;
+      }
+      await sock.sendMessage(targetChat, {
+        image: image.buffer,
+        mimetype: image.mimetype,
+        caption: `🎨 ${prompt.slice(0, 400)}`,
+      }, { quoted: m });
+      return true;
+    }
+
+    case '.voice': {
+      const text = rawArgs || "God's Virtue here. Voice replies are working.";
+      const voice = await makeVoiceNote(text);
+      if (!voice) {
+        await reply('[VOICE REPLIES UNAVAILABLE]\n\nCloudflare TTS is not configured or is parked after a quota error.');
+        return true;
+      }
+      await sock.sendMessage(targetChat, {
+        audio: voice.buffer,
+        mimetype: voice.mimetype,
+        ptt: false,
+      }, { quoted: m });
+      return true;
+    }
+
+    case '.providers':
+    case '.usage':
+    case '.features': {
+      await reply(`[PROVIDER & FEATURE HEALTH]\n\n${formatProviderReport()}`);
       return true;
     }
 

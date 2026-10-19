@@ -9,6 +9,24 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sanitizeHumanResponse } from './antiban.js';
 import { lagosDateLine } from './time-utils.js';
+import {
+  configuredProviders,
+  providerConfigured,
+  providerHealth,
+  groqChat,
+  groqTranscribe,
+  cloudflareChat,
+  cloudflareTranscribe,
+  getGroqTextModels,
+  getCloudflareTextModels,
+  trimMessages,
+  markDead as markProviderModelDead,
+  markCooldown as markProviderCooldown,
+  markProviderWideCooldown,
+  hasProviderQuotaCooldown,
+  isProviderCoolingDown,
+  recordUsage,
+} from './ai-providers.js';
 
 let genAI = null;
 export let cachedApiKey = null;
@@ -19,9 +37,9 @@ export const MASTER_SYSTEM_PROMPT = `You are "God's Virtue", an intelligent, tho
 You were created and are owned by Glory Adeniran. You know who you are and why you were built: to bring order, clarity, practical assistance, and thoughtful guidance to individuals and communities.
 
 CORE IDENTITY & PURPOSE:
-• Created & Owned By: Glory Adeniran.
+• Created & Owned By: Glory Adeniran — a MAN. Always refer to him as "he/him", never "she/her". Your owner is a Nigerian product/graphic designer and digital entrepreneur (founder of Global Reach Digitalz / Global Graphics), based in Kwara State, Nigeria; a Christian musician and software builder. When you speak to him, call him "Boss" or "Sir" — never his full name.
 • Identity: You are "God's Virtue"—a name reflecting high character, moral excellence, wisdom, and reliability. You are NOT just another generic AI chatbot; you are a purposeful digital assistant with a steady, human presence.
-• AI Model & Architecture: You are powered by Google's cutting-edge Gemini models (Gemini 2.5 / Gemini 2.0 Flash) enhanced with live Google Search grounding. If asked about your model, who built you, or what AI you are, state politely and accurately that you are God's Virtue, created by Glory Adeniran and powered by Google's latest Gemini AI models with real-time search intelligence.
+• AI Model & Architecture: You are powered by a resilient multi-model AI stack (Google Gemini, Groq, and Cloudflare Workers AI) that automatically fails over between providers. If asked about your model, who built you, or what AI you are, state politely and accurately that you are God's Virtue, created by Glory Adeniran and powered by a multi-model AI stack built on Google Gemini, Groq, and Cloudflare.
 • Inclusivity: You respect and welcome everyone regardless of their background, faith, or beliefs. Your name is simply "God's Virtue"—never preach, lecture, or impose religious terms like "fellowship" unless explicitly requested by the user. Treat everyone with equal dignity, fairness, and kindness.
 • Web Knowledge & Real-Time Search: You are connected to Google's live search engine to retrieve accurate, up-to-date facts, current news, dates, and live information whenever asked. Always provide current, factual information grounded in real-time knowledge.
 
@@ -33,6 +51,25 @@ CONVERSATION STYLE & HUMANITY:
 • Formatting: WhatsApp-native only. *bold* sparingly. No markdown headers, no asterisk walls, no "•" bullet essays unless asked.
 • Honesty: Never invent facts, names, events, or dates — including today's date unless it was given to you. If you don't know something, say so plainly.
 • Context: In groups, you befriend members, answer questions thoughtfully when tagged, and maintain respect and order. In direct messages, you are a helpful personal assistant.`;
+
+/**
+ * Always-on owner/creator profile, injected into EVERY reply as an extra context
+ * layer. Kept out of the (dashboard-editable) persona prompt so a prompt edit or a
+ * legacy-prompt migration can never wipe it, and so the bot can never re-guess the
+ * owner's gender from the name "Glory".
+ */
+export function buildOwnerProfileContext({ isOwnerSender = false } = {}) {
+  const lines = [
+    'WHO OWNS YOU (permanent fact — never contradict, never guess):',
+    '• Your creator and owner is Glory Adeniran. He is a MAN — always "he"/"him", never "she"/"her".',
+    '• He is a Nigerian product/graphic designer and digital entrepreneur, founder of Global Reach Digitalz / Global Graphics, based in Kwara State, Nigeria. He is a Christian, a singer/musician, and he builds software.',
+    '• When you address or refer to him in conversation, call him "Boss" or "Sir" — not his full name. (You may still state his name "Glory Adeniran" if someone asks who created you.)',
+  ];
+  if (isOwnerSender) {
+    lines.push('• The person you are replying to right now IS Glory Adeniran, your owner — address him as "Boss" or "Sir".');
+  }
+  return lines.join('\n');
+}
 
 export function initAI(apiKey) {
   cachedApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || null;
@@ -46,11 +83,23 @@ export function initAI(apiKey) {
       console.error('[ai-engine] Failed to initialize GoogleGenerativeAI:', e.message);
     }
   } else {
-    console.warn('[ai-engine] GEMINI_API_KEY not provided. Fallback virtuous response mode will be used.');
+    console.warn('[ai-engine] GEMINI_API_KEY not provided. Gemini will be skipped in the provider rotation.');
+  }
+
+  const providers = configuredProviders();
+  if (providers.length === 0) {
+    console.warn('[ai-engine] No AI provider credentials found (Gemini / Groq / Cloudflare). Replies will stay silent.');
+  } else {
+    console.log(`[ai-engine] AI providers available: ${providers.join(' → ')}.`);
   }
 }
 
-function isQuotaExhaustedError(err) {
+/** Live provider/model health for the /health endpoint. */
+export function getAIProviderHealth() {
+  return providerHealth();
+}
+
+export function isQuotaExhaustedError(err) {
   if (!err) return false;
   const msg = (err.message || String(err)).toLowerCase();
   return (
@@ -62,18 +111,55 @@ function isQuotaExhaustedError(err) {
   );
 }
 
+/** True when the model ID itself is unusable (retired / not available to this key). */
+export function isModelGoneError(err) {
+  if (!err) return false;
+  const status = err.status || err.statusCode;
+  const msg = (err.message || String(err)).toLowerCase();
+  return (
+    status === 404 ||
+    msg.includes('404') ||
+    msg.includes('no longer available') ||
+    msg.includes('not found') ||
+    msg.includes('does not support generatecontent')
+  );
+}
+
 /**
- * Ordered candidate models — cheap/fast first.
- * Cross-checked against https://ai.google.dev/gemini-api/docs/models; stale or
- * non-existent IDs are filtered out at runtime by resolveModelList() so a single
- * bad entry can never burn a round-trip on every incoming message.
+ * Pulls the API's own retry hint (e.g. retryDelay":"14842s" or "retry in 4h7m...")
+ * out of a 429 so a quota-exhausted model can be parked until it actually resets.
  */
-const CANDIDATE_MODELS = [
+export function extractRetryDelayMs(err) {
+  const msg = err?.message || String(err || '');
+  let m = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/i.exec(msg);
+  if (m) return Math.round(Number(m[1]) * 1000);
+  m = /retry in (\d+)h(\d+)m(\d+(?:\.\d+)?)s/i.exec(msg);
+  if (m) return Math.round((Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 1000);
+  m = /retry in (\d+)m(\d+(?:\.\d+)?)s/i.exec(msg);
+  if (m) return Math.round((Number(m[1]) * 60 + Number(m[2])) * 1000);
+  m = /retry in (\d+(?:\.\d+)?)s/i.exec(msg);
+  if (m) return Math.round(Number(m[1]) * 1000);
+  return 0;
+}
+
+/**
+ * Preferred model order — newest Flash-first models, cheap and fast, with older
+ * families kept as backstops.
+ *
+ * A hardcoded list is only half the story: Google retires IDs without warning
+ * (gemini-2.5-pro already 404s for new users), so resolveModelList() also ranks
+ * whatever this API key actually serves, and any model that 404s or runs out of
+ * quota is parked at runtime instead of being retried on every single message.
+ */
+export const CANDIDATE_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
   'gemini-2.5-flash',
-  'gemini-2.5-pro',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-pro',
 ];
 
 const MODEL_LIST_TTL_MS = 6 * 60 * 60 * 1000; // re-verify served models every 6 hours
@@ -124,28 +210,125 @@ async function refreshAvailableModels(force = false) {
 }
 
 /**
- * Returns the candidate models filtered to those this key can serve.
- * Falls back to the full candidate list whenever discovery is unavailable.
+ * Runtime health of each model. A model that returns 404 ("no longer available")
+ * is dropped for the life of the process; a model that returns a quota/rate-limit
+ * error is parked until the API says it is safe to retry. Without this, every
+ * message re-tried dead or exhausted models, so the bot took ~13s to send a canned
+ * reply instead of failing over immediately.
  */
-async function resolveModelList() {
-  await refreshAvailableModels();
-  if (!availableModelIds) return CANDIDATE_MODELS;
-  const filtered = CANDIDATE_MODELS.filter((m) => availableModelIds.has(m));
-  if (filtered.length === 0) return CANDIDATE_MODELS;
-  return filtered;
+const deadModels = new Set();
+const modelCooldowns = new Map(); // name -> { until: number, reason: 'quota'|'error' }
+
+// Google Search grounding is not available on the free API tier. Start from the env
+// setting and self-disable if grounded calls keep failing while plain calls work, so
+// a free-tier key never burns a wasted request per reply. Set ENABLE_SEARCH_GROUNDING
+// =false to turn it off up front (e.g. until billing is enabled).
+let groundingEnabled = String(process.env.ENABLE_SEARCH_GROUNDING ?? 'true').toLowerCase() !== 'false';
+let groundingFailureStreak = 0;
+
+function noteGroundingFailure() {
+  groundingFailureStreak++;
+  if (groundingFailureStreak >= 2 && groundingEnabled) {
+    groundingEnabled = false;
+    console.warn('[ai-engine] Search grounding keeps failing (often unsupported on the free tier) — disabling it for this session.');
+  }
+}
+
+function isModelCoolingDown(name) {
+  const c = modelCooldowns.get(name);
+  if (!c) return false;
+  if (Date.now() >= c.until) { modelCooldowns.delete(name); return false; }
+  return true;
+}
+
+function markModelCooldown(name, reason = 'quota', retryDelayMs = 0) {
+  const MIN_MS = 30 * 1000;
+  const MAX_MS = 6 * 60 * 60 * 1000;
+  const DEFAULT_MS = 5 * 60 * 1000;
+  const ms = Math.min(Math.max(retryDelayMs > 0 ? retryDelayMs : DEFAULT_MS, MIN_MS), MAX_MS);
+  modelCooldowns.set(name, { until: Date.now() + ms, reason });
+  console.warn(`[ai-engine] Cooling down ${name} for ~${Math.max(1, Math.round(ms / 60000))} min (${reason}).`);
+}
+
+/** True when at least one model is parked because it ran out of quota. */
+function hasQuotaCooldown() {
+  const now = Date.now();
+  for (const c of modelCooldowns.values()) if (c.reason === 'quota' && now < c.until) return true;
+  return false;
+}
+
+/** Heuristic: is a discovered model ID a general text chat model we can use? */
+function isLikelyChatModel(id) {
+  if (/image|tts|live|audio|embedding|embed|vision|omni|translate|veo|imagen|aqa|deep-research|robotics|gemma/i.test(id)) return false;
+  return /^gemini-(\d+(\.\d+)?)-(flash|pro)/.test(id);
+}
+
+/** Newer generation first, then flash, then pro, then flash-lite. */
+export function scoreChatModel(id) {
+  const m = /^gemini-(\d+)(?:\.(\d+))?-(.+)$/.exec(id);
+  if (!m) return -1;
+  const major = Number(m[1]);
+  const minor = Number(m[2] || 0);
+  const v = m[3];
+  let family;
+  if (/^flash-lite/.test(v)) family = 10;
+  else if (/^flash/.test(v)) family = 20;
+  else if (/^pro/.test(v)) family = 15;
+  else family = 5;
+  const previewPenalty = /preview|exp/.test(v) ? -3 : 0;
+  return major * 1000 + family * 10 + minor + previewPenalty;
 }
 
 /**
- * Direct Google REST call that bypasses SDK quirks (used as the last attempt per model).
- * Includes Google Search grounding for real-time info.
+ * Returns the models to try, best first, excluding ones that are dead or cooling
+ * down. Prefers the curated list, and falls back to the newest chat models this
+ * key actually serves so the bot keeps working when Google retires an ID.
  */
-async function restGenerateContent({ modelName, systemInstruction, contents, plainText, temperature, useSearch = true }) {
-  const key = cachedApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!key) return { text: '', quotaError: false, errorEntry: null };
+async function resolveModelList() {
+  await refreshAvailableModels();
 
-  const nowIso = () => new Date().toISOString();
+  let base;
+  if (availableModelIds && availableModelIds.size > 0) {
+    const curated = CANDIDATE_MODELS.filter((m) => availableModelIds.has(m));
+    if (curated.length > 0) {
+      base = curated;
+    } else {
+      base = [...availableModelIds]
+        .filter(isLikelyChatModel)
+        .sort((a, b) => scoreChatModel(b) - scoreChatModel(a))
+        .slice(0, 6);
+      if (base.length === 0) base = CANDIDATE_MODELS;
+    }
+  } else {
+    base = CANDIDATE_MODELS;
+  }
 
-  const body = {
+  return base.filter((m) => !deadModels.has(m) && !isModelCoolingDown(m));
+}
+
+/**
+ * Builders for the two ways we talk to Gemini (SDK + raw REST).
+ *
+ * IMPORTANT: `tools` (Google Search grounding) MUST be a TOP-LEVEL request field.
+ * Putting it inside `generationConfig` makes the API reject the entire request with
+ *  "Unknown name \"tools\" at 'generation_config'", which forced every reply to fall
+ * back to canned text. Current models use the `googleSearch`/`google_search` tool
+ * name; `googleSearchRetrieval` is the legacy name for older models.
+ */
+export function buildSdkModelOptions({ modelName, systemInstruction, temperature, useSearch = true, maxOutputTokens = 600 }) {
+  return {
+    model: modelName,
+    systemInstruction,
+    generationConfig: {
+      temperature: Number(temperature) || 0.7,
+      maxOutputTokens: Number(maxOutputTokens) || 600,
+    },
+    ...(useSearch ? { tools: [{ googleSearch: {} }] } : {}),
+  };
+}
+
+export function buildGeminiRequest({ systemInstruction, contents, plainText, temperature, useSearch = true, maxOutputTokens = 600 }) {
+  const payload = {
     systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
     contents:
       Array.isArray(contents) && contents.length > 0
@@ -153,14 +336,26 @@ async function restGenerateContent({ modelName, systemInstruction, contents, pla
         : [{ role: 'user', parts: [{ text: plainText }] }],
     generationConfig: {
       temperature: Number(temperature) || 0.7,
-      maxOutputTokens: 600,
+      maxOutputTokens: Number(maxOutputTokens) || 600,
     },
   };
-
-  // Enable Google Search grounding for real-time info
   if (useSearch) {
-    body.tools = [{ googleSearchRetrieval: {} }];
+    payload.tools = [{ google_search: {} }];
   }
+  return payload;
+}
+
+/**
+ * Direct Google REST call that bypasses SDK quirks (used as the last attempt per model).
+ * Includes Google Search grounding for real-time info.
+ */
+async function restGenerateContent({ modelName, systemInstruction, contents, plainText, temperature, useSearch = true, maxOutputTokens = 600 }) {
+  const key = cachedApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!key) return { text: '', quotaError: false, errorEntry: null };
+
+  const nowIso = () => new Date().toISOString();
+
+  const payload = buildGeminiRequest({ systemInstruction, contents, plainText, temperature, useSearch, maxOutputTokens });
 
   try {
     const res = await fetch(
@@ -168,7 +363,7 @@ async function restGenerateContent({ modelName, systemInstruction, contents, pla
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       }
     );
 
@@ -184,16 +379,22 @@ async function restGenerateContent({ modelName, systemInstruction, contents, pla
       };
     }
 
-    const body = await res.text();
-    const quotaError = res.status === 429 || /quota|resource\s*exhausted/i.test(body);
+    // NOTE: this used to be named `body`, which shadowed the request payload above
+    // and threw a TDZ ReferenceError before the fetch ever ran — killing the whole
+    // REST fallback. Keep it distinctly named.
+    const errText = await res.text();
+    const quotaError = res.status === 429 || /quota|resource\s*exhausted/i.test(errText);
+    const gone = res.status === 404 || /no longer available|not found/i.test(errText);
     // 404 just means this model name does not exist — not worth logging every request
     if (res.status !== 404) {
-      console.error(`[ai-engine] REST API rejected ${modelName} (${res.status}):`, body.slice(0, 300));
+      console.error(`[ai-engine] REST API rejected ${modelName} (${res.status}):`, errText.slice(0, 300));
     }
     return {
       text: '',
       quotaError,
-      errorEntry: { model: modelName, via: 'rest', status: res.status, body: body.slice(0, 500), time: nowIso() },
+      gone,
+      retryDelayMs: quotaError ? extractRetryDelayMs({ message: errText }) : 0,
+      errorEntry: { model: modelName, via: 'rest', status: res.status, body: errText.slice(0, 500), time: nowIso() },
     };
   } catch (err) {
     return {
@@ -206,19 +407,21 @@ async function restGenerateContent({ modelName, systemInstruction, contents, pla
 
 /**
  * Tries one model end-to-end: SDK multi-turn -> SDK single-turn -> REST fallback.
- * The REST fallback is skipped when the SDK already failed on quota, because
- * retrying the same exhausted key would only add latency.
+ * The REST fallback is skipped when the SDK already failed on quota or on a retired
+ * model, because retrying the same exhausted/invalid ID would only add latency.
  * Includes Google Search grounding for real-time info.
  *
- * @returns {{ text: string, quotaError: boolean, errorEntry: object|null }}
+ * @returns {{ text: string, quotaError: boolean, gone: boolean, retryDelayMs: number, errorEntry: object|null }}
  */
-async function attemptModelCall({ modelName, systemInstruction, contents, plainText, temperature, useSearch = true }) {
-  const generationConfig = {
-    temperature: Number(temperature) || 0.7,
-    maxOutputTokens: 600,
-    // Enable Google Search grounding via tools
-    tools: useSearch ? [{ googleSearchRetrieval: {} }] : undefined,
-  };
+async function attemptModelCall({ modelName, systemInstruction, contents, plainText, temperature, useSearch = true, maxOutputTokens = 600 }) {
+  const wantSearch = useSearch && groundingEnabled;
+  recordUsage('gemini', modelName, 'request');
+  // Build the model options with the grounding tool at the TOP level (never inside
+  // generationConfig — see buildSdkModelOptions for why).
+  const buildModel = (withTools) =>
+    genAI.getGenerativeModel(
+      buildSdkModelOptions({ modelName, systemInstruction, temperature, useSearch: withTools, maxOutputTokens })
+    );
 
   const extractText = (result) => {
     try {
@@ -228,42 +431,84 @@ async function attemptModelCall({ modelName, systemInstruction, contents, plainT
     }
   };
 
+  // One SDK round-trip: multi-turn contents first, then a plain single-turn string.
+  // Throws if both fail.
+  const trySdk = async (withTools) => {
+    const model = buildModel(withTools);
+    try {
+      const result = await model.generateContent({ contents });
+      return extractText(result);
+    } catch (multiTurnErr) {
+      console.warn(`[ai-engine] Model ${modelName}${withTools ? ' (grounded)' : ''} multi-turn attempt failed (${multiTurnErr.message}). Retrying single-turn...`);
+      const singleModel = buildModel(withTools);
+      const result = await singleModel.generateContent(plainText);
+      return extractText(result);
+    }
+  };
+
   let sdkError = null;
   let text = '';
 
   try {
-    const model = genAI.getGenerativeModel({ model: modelName, systemInstruction, generationConfig });
-    try {
-      const result = await model.generateContent({ contents });
-      text = extractText(result);
-    } catch (multiTurnErr) {
-      console.warn(`[ai-engine] Model ${modelName} multi-turn attempt failed (${multiTurnErr.message}). Retrying single-turn...`);
-      const singleModel = genAI.getGenerativeModel({ model: modelName, systemInstruction, generationConfig });
-      const result = await singleModel.generateContent(plainText);
-      text = extractText(result);
-    }
+    text = await trySdk(wantSearch);
   } catch (err) {
     sdkError = err;
+    // Skip the extra no-tools retry when the failure is clearly about the model
+    // itself (retired ID or exhausted quota) — retrying only adds latency.
+    const hopeless = isQuotaExhaustedError(err) || isModelGoneError(err);
+    if (wantSearch && !hopeless) {
+      try {
+        console.warn(`[ai-engine] Model ${modelName} failed with grounding enabled; retrying without search tools...`);
+        text = await trySdk(false);
+        sdkError = null;
+        if (text) noteGroundingFailure();
+      } catch (err2) {
+        sdkError = err2;
+      }
+    }
   }
 
   const sanitized = sanitizeHumanResponse(text || '');
   if (sanitized && sanitized.trim()) {
-    return { text: sanitized, quotaError: false, errorEntry: null };
+    recordUsage('gemini', modelName, 'success');
+    return { text: sanitized, quotaError: false, gone: false, retryDelayMs: 0, errorEntry: null };
   }
 
   const sdkQuotaError = Boolean(sdkError && isQuotaExhaustedError(sdkError));
+  const sdkGone = Boolean(sdkError && isModelGoneError(sdkError));
 
-  if (!sdkQuotaError) {
-    const rest = await restGenerateContent({ modelName, systemInstruction, contents, plainText, temperature });
-    if (rest.text) return { text: rest.text, quotaError: false, errorEntry: null };
-    if (rest.quotaError) return { text: '', quotaError: true, errorEntry: rest.errorEntry };
-    if (!sdkError && rest.errorEntry) return { text: '', quotaError: false, errorEntry: rest.errorEntry };
+  // Don't spend a REST call on a model we already know is retired or out of quota.
+  if (!sdkQuotaError && !sdkGone) {
+    let rest = await restGenerateContent({ modelName, systemInstruction, contents, plainText, temperature, useSearch: wantSearch, maxOutputTokens });
+    // Retry the REST path without grounding too, for the same reason.
+    if (!rest.text && !rest.quotaError && !rest.gone && wantSearch) {
+      rest = await restGenerateContent({ modelName, systemInstruction, contents, plainText, temperature, useSearch: false, maxOutputTokens });
+    }
+    if (rest.text) {
+      recordUsage('gemini', modelName, 'success');
+      return { text: rest.text, quotaError: false, gone: false, retryDelayMs: 0, errorEntry: null };
+    }
+    if (rest.gone) {
+      recordUsage('gemini', modelName, 'error');
+      return { text: '', quotaError: false, gone: true, retryDelayMs: 0, errorEntry: rest.errorEntry };
+    }
+    if (rest.quotaError) {
+      recordUsage('gemini', modelName, 'quota');
+      return { text: '', quotaError: true, gone: false, retryDelayMs: rest.retryDelayMs || 0, errorEntry: rest.errorEntry };
+    }
+    if (!sdkError && rest.errorEntry) {
+      recordUsage('gemini', modelName, 'error');
+      return { text: '', quotaError: false, gone: false, retryDelayMs: 0, errorEntry: rest.errorEntry };
+    }
   }
 
   if (sdkError) {
+    recordUsage('gemini', modelName, sdkQuotaError ? 'quota' : 'error');
     return {
       text: '',
       quotaError: sdkQuotaError,
+      gone: sdkGone,
+      retryDelayMs: sdkQuotaError ? extractRetryDelayMs(sdkError) : 0,
       errorEntry: {
         model: modelName,
         via: 'sdk',
@@ -274,9 +519,12 @@ async function attemptModelCall({ modelName, systemInstruction, contents, plainT
     };
   }
 
+  recordUsage('gemini', modelName, 'error');
   return {
     text: '',
     quotaError: false,
+    gone: false,
+    retryDelayMs: 0,
     errorEntry: { model: modelName, via: 'sdk', error: 'Empty or blocked response', time: new Date().toISOString() },
   };
 }
@@ -373,7 +621,186 @@ function buildValidGeminiContentsWithMedia(rawHistory, currentParts) {
 export let allModelErrors = [];
 
 /**
- * Generates an intelligent, virtuous response for an incoming message
+ * Provider-agnostic text generation for internal passes (recaps, memory,
+ * reflection, silence breakers). Returns '' when every provider is unavailable,
+ * so each caller can keep its own honest fallback.
+ */
+export async function generateTextAcrossProviders({
+  systemPrompt,
+  userPrompt,
+  temperature = 0.7,
+  maxOutputTokens = 600,
+  useSearch = false,
+}) {
+  const messages = trimMessages([
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ]);
+
+  for (const provider of configuredProviders()) {
+    if (provider === 'groq') {
+      if (isProviderCoolingDown('groq')) continue;
+      for (const model of getGroqTextModels()) {
+        const result = await groqChat({ messages, model, temperature, maxTokens: maxOutputTokens });
+        if (result.text) return result.text;
+        if (result.gone) {
+          markProviderModelDead('groq', model);
+          continue;
+        }
+        if (result.quotaError) {
+          markProviderWideCooldown('groq', 'quota', result.retryDelayMs);
+          break;
+        }
+      }
+      continue;
+    }
+
+    if (provider === 'gemini') {
+      if (!genAI) continue;
+      const models = await resolveModelList();
+      for (const modelName of models) {
+        const attempt = await attemptModelCall({
+          modelName,
+          systemInstruction: systemPrompt,
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          plainText: userPrompt,
+          temperature,
+          useSearch,
+          maxOutputTokens,
+        });
+        if (attempt.text) return attempt.text;
+        if (attempt.gone) {
+          deadModels.add(modelName);
+          continue;
+        }
+        if (attempt.quotaError) markModelCooldown(modelName, 'quota', attempt.retryDelayMs || 0);
+      }
+      continue;
+    }
+
+    if (provider === 'cloudflare') {
+      if (isProviderCoolingDown('cloudflare')) continue;
+      for (const model of getCloudflareTextModels()) {
+        const result = await cloudflareChat({ messages, model, temperature, maxTokens: maxOutputTokens });
+        if (result.text) return result.text;
+        if (result.gone) {
+          markProviderModelDead('cloudflare', model);
+          continue;
+        }
+        if (result.quotaError) {
+          markProviderWideCooldown('cloudflare', 'quota', result.retryDelayMs);
+          break;
+        }
+      }
+      continue;
+    }
+  }
+
+  return '';
+}
+
+/** Builds an OpenAI-compatible message array (Groq + Cloudflare). */
+function buildOpenAIMessages({ systemPrompt, history, userText, imagePart }) {
+  const messages = [{ role: 'system', content: systemPrompt }];
+
+  if (Array.isArray(history)) {
+    for (const turn of history) {
+      const text = turn?.parts?.[0]?.text;
+      if (!text || !String(text).trim()) continue;
+      messages.push({ role: turn.role === 'model' ? 'assistant' : 'user', content: String(text).trim() });
+    }
+  }
+
+  if (imagePart) {
+    const content = [];
+    if (userText && userText.trim()) content.push({ type: 'text', text: userText });
+    content.push({
+      type: 'image_url',
+      image_url: { url: `data:${imagePart.mimeType};base64,${imagePart.buffer.toString('base64')}` },
+    });
+    messages.push({ role: 'user', content });
+  } else {
+    messages.push({ role: 'user', content: userText || '[media]' });
+  }
+
+  return trimMessages(messages);
+}
+
+/** Transcribes a voice note with Groq Whisper, then Cloudflare Whisper. */
+async function transcribeVoiceNote(media) {
+  if (!media?.buffer?.length) return { text: '', provider: null };
+
+  if (providerConfigured('groq')) {
+    const result = await groqTranscribe({ buffer: media.buffer, mimeType: media.mimeType });
+    if (result.text) return { text: result.text, provider: 'groq' };
+  }
+
+  if (providerConfigured('cloudflare')) {
+    const result = await cloudflareTranscribe({ buffer: media.buffer });
+    if (result.text) return { text: result.text, provider: 'cloudflare' };
+  }
+
+  return { text: '', provider: null };
+}
+
+/**
+ * One Gemini pass across every healthy model. Returns the first usable reply.
+ * Extracted so the router can treat Gemini exactly like the other providers.
+ */
+async function attemptGeminiReply({ effectivePrompt, history, userParts, contextMessage, temperature }) {
+  const models = await resolveModelList();
+  if (models.length === 0) {
+    return { text: '', quotaFailures: 0, attempted: 0, lastError: null };
+  }
+
+  const validContents = buildValidGeminiContentsWithMedia(history, userParts);
+  let quotaFailures = 0;
+  let lastError = null;
+
+  for (const modelName of models) {
+    const attempt = await attemptModelCall({
+      modelName,
+      systemInstruction: effectivePrompt,
+      contents: validContents,
+      plainText: contextMessage,
+      temperature,
+      useSearch: true,
+    });
+
+    if (attempt.text) {
+      return { text: attempt.text, model: modelName, quotaFailures: 0, attempted: 1, lastError: null };
+    }
+
+    if (attempt.errorEntry) {
+      lastAIError = attempt.errorEntry;
+      allModelErrors.push(attempt.errorEntry);
+      lastError = attempt.errorEntry;
+    }
+
+    if (attempt.gone) {
+      deadModels.add(modelName);
+      console.warn(`[ai-engine] Model ${modelName} is retired/unavailable — dropping it. Trying next candidate...`);
+      continue;
+    }
+
+    if (attempt.quotaError) {
+      quotaFailures++;
+      markModelCooldown(modelName, 'quota', attempt.retryDelayMs || 0);
+    }
+
+    console.warn(`[ai-engine] Model ${modelName} produced no usable response. Trying next candidate...`);
+  }
+
+  return { text: '', model: null, quotaFailures, attempted: models.length, lastError };
+}
+
+/**
+ * Generates an intelligent, virtuous response for an incoming message.
+ *
+ * Routing order: Groq → Gemini → Cloudflare. Each provider is tried with its own
+ * model list; quota/retired models are parked so one weak model never blocks the
+ * next provider. Voice notes are transcribed first; images/stickers go to a
+ * vision-capable model.
  */
 export async function generateResponse({
   jid,
@@ -400,18 +827,48 @@ export async function generateResponse({
   }
   const history = conversationHistories.get(jid);
 
-  // Build the current user message parts (text + optional media)
-  const userParts = [];
-  if (incomingText && incomingText.trim()) {
-    userParts.push({ text: incomingText });
+  const providers = configuredProviders();
+  if (providers.length === 0) {
+    // Nothing to call — stay silent rather than pretending to understand.
+    return silentResult();
   }
-  if (media && media.buffer && media.mimeType) {
-    // Convert buffer to base64 for inline data
-    const base64 = media.buffer.toString('base64');
+
+  // ── Voice notes: transcribe first so every provider can reason about them ──
+  let textInput = incomingText || '';
+  let effectiveMedia = media;
+  if (media?.buffer && media.type === 'audio') {
+    const transcript = await transcribeVoiceNote(media);
+    if (transcript.text) {
+      textInput = `${textInput ? `${textInput}\n` : ''}[Voice note transcript]: ${transcript.text}`;
+      effectiveMedia = null;
+      console.log(`[ai-engine] Voice note transcribed via ${transcript.provider} (${transcript.text.length} chars).`);
+    } else {
+      // No transcription available: Gemini can still listen to the raw audio.
+      console.warn('[ai-engine] Voice transcription failed; falling back to native audio only for Gemini.');
+    }
+  }
+
+  // Build the current user message parts for Gemini (text + optional media)
+  if (!textInput && effectiveMedia) {
+    // A caption-less image/sticker still needs a sentence of context so the model
+    // knows what it is looking at instead of receiving a bare byte blob.
+    textInput =
+      effectiveMedia.type === 'sticker'
+        ? '[The member sent a sticker. React to it naturally.]'
+        : effectiveMedia.type === 'image'
+          ? '[The member sent an image. Look at it and respond.]'
+          : `[The member sent a ${effectiveMedia.type}.]`;
+  }
+
+  const userParts = [];
+  if (textInput && textInput.trim()) {
+    userParts.push({ text: textInput });
+  }
+  if (effectiveMedia && effectiveMedia.buffer && effectiveMedia.mimeType) {
     userParts.push({
       inlineData: {
-        mimeType: media.mimeType,
-        data: base64,
+        mimeType: effectiveMedia.mimeType,
+        data: effectiveMedia.buffer.toString('base64'),
       },
     });
   }
@@ -423,93 +880,201 @@ export async function generateResponse({
 
   // Format message with group context if applicable (for text-only history storage)
   const contextMessage = isGroup
-    ? `[Group Member "${senderName}" in "${groupName}"]: ${incomingText || '[media]'}`
-    : incomingText || '[media]';
+    ? `[Group Member "${senderName}" in "${groupName}"]: ${textInput || '[media]'}`
+    : textInput || '[media]';
 
-  let allModelsQuotaExhausted = false;
+  const isImage = Boolean(
+    effectiveMedia?.buffer && (effectiveMedia.type === 'image' || effectiveMedia.type === 'sticker')
+  );
+  const isGeminiOnlyMedia = Boolean(
+    effectiveMedia?.buffer && (effectiveMedia.type === 'video' || effectiveMedia.type === 'document')
+  );
 
-  if (genAI) {
-    const models = await resolveModelList();
-    // Build contents with multimodal support
-    const validContents = buildValidGeminiContentsWithMedia(history, userParts);
-    let quotaFailures = 0;
+  let quotaFailures = 0;
+  let anyProviderAttempted = false;
+  // Start optimistic; any non-quota failure clears it.
+  let quotaOnly = true;
 
-    for (const modelName of models) {
-      const attempt = await attemptModelCall({
-        modelName,
-        systemInstruction: effectivePrompt,
-        contents: validContents,
-        plainText: contextMessage,
-        temperature,
-        useSearch: true,
+  for (const provider of providers) {
+    if (provider === 'groq') {
+      if (isGeminiOnlyMedia) continue;
+      if (isProviderCoolingDown('groq')) {
+        // Parked after an account-wide 429; do not burn another request.
+        anyProviderAttempted = true;
+        quotaFailures++;
+        continue;
+      }
+      const models = getGroqTextModels({ needsVision: isImage });
+      if (models.length === 0) {
+        if (hasProviderQuotaCooldown('groq')) {
+          anyProviderAttempted = true;
+          quotaFailures++;
+        } else {
+          quotaOnly = false;
+        }
+        continue;
+      }
+
+      const messages = buildOpenAIMessages({
+        systemPrompt: effectivePrompt,
+        history,
+        userText: textInput,
+        imagePart: isImage ? { buffer: effectiveMedia.buffer, mimeType: effectiveMedia.mimeType } : null,
       });
 
-      if (attempt.text) {
-        // Store text-only version in history for context
-        history.push({ role: 'user', parts: [{ text: contextMessage }] });
-        history.push({ role: 'model', parts: [{ text: attempt.text }] });
-        if (history.length > 12) history.splice(0, history.length - 12);
+      for (const model of models) {
+        anyProviderAttempted = true;
+        const result = await groqChat({ messages, model, temperature, maxTokens: 600 });
 
-        return {
-          text: attempt.text,
-          isAllQuotaExhausted: false,
-          toString() { return this.text; },
-          valueOf() { return this.text; },
-        };
+        if (result.text) {
+          return replyResult(result.text, { history, contextMessage, provider: 'groq', model });
+        }
+
+        if (result.errorEntry) allModelErrors.push(result.errorEntry);
+
+        if (result.gone) {
+          markProviderModelDead('groq', model);
+          continue;
+        }
+        if (result.quotaError) {
+          quotaFailures++;
+          markProviderCooldown('groq', model, 'quota', result.retryDelayMs);
+          // Groq's free quota is account-wide, so stop hammering sibling models.
+          markProviderWideCooldown('groq', 'quota', result.retryDelayMs);
+          break;
+        } else {
+          quotaOnly = false;
+        }
       }
-
-      if (attempt.errorEntry) {
-        lastAIError = attempt.errorEntry;
-        allModelErrors.push(attempt.errorEntry);
-      }
-      if (attempt.quotaError) quotaFailures++;
-
-      console.warn(`[ai-engine] Model ${modelName} produced no usable response. Trying next candidate...`);
+      continue;
     }
 
-    // Check if ALL candidate models specifically failed due to quota exhaustion
-    if (models.length > 0 && quotaFailures === models.length) {
-      allModelsQuotaExhausted = true;
-      console.warn(`[ai-engine] CRITICAL: All ${models.length} Gemini model quotas have been exhausted for today.`);
+    if (provider === 'gemini') {
+      // Gemini can accept every media type we support.
+      if (!genAI) {
+        quotaOnly = false;
+        continue;
+      }
+      const gemini = await attemptGeminiReply({
+        effectivePrompt,
+        history,
+        userParts,
+        contextMessage,
+        temperature,
+      });
+
+      if (gemini.text) {
+        return replyResult(gemini.text, { history, contextMessage, provider: 'gemini', model: gemini.model });
+      }
+
+      if (gemini.attempted > 0) {
+        anyProviderAttempted = true;
+        quotaFailures += gemini.quotaFailures;
+        if (gemini.quotaFailures !== gemini.attempted) quotaOnly = false;
+      } else if (!hasQuotaCooldown()) {
+        quotaOnly = false;
+      }
+      continue;
+    }
+
+    if (provider === 'cloudflare') {
+      if (isGeminiOnlyMedia) continue;
+      if (isProviderCoolingDown('cloudflare')) {
+        anyProviderAttempted = true;
+        quotaFailures++;
+        continue;
+      }
+      const models = getCloudflareTextModels({ needsVision: isImage });
+      if (models.length === 0) {
+        if (hasProviderQuotaCooldown('cloudflare')) {
+          anyProviderAttempted = true;
+          quotaFailures++;
+        } else {
+          quotaOnly = false;
+        }
+        continue;
+      }
+
+      const messages = buildOpenAIMessages({
+        systemPrompt: effectivePrompt,
+        history,
+        userText: textInput,
+        imagePart: null, // Cloudflare vision takes raw bytes separately
+      });
+
+      for (const model of models) {
+        anyProviderAttempted = true;
+        const result = await cloudflareChat({
+          messages,
+          model,
+          temperature,
+          maxTokens: 600,
+          imageBuffer: isImage ? effectiveMedia.buffer : null,
+          imageMimeType: effectiveMedia?.mimeType,
+        });
+
+        if (result.text) {
+          return replyResult(result.text, { history, contextMessage, provider: 'cloudflare', model });
+        }
+
+        if (result.errorEntry) allModelErrors.push(result.errorEntry);
+
+        if (result.gone) {
+          markProviderModelDead('cloudflare', model);
+          continue;
+        }
+        if (result.quotaError) {
+          quotaFailures++;
+          markProviderCooldown('cloudflare', model, 'quota', result.retryDelayMs);
+          markProviderWideCooldown('cloudflare', 'quota', result.retryDelayMs);
+          break;
+        } else {
+          quotaOnly = false;
+        }
+      }
+      continue;
     }
   }
 
-  // If ALL models ran out of quota for the day, return a human breather message
-  if (allModelsQuotaExhausted) {
+  // Every provider/model that we could try was out of quota for the day.
+  if (anyProviderAttempted && quotaOnly && quotaFailures > 0) {
+    console.warn('[ai-engine] CRITICAL: every configured provider is out of quota.');
     return {
-      text: `Hit my conversation limit across my groups for today. I need to rest and recharge a bit — catch me again tomorrow and I'll be sharp as usual.`,
+      text: `I'm sorry — my model quota for the day is reached, so I can't reply properly right now. I'll be back to normal tomorrow.`,
       isAllQuotaExhausted: true,
       toString() { return this.text; },
       valueOf() { return this.text; },
     };
   }
 
-  // Concise, human-like fallback responses (used only when every model failed)
-  const lowerMsg = (incomingText || '').toLowerCase();
-  let fallbackReply = `Hey ${senderName}, good to hear from you. What do you need?`;
+  // The models genuinely failed (and it is not a quota issue). Stay SILENT rather
+  // than sending a generic canned line that pretends the bot read the message.
+  console.warn('[ai-engine] No model produced a reply — staying silent (canned fallbacks disabled).');
+  return silentResult();
+}
 
-  if (lowerMsg.includes('who are you') || lowerMsg.includes('about yourself') || lowerMsg.includes('who created you') || lowerMsg.includes('your owner') || lowerMsg.includes('what do you do')) {
-    fallbackReply = `I'm God's Virtue — created and owned by Glory Adeniran. I keep this community organized and answer whatever I can. Good to connect with you.`;
-  } else if (lowerMsg.includes('hello') || lowerMsg.includes('hi') || lowerMsg.includes('hey')) {
-    fallbackReply = `Hey ${senderName}. Hope your day's going well. What's on your mind?`;
-  } else if (lowerMsg.includes('thank')) {
-    fallbackReply = `You're welcome, ${senderName}. Always glad to help.`;
-  } else if (lowerMsg.includes('help') || lowerMsg.includes('question') || lowerMsg.includes('advice')) {
-    fallbackReply = `I'm right here, ${senderName}. What's the matter?`;
-  } else if (lowerMsg.includes('what is') || lowerMsg.includes('how to') || lowerMsg.includes('why') || lowerMsg.includes('explain') || lowerMsg.includes('tell me')) {
-    fallbackReply = `Good question, ${senderName}. Give me a little more context and I'll break it down.`;
-  } else {
-    const fallbacks = [
-      `I'm here, ${senderName}. What can I do for you?`,
-      `Listening, ${senderName}. What would you like to talk about?`,
-      `Hey ${senderName}. What do you need?`,
-    ];
-    fallbackReply = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-  }
+function replyResult(text, { history, contextMessage, provider, model }) {
+  // Store text-only version in history for context
+  history.push({ role: 'user', parts: [{ text: contextMessage }] });
+  history.push({ role: 'model', parts: [{ text }] });
+  if (history.length > 12) history.splice(0, history.length - 12);
 
+  console.log(`[ai-engine] Reply generated by ${provider}${model ? ` (${model})` : ''}.`);
   return {
-    text: fallbackReply,
+    text,
     isAllQuotaExhausted: false,
+    provider,
+    model,
+    toString() { return this.text; },
+    valueOf() { return this.text; },
+  };
+}
+
+function silentResult() {
+  return {
+    text: '',
+    isAllQuotaExhausted: false,
+    isSilent: true,
     toString() { return this.text; },
     valueOf() { return this.text; },
   };
@@ -590,7 +1155,7 @@ export async function generateDailyGroupSummary({
     ? messages.slice(-40).map(m => `${m.senderName}: "${m.text}"`).join('\n')
     : 'No messages at all today — the group was completely quiet.';
 
-  if (genAI) {
+  {
     const systemPrompt = `You are "God's Virtue", a personality created and owned by Glory Adeniran. You are the community administrator in "${groupName}", and the group has just been locked for the night. Members will read this as you signing off the day.
 
 TODAY'S DATE — use it exactly as given, it is already correct: ${dateLine}
@@ -625,25 +1190,13 @@ ${customInstructions ? `SPECIAL DIRECTIVES FROM THE GROUP OWNER:\n${customInstru
 
 Write the recap now.`;
 
-    const models = await resolveModelList();
-
-    for (const modelName of models) {
-      const attempt = await attemptModelCall({
-        modelName,
-        systemInstruction: systemPrompt,
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        plainText: userPrompt,
-        temperature: 0.6,
-        useSearch: false,
-      });
-
-      if (attempt.text) return hardenRecapOutput(attempt.text, dateLine);
-
-      const detail =
-        attempt.errorEntry?.error ||
-        (attempt.errorEntry?.status ? `HTTP ${attempt.errorEntry.status}` : 'no usable response');
-      console.warn(`[ai-engine] Summary generation on ${modelName} failed (${detail}). Trying next...`);
-    }
+    const generated = await generateTextAcrossProviders({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.6,
+      maxOutputTokens: 700,
+    });
+    if (generated) return hardenRecapOutput(generated, dateLine);
   }
 
   // Fallback if AI API is temporarily unavailable — still honest and human
@@ -662,6 +1215,65 @@ Write the recap now.`;
     `What went on:\n${discussionSection}\n` +
     `Group's locked for the night — back open at ${reopenTime}. Goodnight all.`
   );
+}
+
+/**
+ * Extracts a structured weekly lecture timetable from an uploaded PDF document.
+ * Sends the PDF inline to Gemini (native document understanding) and asks for
+ * strict JSON. Returns { ok: true, data } or { ok: false, error }.
+ */
+export async function extractTimetableFromPdf({ buffer, mimeType = 'application/pdf', filename = 'timetable.pdf' }) {
+  if (!genAI) return { ok: false, error: 'AI engine is not initialized (missing API key).' };
+  if (!buffer || !buffer.length) return { ok: false, error: 'Empty PDF payload.' };
+
+  const base64 = Buffer.from(buffer).toString('base64');
+
+  const instruction = `Attached is a university lecture-timetable PDF ("${filename}"). Read it carefully and return its FULL contents as STRICT JSON.
+
+Rules:
+- Identify the class/level/set in "label" (e.g. "IFT 200 Level — 2025/2026 Set").
+- The file may contain more than one semester. Use the keys "harmattan" (first semester) and "rain" (second semester). Omit a key only if that semester truly is not present.
+- For each semester, list every lecture under its weekday: monday, tuesday, wednesday, thursday, friday, saturday, sunday (use an empty array for days with none).
+- Convert EVERY time to 24-hour "HH:mm". Examples: "8:00 - 10:00 AM" -> "08:00"/"10:00"; "10:00 - 12:00 AM" -> "10:00"/"12:00"; "12:00 - 2:00 PM" -> "12:00"/"14:00"; "2:00 - 4:00 PM" -> "14:00"/"16:00"; "4:00 - 6:00 PM" -> "16:00"/"18:00".
+- Copy the course code, title and venue exactly as printed. If a venue is not shown, use "".
+- Never invent lectures, rooms, or days. Do not add commentary inside the JSON. Put any timetable notes in "notes".
+
+Return ONLY this JSON shape, no prose and no code fences:
+{"label":"...","semesters":{"harmattan":{"monday":[{"code":"COS 201","title":"Computer Programming 1","start":"10:00","end":"12:00","venue":"LR 2"}],"tuesday":[],"wednesday":[],"thursday":[],"friday":[]},"rain":{}},"notes":["..."]}`;
+
+  const userParts = [
+    { text: instruction },
+    { inlineData: { mimeType, data: base64 } },
+  ];
+
+  const models = await resolveModelList();
+  for (const modelName of models) {
+    const attempt = await attemptModelCall({
+      modelName,
+      systemInstruction: 'You are a precise data-extraction engine. You output only valid JSON.',
+      contents: [{ role: 'user', parts: userParts }],
+      plainText: instruction,
+      temperature: 0.1,
+      useSearch: false,
+      maxOutputTokens: 4096,
+    });
+
+    if (attempt.text) {
+      const parsed = parseJsonLoose(attempt.text, false);
+      if (parsed && typeof parsed === 'object' && (parsed.semesters || parsed.schedule)) {
+        return { ok: true, data: parsed };
+      }
+      console.warn(`[ai-engine] Timetable parse on ${modelName} returned unusable JSON. Trying next candidate...`);
+      continue;
+    }
+
+    const detail =
+      attempt.errorEntry?.error ||
+      (attempt.errorEntry?.status ? `HTTP ${attempt.errorEntry.status}` : 'no usable response');
+    console.warn(`[ai-engine] Timetable extraction on ${modelName} failed (${detail}). Trying next...`);
+  }
+
+  return { ok: false, error: 'All models failed to parse the timetable PDF.' };
 }
 
 /**
@@ -686,7 +1298,7 @@ export async function generateSilenceBreaker({
 
   const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-  if (genAI) {
+  {
     const systemPrompt = `You are "God's Virtue" — a personality in the WhatsApp group "${groupName}", created by Glory Adeniran. You are NOT an AI assistant and must never say or imply that you are one. You talk like a real, well-liked member of this group.
 
 The group has gone quiet for about ${silenceMinutes} minutes. Write ONE short message to bring the chat back to life.
@@ -713,30 +1325,19 @@ Rules:
 
     const userPrompt = `The group "${groupName}" has been silent for ${silenceMinutes} minutes. Write your message now.`;
 
-    const models = await resolveModelList();
+    const generated = await generateTextAcrossProviders({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.9,
+      maxOutputTokens: 200,
+    });
 
-    for (const modelName of models) {
-      const attempt = await attemptModelCall({
-        modelName,
-        systemInstruction: systemPrompt,
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        plainText: userPrompt,
-        temperature: 0.9,
-        useSearch: false,
-      });
-
-      if (attempt.text) {
-        const text = attempt.text.trim();
-        // Keep only tags whose handles actually exist in our options (never tag strangers)
-        const usedHandles = [...new Set((text.match(/@\d{5,}/g) || []))]
-          .filter((h) => tagOptions.some((t) => t.handle === h));
-        return { text, mentionHandles: usedHandles };
-      }
-
-      const detail =
-        attempt.errorEntry?.error ||
-        (attempt.errorEntry?.status ? `HTTP ${attempt.errorEntry.status}` : 'no usable response');
-      console.warn(`[ai-engine] Silence-breaker generation on ${modelName} failed (${detail}). Trying next...`);
+    if (generated) {
+      const text = generated.trim();
+      // Keep only tags whose handles actually exist in our options (never tag strangers)
+      const usedHandles = [...new Set((text.match(/@\d{5,}/g) || []))]
+        .filter((h) => tagOptions.some((t) => t.handle === h));
+      return { text, mentionHandles: usedHandles };
     }
   }
 
@@ -804,7 +1405,7 @@ export function getConversationExchanges(jid, maxTurns = 12) {
  * Returns [{ scope: 'person'|'group', text, category }] — never throws.
  */
 export async function extractMemories({ groupName, senderName, exchanges, existingMemories = [] }) {
-  if (!genAI || !Array.isArray(exchanges) || exchanges.length === 0) return [];
+  if (!Array.isArray(exchanges) || exchanges.length === 0) return [];
 
   const exchangeText = exchanges
     .map((e) => `${e.role === 'model' ? "God's Virtue" : (senderName || 'Member')}: ${e.text}`)
@@ -823,28 +1424,23 @@ Max 4 items. If nothing is worth remembering, return [].
 Existing memories (do NOT repeat or rephrase these):
 ${existingMemories.length > 0 ? existingMemories.map((m) => `- ${m}`).join('\n') : '(none yet)'}`;
 
-  const models = await resolveModelList();
-  for (const modelName of models) {
-    const attempt = await attemptModelCall({
-      modelName,
-      systemInstruction: systemPrompt,
-      contents: [{ role: 'user', parts: [{ text: exchangeText }] }],
-      plainText: exchangeText,
-      temperature: 0.2,
-      useSearch: false,
-    });
-    if (attempt.text) {
-      const parsed = parseJsonLoose(attempt.text, true);
-      if (!Array.isArray(parsed)) return [];
-      return parsed
-        .filter((item) => item && typeof item.text === 'string' && item.text.trim())
-        .map((item) => ({
-          scope: item.scope === 'person' ? 'person' : 'group',
-          category: typeof item.category === 'string' ? item.category.slice(0, 30) : 'fact',
-          text: item.text.trim().slice(0, 300),
-        }))
-        .slice(0, 4);
-    }
+  const raw = await generateTextAcrossProviders({
+    systemPrompt,
+    userPrompt: exchangeText,
+    temperature: 0.2,
+    maxOutputTokens: 400,
+  });
+  if (raw) {
+    const parsed = parseJsonLoose(raw, true);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item.text === 'string' && item.text.trim())
+      .map((item) => ({
+        scope: item.scope === 'person' ? 'person' : 'group',
+        category: typeof item.category === 'string' ? item.category.slice(0, 30) : 'fact',
+        text: item.text.trim().slice(0, 300),
+      }))
+      .slice(0, 4);
   }
   return [];
 }
@@ -855,7 +1451,7 @@ ${existingMemories.length > 0 ? existingMemories.map((m) => `- ${m}`).join('\n')
  * Returns { stopDoing: string[], newRules: string[] }.
  */
 export async function reflectOnBehavior({ samples = [], currentRules = [] }) {
-  if (!genAI || samples.length === 0) return { stopDoing: [], newRules: [] };
+  if (samples.length === 0) return { stopDoing: [], newRules: [] };
 
   const sampleText = samples
     .map((s, i) =>
@@ -882,24 +1478,19 @@ Good rule examples:
 Current rules you already follow (do not repeat these):
 ${currentRules.length > 0 ? currentRules.map((r) => `- ${r}`).join('\n') : '(none)'}`;
 
-  const models = await resolveModelList();
-  for (const modelName of models) {
-    const attempt = await attemptModelCall({
-      modelName,
-      systemInstruction: systemPrompt,
-      contents: [{ role: 'user', parts: [{ text: sampleText }] }],
-      plainText: sampleText,
-      temperature: 0.5,
-      useSearch: false,
-    });
-    if (attempt.text) {
-      const parsed = parseJsonLoose(attempt.text, false);
-      if (!parsed || typeof parsed !== 'object') return { stopDoing: [], newRules: [] };
-      return {
-        stopDoing: Array.isArray(parsed.stopDoing) ? parsed.stopDoing.filter((s) => typeof s === 'string').slice(0, 3) : [],
-        newRules: Array.isArray(parsed.newRules) ? parsed.newRules.filter((s) => typeof s === 'string').slice(0, 3) : [],
-      };
-    }
+  const raw = await generateTextAcrossProviders({
+    systemPrompt,
+    userPrompt: sampleText,
+    temperature: 0.5,
+    maxOutputTokens: 400,
+  });
+  if (raw) {
+    const parsed = parseJsonLoose(raw, false);
+    if (!parsed || typeof parsed !== 'object') return { stopDoing: [], newRules: [] };
+    return {
+      stopDoing: Array.isArray(parsed.stopDoing) ? parsed.stopDoing.filter((s) => typeof s === 'string').slice(0, 3) : [],
+      newRules: Array.isArray(parsed.newRules) ? parsed.newRules.filter((s) => typeof s === 'string').slice(0, 3) : [],
+    };
   }
   return { stopDoing: [], newRules: [] };
 }

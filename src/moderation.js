@@ -261,16 +261,19 @@ export async function sendBotIntroduction(sock, groupJid, groupName = 'our commu
 /**
  * Sends the cheerful morning wake-up greeting when opening a group:
  * "Wakey Wakey, it's another beautiful day!" followed by unlocking the group.
+ * When a `timetableNote` is supplied (the group's lecture timetable), it is
+ * appended so members get today's schedule with the good-morning message.
  */
-export async function sendGroupOpeningGreeting(sock, groupJid, groupName = 'our community') {
+export async function sendGroupOpeningGreeting(sock, groupJid, groupName = 'our community', timetableNote = '') {
   const morningGreeting =
     `Good morning, everyone in ${groupName}.\n\n` +
     `The group is open again for the day. How was your night — sleep well?\n` +
-    `Anyone still stirring, say hello. Have a good one today.`;
+    `Anyone still stirring, say hello. Have a good one today.` +
+    (timetableNote ? `\n\n${timetableNote}` : '');
 
   try {
     await sock.sendMessage(groupJid, { text: morningGreeting });
-    console.log(`[moderation] Sent morning wake-up greeting to group ${groupJid}`);
+    console.log(`[moderation] Sent morning wake-up greeting to group ${groupJid}${timetableNote ? ' (with timetable)' : ''}`);
     return true;
   } catch (err) {
     console.warn(`[moderation] Failed to send morning opening greeting to ${groupJid}:`, err.message);
@@ -291,6 +294,7 @@ export async function sendDailyLockSummary({
   messages = [],
   botConfig = {},
   supabase = null,
+  timetableNote = '',
 }) {
   try {
     console.log(`[moderation] Preparing evening daily summary for "${groupName}" (${newMembers.length} joined, ${messages.length} messages)...`);
@@ -385,12 +389,14 @@ export async function sendDailyLockSummary({
       .map((m) => m.jid)
       .filter(Boolean);
 
+    const finalRecap = timetableNote ? `${summaryText}\n\n${timetableNote}` : summaryText;
+
     await sock.sendMessage(groupJid, {
-      text: summaryText,
+      text: finalRecap,
       mentions: mentionJids,
     });
 
-    console.log(`[moderation] Dispatched daily lock summary to "${groupName}"`);
+    console.log(`[moderation] Dispatched daily lock summary to "${groupName}"${timetableNote ? ' (with tomorrow\'s timetable)' : ''}`);
     return true;
   } catch (err) {
     console.warn(`[moderation] Failed to dispatch daily lock summary to ${groupJid}:`, err.message);

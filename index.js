@@ -72,10 +72,36 @@ function cacheMessage(id, message) {
 // Map<jid, timestamp>
 const quotaExhaustionWarnedChats = new Map();
 
+// ─── Diagnostic endpoint auth ───
+// /diag, /models and /test-ai expose account details and can burn paid/quota
+// calls, so they must never be world-readable. Set ADMIN_DIAG_TOKEN on Render
+// and call them with `x-diag-token: <token>` (or ?token=<token>).
+const DIAG_TOKEN = process.env.ADMIN_DIAG_TOKEN || process.env.WORKER_DIAG_TOKEN || '';
+
+function isDiagAuthorized(req) {
+  if (!DIAG_TOKEN) return process.env.NODE_ENV !== 'production';
+  try {
+    const url = new URL(req.url, 'http://localhost');
+    const provided = req.headers['x-diag-token'] || url.searchParams.get('token') || '';
+    return provided === DIAG_TOKEN;
+  } catch {
+    return false;
+  }
+}
+
+function rejectDiag(res) {
+  res.writeHead(401, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    error: 'Unauthorized. Set ADMIN_DIAG_TOKEN on the worker and send it as the x-diag-token header (or ?token=).',
+  }));
+}
+
 // ─── Health Check HTTP Server (Bind Immediately for Render / Cloud Web Services) ───
 const PORT = process.env.PORT || 8080;
 const server = http.createServer(async (req, res) => {
-  if (req.url === '/' || req.url === '/health') {
+  const requestUrl = new URL(req.url || '/', 'http://localhost');
+  const pathname = requestUrl.pathname;
+  if (pathname === '/' || pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       status: 'ok',
@@ -83,7 +109,8 @@ const server = http.createServer(async (req, res) => {
       uptime: Math.floor(process.uptime()),
       timestamp: new Date().toISOString()
     }));
-  } else if (req.url === '/diag') {
+  } else if (pathname === '/diag') {
+    if (!isDiagAuthorized(req)) return rejectDiag(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     const effectiveKey = cachedApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     const nowUtc = new Date().toISOString();
@@ -125,13 +152,20 @@ const server = http.createServer(async (req, res) => {
         lockTime: g.auto_lock_time,
         openTime: g.auto_open_time,
       })),
+      providers: getAIProviderHealth(),
       announcements: pendingAnnouncements,
       lastAIError,
       allModelErrors,
       memory: getMemoryStats(),
       learnedRules: listLearnedRules(),
+      timetables: getTimetableStats(),
+      knowledge: getKnowledgeStats(),
+      engagement: getEngagementStats(),
+      moderationPlus: getModerationStats(),
+      mediaTools: getMediaToolStatus(),
     }, null, 2));
-  } else if (req.url === '/models') {
+  } else if (pathname === '/models') {
+    if (!isDiagAuthorized(req)) return rejectDiag(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     const effectiveKey = cachedApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     try {
@@ -141,7 +175,8 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       res.end(JSON.stringify({ error: e.message }));
     }
-  } else if (req.url === '/test-ai') {
+  } else if (pathname === '/test-ai') {
+    if (!isDiagAuthorized(req)) return rejectDiag(res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     try {
       const testResult = await generateResponse({
@@ -180,13 +215,14 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   Browsers,
   areJidsSameUser,
+  downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import { createClient } from '@supabase/supabase-js';
 import qrcode from 'qrcode-terminal';
 
 import { useSupabaseAuthState, clearSession } from './src/supabase-auth-adapter.js';
-import { initAI, generateResponse, getConversationExchanges, MASTER_SYSTEM_PROMPT, cachedApiKey, lastAIError, allModelErrors } from './src/ai-engine.js';
+import { initAI, generateResponse, getConversationExchanges, MASTER_SYSTEM_PROMPT, buildOwnerProfileContext, cachedApiKey, lastAIError, allModelErrors, getAIProviderHealth } from './src/ai-engine.js';
 import {
   simulateHumanPresence,
   checkRateLimit,
@@ -236,15 +272,51 @@ import {
   clearLearnedRules,
 } from './src/self-improver.js';
 import { lagosDateLine, lagosHHmm } from './src/time-utils.js';
+import {
+  bindTimetableClient,
+  loadTimetables,
+  hasActiveTimetable,
+  getReminderTimes,
+  buildNightReminder,
+  buildMorningReminder,
+  buildTimetableContext,
+  processPendingTimetables,
+  getTimetableStats,
+} from './src/timetable.js';
+import { buildGroupUpsert, buildDiscoveryUpsert } from './src/group-sync.js';
+import { decideScheduleAction, scheduleSlotKey } from './src/schedule.js';
+import { buildLanguageInstruction } from './src/language.js';
+import {
+  bindKnowledgeClient,
+  loadKnowledge,
+  buildKnowledgeContext,
+  getKnowledgeStats,
+} from './src/knowledge.js';
+import {
+  analyzeMessage,
+  processSmartModeration,
+  recordGroupJoin,
+  getModerationStats,
+} from './src/moderation-plus.js';
+import {
+  bindEngagementClient,
+  processDueReminders,
+  getEngagementStats,
+} from './src/engagement-plus.js';
+import { makeVoiceNote, getMediaToolStatus } from './src/media-tools.js';
 
 // ─── Initialize Supabase Client ───
 const supabaseUrl = process.env.NEXT_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+// RLS on every gods_virtue_* table is service-role-only. Do not silently fall
+// back to the public anon key: it would fail anyway and hides a misconfiguration.
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 let supabase = null;
 
 if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
   console.log('[main] Connected to Supabase cloud database.');
+} else if (supabaseUrl && !supabaseKey) {
+  console.warn('[main] SUPABASE_SERVICE_ROLE_KEY is missing. Supabase is disabled because the database now requires service-role access.');
 } else {
   console.warn('[main] Supabase credentials not found in env. Running in local standalone mode.');
 }
@@ -256,9 +328,14 @@ initAI(process.env.GEMINI_API_KEY);
 bindRosterClient(supabase);
 bindMemoryClient(supabase);
 bindSelfImproverClient(supabase);
+bindTimetableClient(supabase);
+bindKnowledgeClient(supabase);
+bindEngagementClient(supabase);
 loadMemberRoster().catch((e) => console.warn('[roster] Boot load warning:', e?.message || e));
 loadMemories().catch((e) => console.warn('[memory] Boot load warning:', e?.message || e));
 loadLearnedRules().catch((e) => console.warn('[self-improver] Boot load warning:', e?.message || e));
+loadTimetables().catch((e) => console.warn('[timetable] Boot load warning:', e?.message || e));
+loadKnowledge().catch((e) => console.warn('[knowledge] Boot load warning:', e?.message || e));
 
 // ─── Local Configuration State ───
 let botConfig = {
@@ -355,6 +432,11 @@ async function processPendingWelcomes() {
 // group object from Supabase every 5 seconds, which silently wiped any in-memory
 // guard stored on those objects (allowing duplicate evening recaps / morning greetings).
 const firedScheduleSlots = new Set();
+const scheduleFailCooldowns = new Map(); // slot key -> last failure timestamp
+function scheduleRetryCooling(key) {
+  const at = scheduleFailCooldowns.get(key);
+  return Boolean(at && Date.now() - at < 5 * 60 * 1000);
+}
 function markScheduleSlot(key) {
   firedScheduleSlots.add(key);
   if (firedScheduleSlots.size > 5000) {
@@ -454,6 +536,10 @@ function buildBotDutySheet(groupJid) {
     lines.push(`THIS GROUP IS CURRENTLY LOCKED (only admins can post).`);
   }
 
+  // Lecture timetable (only present for the class group it was uploaded for)
+  const timetableContext = buildTimetableContext(groupJid);
+  if (timetableContext) lines.push(timetableContext);
+
   const dutyBits = [];
   if (duty.welcomes > 0) dutyBits.push(`welcomed ${duty.welcomes} new member(s) today`);
   if (duty.recaps > 0) dutyBits.push(`posted today's recap${duty.lastRecapAt ? ` at ${duty.lastRecapAt}` : ''}`);
@@ -469,6 +555,28 @@ function buildBotDutySheet(groupJid) {
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Normalises a group row read from Supabase. A partial row (or one written before
+ * a column existed) must never silently switch moderation/scheduling off: NULL is
+ * treated as the secure default, while an explicit `false` is respected.
+ */
+function normalizeGroupSettings(row) {
+  if (!row) return row;
+  const bool = (value, fallback) => (value === undefined || value === null ? fallback : value);
+  return {
+    ...row,
+    is_monitored: bool(row.is_monitored, true),
+    anti_link_enabled: bool(row.anti_link_enabled, true),
+    auto_welcome_enabled: bool(row.auto_welcome_enabled, true),
+    schedule_enabled: bool(row.schedule_enabled, false),
+    is_locked: bool(row.is_locked, false),
+    bot_is_admin: bool(row.bot_is_admin, false),
+    max_strikes: Number(row.max_strikes) > 0 ? Number(row.max_strikes) : 3,
+    auto_lock_time: row.auto_lock_time || '22:00',
+    auto_open_time: row.auto_open_time || '06:00',
+  };
 }
 
 // Sync config from Supabase
@@ -497,6 +605,21 @@ async function syncConfigFromCloud() {
         console.log(`[main] Upgraded legacy persona prompt to modern MASTER_SYSTEM_PROMPT (${directives.length} admin directive(s) preserved).`);
       }
 
+      // Narrow identity migration: the bot no longer runs on Gemini alone, so a
+      // prompt that still claims a single provider is corrected without touching
+      // the owner's tone/instructions.
+      if (data.system_prompt && /powered by Google'?s? (cutting-edge )?Gemini/i.test(data.system_prompt)) {
+        data.system_prompt = data.system_prompt.replace(
+          /You are powered by Google'?s?[^.]*\./i,
+          "You are powered by a resilient multi-model AI stack (Google Gemini, Groq, and Cloudflare Workers AI) that fails over automatically when a provider is busy."
+        );
+        await supabase
+          .from('gods_virtue_config')
+          .update({ system_prompt: data.system_prompt })
+          .eq('id', 'primary');
+        console.log('[main] Updated persona identity line to reflect the multi-model AI stack.');
+      }
+
       if (botConfig.is_active !== data.is_active) {
         console.log(`[main] Bot kill-switch updated from dashboard: ${data.is_active ? 'ACTIVE (auto-replies enabled)' : 'PAUSED (auto-replies muted)'}`);
       }
@@ -506,7 +629,7 @@ async function syncConfigFromCloud() {
 
     const { data: grpData } = await supabase.from('gods_virtue_groups').select('*');
     if (grpData) {
-      grpData.forEach((g) => groupSettingsCache.set(g.group_jid, g));
+      grpData.forEach((g) => groupSettingsCache.set(g.group_jid, normalizeGroupSettings(g)));
     }
 
     // Refresh authorized admins from cloud DB
@@ -519,7 +642,36 @@ async function syncConfigFromCloud() {
 // ─── Primary Bot Socket Lifecycle ───
 let sock = null;
 let lastGroupSyncTime = 0;
+const groupMissCounts = new Map(); // group_jid -> consecutive scans the bot was absent
 const GROUP_SYNC_COOLDOWN_MS = 300000; // 5 minutes minimum between automated scans to prevent rate-overlimit
+
+// Persist ONE group row without ever clobbering settings that already exist.
+//   • existing row  → merge only the WhatsApp-owned metadata we send.
+//   • brand-new row → insert-if-absent (ignoreDuplicates) then apply metadata, so
+//     a row we simply haven't cached yet is never overwritten with defaults.
+async function persistGroupRow({ jid, upsert, isNew }) {
+  if (!supabase) return;
+  const ownedUpdate = {
+    group_name: upsert.group_name,
+    member_count: upsert.member_count,
+    bot_is_admin: upsert.bot_is_admin,
+    updated_at: upsert.updated_at,
+  };
+  // `is_locked` mirrors WhatsApp's real announce state when metadata exposes it.
+  if (typeof upsert.is_locked === 'boolean') ownedUpdate.is_locked = upsert.is_locked;
+
+  if (isNew) {
+    await supabase
+      .from('gods_virtue_groups')
+      .upsert(upsert, { onConflict: 'group_jid', ignoreDuplicates: true });
+    await supabase
+      .from('gods_virtue_groups')
+      .update(ownedUpdate)
+      .eq('group_jid', jid);
+  } else {
+    await supabase.from('gods_virtue_groups').upsert(upsert, { onConflict: 'group_jid' });
+  }
+}
 
 // Sync all participating WhatsApp groups to Supabase
 async function syncAllGroups(force = false) {
@@ -536,7 +688,7 @@ async function syncAllGroups(force = false) {
     try {
       const { data: dbGroups } = await supabase.from('gods_virtue_groups').select('*');
       if (dbGroups) {
-        dbGroups.forEach((g) => groupSettingsCache.set(g.group_jid, g));
+        dbGroups.forEach((g) => groupSettingsCache.set(g.group_jid, normalizeGroupSettings(g)));
       }
     } catch (dbSyncErr) {
       console.warn('[groups] Could not pre-fetch groups from Supabase:', dbSyncErr.message);
@@ -546,22 +698,31 @@ async function syncAllGroups(force = false) {
     const botIds = getBotIdentifiers(sock);
     const participatingJids = new Set(Object.keys(groups));
 
-    // 1. Remove groups from database and cache where bot was removed/left OR where bot is not admin
-    if (supabase) {
+    // 1. Remove groups from the database ONLY when the bot has genuinely left
+    //    them. `groupFetchAllParticipating()` occasionally returns a partial list
+    //    after a reconnect, so a single missing entry is not proof: a row must be
+    //    missing from THREE consecutive scans (~15 min) before it is deleted.
+    //    This is what silently removed a still-active group (and its lock/open
+    //    schedule) in the past.
+    if (supabase && participatingJids.size > 0) {
       try {
         const { data: dbAllGroups } = await supabase.from('gods_virtue_groups').select('group_jid, bot_is_admin');
         if (dbAllGroups && dbAllGroups.length > 0) {
           const jidsToDelete = [];
           for (const dbG of dbAllGroups) {
-            // Delete if bot is not participating in the WhatsApp group anymore
-            if (!participatingJids.has(dbG.group_jid)) {
-              jidsToDelete.push(dbG.group_jid);
+            if (participatingJids.has(dbG.group_jid)) {
+              groupMissCounts.delete(dbG.group_jid);
+              continue;
             }
+            const misses = (groupMissCounts.get(dbG.group_jid) || 0) + 1;
+            groupMissCounts.set(dbG.group_jid, misses);
+            if (misses >= 3) jidsToDelete.push(dbG.group_jid);
           }
           if (jidsToDelete.length > 0) {
-            console.log(`[groups] Pruning ${jidsToDelete.length} group(s) where bot is no longer participating:`, jidsToDelete);
+            console.log(`[groups] Pruning ${jidsToDelete.length} group(s) confirmed absent from WhatsApp for 3 scans:`, jidsToDelete);
             for (const deadJid of jidsToDelete) {
               groupSettingsCache.delete(deadJid);
+              groupMissCounts.delete(deadJid);
               await supabase.from('gods_virtue_groups').delete().eq('group_jid', deadJid);
             }
           }
@@ -571,19 +732,27 @@ async function syncAllGroups(force = false) {
       }
     }
 
-    // 2. Sync all participating groups where the bot is an admin
+    // 2. Sync all participating groups (admin OR member) so the dashboard always
+    //    reflects every group the bot is actually in.
     for (const [jid, metadata] of Object.entries(groups)) {
       const isAdmin = metadata.participants?.some((p) => {
         const isMe = isBotIdentifierMatch(p.id, botIds);
         return isMe && (p.admin === 'admin' || p.admin === 'superadmin');
       }) || false;
 
-      // If the bot is not admin in this group, do not store or keep in dashboard
+      // Bot is a member but not an admin: keep the row on the dashboard (deleting
+      // it would wipe the owner's settings) and just record the reduced privileges.
       if (!isAdmin) {
-        groupSettingsCache.delete(jid);
-        if (supabase) {
-          await supabase.from('gods_virtue_groups').delete().eq('group_jid', jid);
+        const existingRow = groupSettingsCache.get(jid);
+        const { upsert, cacheEntry, isNew } = buildGroupUpsert({ jid, metadata, existingRow, isAdmin: false });
+        // WhatsApp is the source of truth for lock state; a stale dashboard flag
+        // used to stop the morning auto-open branch from ever firing.
+        if (typeof metadata?.announce === 'boolean') {
+          upsert.is_locked = metadata.announce;
+          cacheEntry.is_locked = metadata.announce;
         }
+        groupSettingsCache.set(jid, cacheEntry);
+        await persistGroupRow({ jid, upsert, isNew });
         continue;
       }
 
@@ -607,57 +776,15 @@ async function syncAllGroups(force = false) {
       }
 
       const existing = groupSettingsCache.get(jid);
-
-      if (existing) {
-        // Group already exists in DB: ONLY update WhatsApp-owned metadata
-        // NEVER overwrite user settings (is_monitored, anti_link_enabled, schedules, etc.)
-        const metaUpdate = {
-          group_name: metadata.subject || existing.group_name || 'WhatsApp Group',
-          member_count: metadata.participants?.length || 0,
-          bot_is_admin: true,
-          updated_at: new Date().toISOString(),
-        };
-
-        Object.assign(existing, metaUpdate);
-
-        await supabase
-          .from('gods_virtue_groups')
-          .update(metaUpdate)
-          .eq('group_jid', jid);
-      } else {
-        // Newly discovered group where bot is admin: insert with initial defaults
-        const newRecord = {
-          group_jid: jid,
-          group_name: metadata.subject || 'WhatsApp Group',
-          member_count: metadata.participants?.length || 0,
-          bot_is_admin: true,
-          is_monitored: true,
-          anti_link_enabled: true,
-          auto_welcome_enabled: true,
-          max_strikes: 3,
-          schedule_enabled: false,
-          auto_lock_time: '22:00',
-          auto_open_time: '06:00',
-          is_locked: false,
-          updated_at: new Date().toISOString(),
-        };
-
-        // Use ignoreDuplicates: true to ensure existing Supabase rows are NEVER overwritten with defaults!
-        await supabase.from('gods_virtue_groups').upsert(newRecord, { onConflict: 'group_jid', ignoreDuplicates: true });
-
-        // Update read-only metadata (name, count, admin status)
-        const metaUpdate = {
-          group_name: metadata.subject || 'WhatsApp Group',
-          member_count: metadata.participants?.length || 0,
-          bot_is_admin: true,
-          updated_at: new Date().toISOString(),
-        };
-        await supabase.from('gods_virtue_groups').update(metaUpdate).eq('group_jid', jid);
-
-        groupSettingsCache.set(jid, { ...newRecord, ...metaUpdate });
+      const { upsert, cacheEntry, isNew } = buildGroupUpsert({ jid, metadata, existingRow: existing, isAdmin: true });
+      if (typeof metadata?.announce === 'boolean') {
+        upsert.is_locked = metadata.announce;
+        cacheEntry.is_locked = metadata.announce;
       }
+      groupSettingsCache.set(jid, cacheEntry);
+      await persistGroupRow({ jid, upsert, isNew });
     }
-    console.log(`[groups] Synced active admin groups to Supabase.`);
+    console.log(`[groups] Synced ${Object.keys(groups).length} participating group(s) to Supabase.`);
   } catch (gErr) {
     if (gErr.message?.includes('rate-overlimit')) {
       console.log('[groups] WhatsApp rate limit active, backing off automated group scans.');
@@ -754,19 +881,39 @@ async function startBot() {
     },
   });
 
-  // Helper to download media from WhatsApp (images, audio, stickers, videos, documents)
-async function downloadMedia(sock, msg) {
-  try {
-    if (!msg) return null;
-    const buffer = await sock.downloadMediaMessage(msg);
-    if (!buffer) return null;
-    const mimeType = msg.mimetype || msg.imageMessage?.mimetype || msg.audioMessage?.mimetype || msg.videoMessage?.mimetype || msg.documentMessage?.mimetype || msg.stickerMessage?.mimetype || 'application/octet-stream';
-    return { buffer: Buffer.from(buffer), mimeType };
-  } catch (e) {
-    console.warn('[media] Download failed:', e.message);
-    return null;
+  // Helper to download media from WhatsApp (images, audio, stickers, videos, documents).
+  // NOTE: `sock.downloadMediaMessage` does not exist in Baileys 6.x — it is a
+  // standalone helper that needs the FULL WAMessage (not the unwrapped body).
+  async function downloadMedia(msg) {
+    try {
+      const inner = unwrapMessage(msg?.message);
+      const node =
+        inner?.imageMessage ||
+        inner?.audioMessage ||
+        inner?.videoMessage ||
+        inner?.documentMessage ||
+        inner?.stickerMessage ||
+        null;
+      if (!node) return null;
+
+      const buffer = await downloadMediaMessage(
+        msg,
+        'buffer',
+        {},
+        {
+          logger: pino({ level: 'silent' }),
+          reuploadRequest: sock.updateMediaMessage,
+        }
+      );
+      if (!buffer) return null;
+
+      const mimeType = node.mimetype || 'application/octet-stream';
+      return { buffer: Buffer.from(buffer), mimeType, seconds: node.seconds || 0 };
+    } catch (e) {
+      console.warn('[media] Download failed:', e.message);
+      return null;
+    }
   }
-}
 
   // Intercept sock.sendMessage to automatically track all sent message IDs and cache for decryption retries
   const originalSendMessage = sock.sendMessage.bind(sock);
@@ -997,6 +1144,11 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         const senderName = m.pushName || 'Friend';
         const botIds = getBotIdentifiers(sock);
 
+        // ─── Critical loop protection: never download or answer our own messages ───
+        if (m.key.fromMe) continue;
+        if (m?.key?.id && botSentMessageIds.has(m.key.id)) continue;
+        if (senderJid && isBotIdentifierMatch(senderJid, botIds)) continue;
+
         // Extract message text content from unwrapped message
         const innerMsg = unwrapMessage(m.message);
         const messageText =
@@ -1010,22 +1162,22 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           innerMsg?.listResponseMessage?.title ||
           '';
 
-        // Detect media attachments
+        // Detect media attachments (pass the FULL message — Baileys needs the key)
         let media = null;
         if (innerMsg?.imageMessage) {
-          media = await downloadMedia(sock, innerMsg);
+          media = await downloadMedia(m);
           if (media) media.type = 'image';
         } else if (innerMsg?.audioMessage || innerMsg?.pttMessage) {
-          media = await downloadMedia(sock, innerMsg);
+          media = await downloadMedia(m);
           if (media) media.type = 'audio';
         } else if (innerMsg?.stickerMessage) {
-          media = await downloadMedia(sock, innerMsg);
+          media = await downloadMedia(m);
           if (media) media.type = 'sticker';
         } else if (innerMsg?.videoMessage) {
-          media = await downloadMedia(sock, innerMsg);
+          media = await downloadMedia(m);
           if (media) media.type = 'video';
         } else if (innerMsg?.documentMessage) {
-          media = await downloadMedia(sock, innerMsg);
+          media = await downloadMedia(m);
           if (media) media.type = 'document';
         }
 
@@ -1041,12 +1193,6 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         // If no text but has media, still process if addressed to bot
         const hasMedia = Boolean(media);
         if (!messageText.trim() && !hasMedia) continue;
-
-        // ─── Critical Loop Protection: Skip messages sent by the bot itself ───
-        if (m.key.fromMe) continue;
-        if (m?.key?.id && botSentMessageIds.has(m.key.id)) continue;
-
-        if (senderJid && isBotIdentifierMatch(senderJid, botIds)) continue;
 
         // ─── Direct Admin Command Handling (.prefix) in DM or Group ───
         if (messageText.trim().startsWith('.')) {
@@ -1099,6 +1245,18 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
               max_strikes: 3,
             };
             groupSettingsCache.set(jid, gSettings);
+            // Persist immediately so the dashboard always reflects every group the
+            // bot is active in — even if a join/promote event was missed offline.
+            // ignoreDuplicates leaves any existing row (and its settings) untouched.
+            if (supabase) {
+              supabase
+                .from('gods_virtue_groups')
+                .upsert(buildDiscoveryUpsert({ jid, groupName: gSettings.group_name }), {
+                  onConflict: 'group_jid',
+                  ignoreDuplicates: true,
+                })
+                .then(() => {}, () => {});
+            }
           }
 
           if (!gSettings.is_monitored) {
@@ -1124,6 +1282,47 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
 
         // 1. Group Moderation: Anti-Link Shield
         if (isGroup) {
+          // Smart moderation 2.0 runs first: flood / duplicate / mention spam.
+          // Only confirmed non-admins are actioned, and a detection short-circuits
+          // the AI reply so the bot does not reward spam with attention.
+          try {
+            const contextInfo =
+              innerMsg?.extendedTextMessage?.contextInfo ||
+              innerMsg?.imageMessage?.contextInfo ||
+              innerMsg?.videoMessage?.contextInfo ||
+              innerMsg?.documentMessage?.contextInfo ||
+              {};
+            const mentionedJids = Array.isArray(contextInfo.mentionedJid) ? contextInfo.mentionedJid : [];
+            const detection = analyzeMessage({
+              groupJid: jid,
+              senderJid,
+              text: messageText,
+              mentions: mentionedJids,
+            });
+
+            if (detection.triggered) {
+              const senderIsAdmin = await isGroupAdmin(sock, jid, senderJid);
+              const outcome = await processSmartModeration({
+                sock,
+                groupJid: jid,
+                senderJid,
+                senderName,
+                messageKey: m.key,
+                rawText: messageText,
+                detection,
+                isAdmin: senderIsAdmin,
+                groupSettings: groupSettingsCache.get(jid) || {},
+                supabase,
+              });
+              if (outcome) {
+                console.log(`[moderation-plus] ${outcome.action} for ${senderName} in ${jid} (${detection.reason}: ${detection.detail || ''})`);
+                continue; // handled — do not generate an AI reply for this message
+              }
+            }
+          } catch (smartErr) {
+            console.warn('[moderation-plus] Check failed (continuing):', smartErr?.message || smartErr);
+          }
+
           const groupSettings = groupSettingsCache.get(jid) || {
             anti_link_enabled: true,
             max_strikes: 3,
@@ -1259,11 +1458,22 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
 
         // Dynamic context: what it remembers + rules it learned + its live duty sheet
         const recalledMemories = recallFor({ groupJid: isGroup ? jid : null, senderJid, incomingText: messageText });
+        const knowledgeContext = await buildKnowledgeContext({
+          groupJid: isGroup ? jid : null,
+          query: messageText,
+          limit: 3,
+        });
         const extraContext = [
+          // Permanent owner profile — injected on EVERY reply so the bot always knows
+          // its creator is male and to address him as "Boss"/"Sir".
+          buildOwnerProfileContext({ isOwnerSender: isAdminSender }),
+          // Owner-curated facts (RAG-style) and the member's language.
+          knowledgeContext,
+          buildLanguageInstruction(messageText),
           buildMemoryContext(recalledMemories),
           buildLearnedRulesContext(),
           isGroup ? buildBotDutySheet(jid) : `RIGHT NOW: It is ${lagosHHmm()} on ${lagosDateLine()} (Africa/Lagos).`,
-        ];
+        ].filter(Boolean);
 
         const replyResult = await generateResponse({
           jid,
@@ -1280,6 +1490,14 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         if (!replyResult) continue;
 
         const reply = typeof replyResult === 'string' ? replyResult : (replyResult.text || String(replyResult));
+
+        // No usable AI reply (model failed, and it is not the quota notice): stay
+        // silent instead of sending a canned or empty message.
+        if (!String(reply || '').trim()) {
+          console.warn(`[main] No usable AI reply for ${jid} — staying silent (no canned fallback).`);
+          continue;
+        }
+
         const isAllQuotaExhausted = Boolean(replyResult?.isAllQuotaExhausted);
 
         // If ALL model quotas have been exhausted for today:
@@ -1305,15 +1523,40 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         // 5. Simulate Human Presence (Random Jitter Delay + Realistic Typing State)
         const presenceResult = await simulateHumanPresence(sock, jid, m.key, reply, botConfig);
 
-        // 6. Send the message
-        const sentReply = await sock.sendMessage(
-          jid,
-          {
-            text: reply,
-            mentions: isGroup ? [senderJid] : [],
-          },
-          { quoted: m }
-        );
+        // 6. Send the message (voice note in reply to a voice note, when TTS is available)
+        let sentReply = null;
+        const shouldVoiceReply =
+          media?.type === 'audio' &&
+          !isAllQuotaExhausted &&
+          reply.length > 8 &&
+          reply.length <= 1200;
+
+        if (shouldVoiceReply) {
+          try {
+            const voice = await makeVoiceNote(reply);
+            if (voice) {
+              sentReply = await sock.sendMessage(
+                jid,
+                { audio: voice.buffer, mimetype: voice.mimetype, ptt: false },
+                { quoted: m }
+              );
+              console.log('[main] Sent voice-note reply (Cloudflare TTS).');
+            }
+          } catch (voiceErr) {
+            console.warn('[main] Voice reply failed, falling back to text:', voiceErr?.message || voiceErr);
+          }
+        }
+
+        if (!sentReply) {
+          sentReply = await sock.sendMessage(
+            jid,
+            {
+              text: reply,
+              mentions: isGroup ? [senderJid] : [],
+            },
+            { quoted: m }
+          );
+        }
         if (sentReply?.key?.id && sentReply?.message) {
           cacheMessage(sentReply.key.id, sentReply.message);
         }
@@ -1394,6 +1637,38 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
       const humanParticipants = participants.filter((p) => !isBotIdentifierMatch(p, botIds) && !welcomedUserJids.has(p));
       if (humanParticipants.length === 0) return;
 
+      // Join-raid detection: many accounts joining within a short window.
+      let raidDetected = false;
+      let raidCount = 0;
+      for (const _p of humanParticipants) {
+        const joinState = recordGroupJoin(groupJid);
+        raidCount = joinState.count;
+        if (joinState.raid) raidDetected = true;
+      }
+
+      if (raidDetected) {
+        const groupLabel = groupSettingsCache.get(groupJid)?.group_name || groupJid;
+        console.warn(`[moderation-plus] Possible join raid in "${groupLabel}": ${raidCount} joins within the window.`);
+        const ownerDigits = (process.env.OWNER_PHONE || process.env.ADMIN_PHONE || '')
+          .split(',')[0]
+          .replace(/\D/g, '');
+        if (ownerDigits) {
+          sock.sendMessage(`${ownerDigits}@s.whatsapp.net`, {
+            text:
+              `⚠️ *Possible join raid*\n\n"${groupLabel}" received ${raidCount} new members in a short window.\n` +
+              `Review the group and remove fake accounts if needed.`,
+          }).catch(() => {});
+        }
+        if (process.env.MODERATION_AUTO_LOCK_ON_RAID === 'true') {
+          try {
+            await sock.groupSettingUpdate(groupJid, 'announcement');
+            console.log(`[moderation-plus] Auto-locked "${groupLabel}" after raid detection.`);
+          } catch (lockErr) {
+            console.warn('[moderation-plus] Raid auto-lock failed:', lockErr?.message || lockErr);
+          }
+        }
+      }
+
       // Mark as known in the durable roster (so restarts/reconciliations never
       // double-welcome them, and the recap can still list them after a redeploy)
       for (const p of humanParticipants) {
@@ -1449,10 +1724,22 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
             await supabase.from('gods_virtue_groups').delete().eq('group_jid', groupJid);
           }
         } else if (action === 'demote') {
-          console.log(`[groups] Bot was demoted from admin in group ${groupJid}. Removing from dashboard...`);
-          groupSettingsCache.delete(groupJid);
+          console.log(`[groups] Bot was demoted from admin in group ${groupJid}. Keeping it on the dashboard as a member.`);
+          const demotedMeta = groupSettingsCache.get(groupJid) || { group_jid: groupJid };
+          demotedMeta.bot_is_admin = false;
+          if (demotedMeta.is_monitored === undefined) demotedMeta.is_monitored = true;
+          groupSettingsCache.set(groupJid, demotedMeta);
           if (supabase) {
-            await supabase.from('gods_virtue_groups').delete().eq('group_jid', groupJid);
+            try {
+              await supabase.from('gods_virtue_groups').upsert({
+                group_jid: groupJid,
+                is_monitored: demotedMeta.is_monitored,
+                bot_is_admin: false,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'group_jid' });
+            } catch (dbErr) {
+              console.warn('[groups] Upsert group on demote warning:', dbErr.message);
+            }
           }
         }
       } else if (action === 'remove') {
@@ -1474,25 +1761,29 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
       for (const grp of newGroups) {
         if (grp.id) {
           const cached = groupSettingsCache.get(grp.id) || {};
-          cached.is_monitored = true;
+          if (cached.is_monitored === undefined) cached.is_monitored = true;
           cached.group_name = grp.subject || cached.group_name || 'WhatsApp Group';
           groupSettingsCache.set(grp.id, cached);
           if (supabase) {
             try {
+              // NON-DESTRUCTIVE: inserting a brand-new row seeds defaults, but an
+              // existing row keeps the owner's schedule/lock/moderation settings.
+              // (This handler used to reset schedule_enabled/is_locked on every
+              // reconnect, which silently killed auto lock/open for whole groups.)
               await supabase.from('gods_virtue_groups').upsert({
                 group_jid: grp.id,
                 group_name: grp.subject || 'WhatsApp Group',
                 is_monitored: true,
-                anti_link_enabled: true,
-                auto_welcome_enabled: true,
-                max_strikes: 3,
-                schedule_enabled: false,
-                auto_lock_time: '22:00',
-                auto_open_time: '06:00',
-                is_locked: false,
-                bot_is_admin: false,
                 updated_at: new Date().toISOString(),
-              }, { onConflict: 'group_jid' });
+              }, { onConflict: 'group_jid', ignoreDuplicates: true });
+
+              await supabase
+                .from('gods_virtue_groups')
+                .update({
+                  group_name: grp.subject || 'WhatsApp Group',
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('group_jid', grp.id);
             } catch (upsertErr) {
               console.warn('[groups] Groups upsert error:', upsertErr.message);
             }
@@ -2097,6 +2388,16 @@ setInterval(async () => {
       await syncAllGroups();
     }
 
+    // 1b. Deliver any due reminders (polls/RSVP follow-ups)
+    if (sock?.user) {
+      try {
+        const delivered = await processDueReminders({ sock, limit: 10 });
+        if (delivered > 0) console.log(`[engagement] Delivered ${delivered} due reminder(s).`);
+      } catch (remErr) {
+        console.warn('[engagement] Reminder loop warning:', remErr?.message || remErr);
+      }
+    }
+
     // 2. Check for Scheduled Broadcast Announcements
     if (supabase && sock?.user) {
       try {
@@ -2144,21 +2445,43 @@ setInterval(async () => {
 
       for (const [groupJid, settings] of groupSettingsCache.entries()) {
         if (!settings.schedule_enabled || !settings.is_monitored) continue;
-        const shouldLock = settings.auto_lock_time && settings.auto_lock_time === lagosHHmm;
-        const shouldOpen = settings.auto_open_time && settings.auto_open_time === lagosHHmm;
 
-        const lockKey = `${groupJid}_${todayLagosStr}_${lagosHHmm}_lock`;
-        const openKey = `${groupJid}_${todayLagosStr}_${lagosHHmm}_open`;
+        // Catch up to 3h late: a deploy/restart that straddles the target minute
+        // must not silently skip the whole day's lock/open.
+        const decision = decideScheduleAction({
+          nowHHmm: lagosHHmm,
+          autoLockTime: settings.auto_lock_time,
+          autoOpenTime: settings.auto_open_time,
+          isLocked: Boolean(settings.is_locked),
+        });
+        const shouldLock = decision.action === 'lock';
+        const shouldOpen = decision.action === 'open';
 
-        if (shouldLock && !settings.is_locked && !firedScheduleSlots.has(lockKey)) {
+        // Stable per-day slot keys (the old key embedded the current HH:mm, so the
+        // guard never matched across the 10s loop and could fire twice).
+        const lockKey = scheduleSlotKey(groupJid, todayLagosStr, 'lock');
+        const openKey = scheduleSlotKey(groupJid, todayLagosStr, 'open');
+
+        if (shouldLock && !settings.is_locked && !firedScheduleSlots.has(lockKey) && !scheduleRetryCooling(lockKey)) {
           markScheduleSlot(lockKey);
           try {
             await sock.groupSettingUpdate(groupJid, 'announcement');
-            settings.is_locked = true;
-            await supabase.from('gods_virtue_groups').update({ is_locked: true }).eq('group_jid', groupJid);
-            console.log(`[schedule] Auto-locked group ${groupJid} at Lagos time: ${lagosHHmm}`);
+          } catch (lockErr) {
+            // Allow a retry after 5 minutes (e.g. the bot was briefly demoted).
+            firedScheduleSlots.delete(lockKey);
+            scheduleFailCooldowns.set(lockKey, Date.now());
+            console.warn(`[schedule] Auto-lock failed for ${groupJid}:`, lockErr.message);
+            continue;
+          }
 
-            // Dispatch evening daily summary recap
+          settings.is_locked = true;
+          await supabase.from('gods_virtue_groups').update({ is_locked: true }).eq('group_jid', groupJid)
+            .then(() => {}, (dbErr) => console.warn('[schedule] Could not persist lock state:', dbErr.message));
+          console.log(`[schedule] Auto-locked group ${groupJid} at Lagos time: ${lagosHHmm}`);
+
+          // Side effects must never undo a successful lock (that used to retry the
+          // whole branch and duplicate the recap).
+          try {
             const activity = getGroupDailyActivity(groupJid);
             await sleep(1500);
             await sendDailyLockSummary({
@@ -2170,32 +2493,52 @@ setInterval(async () => {
               messages: activity.messages,
               botConfig,
               supabase,
+              timetableNote: buildNightReminder(groupJid),
             });
             const duty = getGroupDutyLog(groupJid);
             duty.recaps += 1;
-            duty.lastRecapAt = lagosHHmm();
+            duty.lastRecapAt = lagosHHmm;
             activity.newMembers = [];
             activity.messages = [];
-          } catch (lockErr) {
-            console.warn(`[schedule] Auto-lock failed for ${groupJid}:`, lockErr.message);
+          } catch (recapErr) {
+            console.warn(`[schedule] Group locked, but recap failed for ${groupJid}:`, recapErr.message);
           }
-        } else if (shouldOpen && settings.is_locked && !firedScheduleSlots.has(openKey)) {
+        } else if (shouldOpen && settings.is_locked && !firedScheduleSlots.has(openKey) && !scheduleRetryCooling(openKey)) {
           markScheduleSlot(openKey);
+
+          // Greeting first (with today's lectures, if any), but a greeting failure
+          // must never leave the group locked.
           try {
-            // Send cheerful morning wake-up greeting FIRST
-            await sendGroupOpeningGreeting(sock, groupJid, settings.group_name || 'our community');
+            await sendGroupOpeningGreeting(
+              sock,
+              groupJid,
+              settings.group_name || 'our community',
+              buildMorningReminder(groupJid)
+            );
             await sleep(2000);
+          } catch (greetErr) {
+            console.warn(`[schedule] Morning greeting failed for ${groupJid}:`, greetErr.message);
+          }
 
-            // Now officially unlock the group
+          try {
             await sock.groupSettingUpdate(groupJid, 'not_announcement');
-            settings.is_locked = false;
-            await supabase.from('gods_virtue_groups').update({ is_locked: false }).eq('group_jid', groupJid);
-            console.log(`[schedule] Auto-opened group ${groupJid} at Lagos time: ${lagosHHmm}`);
-
-            // Flush any held batch welcomes that were buffered overnight
-            await processPendingWelcomes();
           } catch (openErr) {
+            firedScheduleSlots.delete(openKey);
+            scheduleFailCooldowns.set(openKey, Date.now());
             console.warn(`[schedule] Auto-open failed for ${groupJid}:`, openErr.message);
+            continue;
+          }
+
+          settings.is_locked = false;
+          await supabase.from('gods_virtue_groups').update({ is_locked: false }).eq('group_jid', groupJid)
+            .then(() => {}, (dbErr) => console.warn('[schedule] Could not persist open state:', dbErr.message));
+          console.log(`[schedule] Auto-opened group ${groupJid} at Lagos time: ${lagosHHmm}`);
+
+          // Flush any held batch welcomes that were buffered overnight
+          try {
+            await processPendingWelcomes();
+          } catch (welcomeErr) {
+            console.warn(`[schedule] Group opened, but pending welcomes failed:`, welcomeErr.message);
           }
         }
       }
@@ -2288,6 +2631,47 @@ setInterval(async () => {
       }
     } catch (reflectErr) {
       console.warn('[self-improver] Reflection scheduling error:', reflectErr.message);
+    }
+  }
+
+  // 8. Lecture timetable reminders (fallback path for groups WITHOUT an auto
+  //    lock/open schedule). Groups that DO lock/open on schedule receive these
+  //    notes attached to their nightly recap / morning greeting instead.
+  if (sock?.user) {
+    try {
+      const nowHHmm = lagosHHmm();
+      const todayKey = lagosDateLine();
+      for (const [groupJid, settings] of groupSettingsCache.entries()) {
+        if (!settings.is_monitored) continue;
+        if (settings.schedule_enabled) continue; // handled with recap/greeting
+        if (!hasActiveTimetable(groupJid)) continue;
+
+        const times = getReminderTimes(groupJid);
+        const nightKey = `${groupJid}_${todayKey}_${times.night}_tt_night`;
+        const morningKey = `${groupJid}_${todayKey}_${times.morning}_tt_morning`;
+
+        if (nowHHmm === times.night && !firedScheduleSlots.has(nightKey)) {
+          markScheduleSlot(nightKey);
+          const note = buildNightReminder(groupJid);
+          if (note) await sock.sendMessage(groupJid, { text: note });
+        }
+        if (nowHHmm === times.morning && !firedScheduleSlots.has(morningKey)) {
+          markScheduleSlot(morningKey);
+          const note = buildMorningReminder(groupJid);
+          if (note) await sock.sendMessage(groupJid, { text: note });
+        }
+      }
+    } catch (ttSchedErr) {
+      console.warn('[timetable] Reminder scheduler error:', ttSchedErr.message);
+    }
+  }
+
+  // 9. Parse any lecture-timetable PDF uploaded from the dashboard
+  if (supabase && sock?.user) {
+    try {
+      await processPendingTimetables({ sock });
+    } catch (ttParseErr) {
+      console.warn('[timetable] Pending-parse error:', ttParseErr.message);
     }
   }
   } catch (bgErr) {

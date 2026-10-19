@@ -41,3 +41,32 @@ export function isWithinLagosHours(startHHmm, endHHmm, date = new Date()) {
   if (startHHmm <= endHHmm) return now >= startHHmm && now <= endHHmm;
   return now >= startHHmm || now <= endHHmm;
 }
+
+/**
+ * A Date shifted by the Lagos offset so its UTC getters read as local Lagos
+ * values, regardless of the server's own timezone.
+ */
+export function lagosNow(date = new Date()) {
+  return new Date(date.getTime() + LAGOS_OFFSET_MS);
+}
+
+/** Lowercase weekday key in Africa/Lagos: 'monday' … 'sunday'. */
+export function lagosWeekdayKey(date = new Date()) {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return days[lagosNow(date).getUTCDay()];
+}
+
+/** Short human date in Africa/Lagos, e.g. "Mon 20 Oct". */
+export function lagosShortDate(date = new Date()) {
+  return lagosNow(date).toLocaleDateString('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+/** Returns a new Date shifted by whole days. */
+export function addDays(date, days) {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
