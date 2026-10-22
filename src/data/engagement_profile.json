@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-10-22T10:08:25+00:00",
+  "source": {
+    "turns": 78,
+    "my_turns": 26,
+    "chats": 2
+  },
+  "participation": {
+    "overall": 0.333,
+    "messages_per_own_message": 3.0,
+    "per_chat": [
+      {
+        "chat": "Our Shared Room",
+        "total": 60,
+        "mine": 16,
+        "participation": 0.267
+      },
+      {
+        "chat": "chat_export",
+        "total": 18,
+        "mine": 10,
+        "participation": 0.556
+      }
+    ]
+  },
+  "response": {
+    "questions_asked": 3,
+    "questions_answered": 3,
+    "question_rate": 1.0,
+    "greetings_asked": 1,
+    "greetings_answered": 1,
+    "greeting_rate": 1.0
+  },
+  "bursts": {
+    "runs": 21,
+    "mean": 1.24,
+    "p90": 2,
+    "max": 3
+  },
+  "media": {
+    "placeholder_rate": 0.0,
+    "sticker_rate": 0.0
+  }
+}

@@ -795,6 +795,18 @@ async function attemptGeminiReply({ effectivePrompt, history, userParts, context
 }
 
 /**
+ * Joins the base persona prompt with every dynamic context layer (owner profile,
+ * memories, learned rules, voice profile, duty sheet) into the final system
+ * instruction. Exported so tests can assert what the model actually receives.
+ */
+export function composeEffectivePrompt(systemPrompt, extraContext = []) {
+  const contextBlock = (Array.isArray(extraContext) ? extraContext : [])
+    .filter((b) => typeof b === 'string' && b.trim())
+    .join('\n\n');
+  return (systemPrompt || MASTER_SYSTEM_PROMPT) + (contextBlock ? `\n\n${contextBlock}` : '');
+}
+
+/**
  * Generates an intelligent, virtuous response for an incoming message.
  *
  * Routing order: Groq → Gemini → Cloudflare. Each provider is tried with its own
@@ -814,12 +826,9 @@ export async function generateResponse({
   media = null,
 }) {
   allModelErrors = [];
-  // Dynamic context layers (memories, learned rules, duty sheet) are appended
-  // to whatever persona prompt is in effect.
-  const contextBlock = (Array.isArray(extraContext) ? extraContext : [])
-    .filter((b) => typeof b === 'string' && b.trim())
-    .join('\n\n');
-  const effectivePrompt = (systemPrompt || MASTER_SYSTEM_PROMPT) + (contextBlock ? `\n\n${contextBlock}` : '');
+  // Dynamic context layers (memories, learned rules, duty sheet, trained voice
+  // profile) are appended to whatever persona prompt is in effect.
+  const effectivePrompt = composeEffectivePrompt(systemPrompt, extraContext);
 
   // Get or initialize conversation history buffer (keep last 8 turns)
   if (!conversationHistories.has(jid)) {

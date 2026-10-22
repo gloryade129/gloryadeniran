@@ -7,7 +7,16 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "train": "npm run train:parse && npm run train:profile",
+    "train:parse": "py -3 tools/wa_export/parse_whatsapp.py --input src/data/chat_export.txt --me \"You\" --out src/data/parsed_chat.jsonl",
+    "train:profile": "py -3 tools/wa_export/style_profile.py --input src/data/parsed_chat.jsonl --out-dir src/data",
+    "train:harvest": "node tools/wa_export/harvest_from_device.mjs --chats 8 --screens 60 --out src/data/harvest.jsonl",
+    "train:merge": "py -3 tools/wa_export/style_profile.py --inputs src/data/parsed_chat.jsonl src/data/harvest.jsonl --out-dir src/data",
+    "train:decrypt": "py -3 tools/wa_export/decrypt_crypt14.py",
+    "test:decrypt": "py -3 tools/wa_export/test_decrypt_roundtrip.py",
+    "voice:check": "node tools/voice-report.mjs",
+    "policy:check": "node tools/policy-report.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",

@@ -1,0 +1,266 @@
+{
+  "generated_at": "2026-10-22T10:08:25+00:00",
+  "source": {
+    "turns": 78,
+    "my_turns": 26,
+    "chats": 2
+  },
+  "length": {
+    "mean": 128,
+    "median": 49,
+    "p90": 253,
+    "max": 771,
+    "short_rate": 0.346,
+    "long_rate": 0.154
+  },
+  "lines": {
+    "mean": 3.38,
+    "multi_line_rate": 0.423
+  },
+  "emoji": {
+    "messages_with_emoji_rate": 0.385,
+    "top": [
+      {
+        "emoji": "🔥",
+        "count": 6
+      },
+      {
+        "emoji": "💃",
+        "count": 4
+      },
+      {
+        "emoji": "🙏",
+        "count": 3
+      },
+      {
+        "emoji": "💯",
+        "count": 2
+      },
+      {
+        "emoji": "☹",
+        "count": 1
+      },
+      {
+        "emoji": "🥹",
+        "count": 1
+      },
+      {
+        "emoji": "🤍",
+        "count": 1
+      },
+      {
+        "emoji": "⛪",
+        "count": 1
+      }
+    ]
+  },
+  "punctuation": {
+    "ends_period_rate": 0.115,
+    "ends_question_rate": 0.154,
+    "ends_exclamation_rate": 0.0,
+    "ends_unpunctuated_rate": 0.731,
+    "ellipsis_rate": 0.077,
+    "lowercase_start_rate": 0.077,
+    "allcaps_word_rate": 0.0
+  },
+  "contractions": [
+    {
+      "word": "i'm",
+      "count": 8
+    },
+    {
+      "word": "it's",
+      "count": 3
+    },
+    {
+      "word": "what's",
+      "count": 2
+    },
+    {
+      "word": "i've",
+      "count": 2
+    },
+    {
+      "word": "we're",
+      "count": 1
+    },
+    {
+      "word": "that's",
+      "count": 1
+    },
+    {
+      "word": "don't",
+      "count": 1
+    }
+  ],
+  "openers": [
+    {
+      "text": "good afternoon",
+      "count": 1
+    },
+    {
+      "text": "hello dr",
+      "count": 1
+    },
+    {
+      "text": "i'm not",
+      "count": 1
+    },
+    {
+      "text": "good evening",
+      "count": 1
+    },
+    {
+      "text": "please what's",
+      "count": 1
+    },
+    {
+      "text": "okay ma",
+      "count": 1
+    },
+    {
+      "text": "no i'm",
+      "count": 1
+    },
+    {
+      "text": "anytime ma",
+      "count": 1
+    },
+    {
+      "text": "okay what",
+      "count": 1
+    },
+    {
+      "text": "okay 3:00pm",
+      "count": 1
+    }
+  ],
+  "closers": [
+    {
+      "text": "your mind?",
+      "count": 1
+    },
+    {
+      "text": "help you?",
+      "count": 1
+    },
+    {
+      "text": "you with?",
+      "count": 1
+    },
+    {
+      "text": "good evening",
+      "count": 1
+    },
+    {
+      "text": "therapy again?",
+      "count": 1
+    },
+    {
+      "text": "ma ☹️",
+      "count": 1
+    },
+    {
+      "text": "kwara state",
+      "count": 1
+    },
+    {
+      "text": "anytime ma",
+      "count": 1
+    },
+    {
+      "text": "about 9:00am",
+      "count": 1
+    },
+    {
+      "text": "okay. 3:00pm",
+      "count": 1
+    }
+  ],
+  "signature_words": [
+    {
+      "word": "god",
+      "count": 9
+    },
+    {
+      "word": "i'm",
+      "count": 8
+    },
+    {
+      "word": "jesus",
+      "count": 6
+    },
+    {
+      "word": "dreams",
+      "count": 5
+    },
+    {
+      "word": "reality",
+      "count": 5
+    },
+    {
+      "word": "today",
+      "count": 4
+    },
+    {
+      "word": "help",
+      "count": 4
+    },
+    {
+      "word": "feel",
+      "count": 4
+    },
+    {
+      "word": "true",
+      "count": 4
+    },
+    {
+      "word": "good",
+      "count": 3
+    },
+    {
+      "word": "okay",
+      "count": 3
+    },
+    {
+      "word": "name",
+      "count": 3
+    },
+    {
+      "word": "it's",
+      "count": 3
+    },
+    {
+      "word": "one",
+      "count": 3
+    },
+    {
+      "word": "codependent",
+      "count": 3
+    },
+    {
+      "word": "know",
+      "count": 3
+    },
+    {
+      "word": "god's",
+      "count": 3
+    },
+    {
+      "word": "takes",
+      "count": 3
+    },
+    {
+      "word": "products",
+      "count": 3
+    },
+    {
+      "word": "visions",
+      "count": 3
+    }
+  ],
+  "naija_markers": [
+    "ma"
+  ],
+  "voice_brief": "- AVERAGE REPLY LENGTH: 128 characters (median 49, 90th percentile 253).\n- You often split a thought across two lines; a line break mid-reply is natural for you.\n- 73% of your messages ended with no full stop at all — do not punctuate every sentence like an essay.\n- Contractions are natural for you: i'm, it's, what's, i've, we're.\n- Local register markers that belong in your voice: ma. Use them the way the person you are replying to does — never force them.\n- Never open with a courtesy preamble ('Certainly!', 'Great question', 'I'd be happy to help'). Never close with an offer of further assistance ('Let me know if you need anything else').\n- Never use markdown headings, numbered lists, or bullet essays in a chat reply."
+}

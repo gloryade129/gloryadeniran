@@ -383,14 +383,19 @@ export async function handleAdminCommand({
         await reply(`[STATUS] Status meme publishing is unavailable in this build.`);
         return true;
       }
-      await reply(`[STATUS] Fetching fresh meme and publishing to WhatsApp Status...`);
+      await reply(`[STATUS] Fetching a themed post and publishing to WhatsApp Status...`);
       try {
         const meme = await getMeme();
-        if (meme && meme.buffer) {
+        if (meme && (meme.buffer || meme.caption)) {
           const ok = await publishStatusMeme(sock, meme);
-          await reply(ok ? `[STATUS POSTED] Successfully published: "${meme.title}" to WhatsApp Status! ✨` : `[STATUS FAILED] Could not publish to status.`);
+          const label = meme.theme ? `${meme.theme} — ${meme.caption}` : (meme.caption || meme.title);
+          await reply(
+            ok
+              ? `[STATUS POSTED] Published to WhatsApp Status:\n\n${label}`
+              : `[STATUS FAILED] Could not publish to status.`
+          );
         } else {
-          await reply(`[STATUS FAILED] Could not fetch meme from the meme API.`);
+          await reply(`[STATUS FAILED] Could not build a status post.`);
         }
       } catch (memeErr) {
         await reply(`[STATUS FAILED] ${memeErr.message}`);

@@ -286,6 +286,11 @@ import {
 import { buildGroupUpsert, buildDiscoveryUpsert } from './src/group-sync.js';
 import { decideScheduleAction, scheduleSlotKey } from './src/schedule.js';
 import { buildLanguageInstruction } from './src/language.js';
+import { buildVoiceProfileContext, voiceProfileSummary, loadVoiceProfile } from './src/voice-profile.js';
+import { enforceVoice, isGenericResponse } from './src/response-check.js';
+import { decideReply, recordBotMessage, getReplyPolicyStats } from './src/selective-reply.js';
+import { pickSticker, getStickerStats } from './src/sticker-replies.js';
+import { planStatusPost } from './src/meme-themes.js';
 import {
   bindKnowledgeClient,
   loadKnowledge,
@@ -323,6 +328,34 @@ if (supabaseUrl && supabaseKey) {
 
 // ─── Initialize Gemini AI ───
 initAI(process.env.GEMINI_API_KEY);
+
+// ─── Trained voice profile (from tools/wa_export) ───
+{
+  const voice = voiceProfileSummary();
+  if (voice) {
+    console.log(
+      `[voice] Trained voice active — ${voice.my_turns} own messages, median ${voice.median_length} chars, ` +
+        `emoji rate ${voice.emoji_rate} (built ${voice.generated_at}).`
+    );
+  } else {
+    console.log('[voice] No trained voice profile found. Run tools/wa_export/parse_whatsapp.py + style_profile.py to create one.');
+  }
+
+  const policy = getReplyPolicyStats();
+  console.log(
+    policy.trained
+      ? `[reply-policy] Trained — owner participates in ${(policy.participation * 100).toFixed(0)}% of his chats, ` +
+          `voluntary-reply threshold ${policy.threshold}.`
+      : `[reply-policy] No engagement profile yet — using default threshold ${policy.threshold}.`
+  );
+
+  const stickers = getStickerStats();
+  console.log(
+    stickers.total > 0
+      ? `[sticker] ${stickers.total} sticker(s) in ${stickers.dir} (${Object.keys(stickers.tags).join(', ')}).`
+      : `[sticker] No stickers found in ${stickers.dir} — text-only replies.`
+  );
+}
 
 // ─── Durable brain services: member roster, long-term memory, learned rules ───
 bindRosterClient(supabase);
@@ -1422,15 +1455,41 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         const isAdminSender = isAuthorizedAdmin(senderPhone, botPhone);
 
         let shouldRespond = false;
+        let replyReason = '';
 
         if (isGroup) {
-          // In groups: Only speak if mentioned (@...), replied to, or group_mention_only is false
-          if (!botConfig.group_mention_only || isAddressedToBot) {
-            shouldRespond = true;
+          // Groups: a hard mention-only switch still wins. Otherwise the
+          // selective-reply engine decides whether this message is actually
+          // worth a voluntary interjection — based on the message itself and on
+          // how often the owner really speaks in his own chats.
+          const decision = decideReply({
+            chatJid: jid,
+            text: messageText,
+            isGroup,
+            isAddressedToBot,
+            mediaType: media?.type || null,
+            senderJid,
+            mentionOnly: Boolean(botConfig.group_mention_only),
+            isAdminSender,
+            isDmAllowed: isDmAllowed || isAdminSender,
+            now: Date.now(),
+          });
+          shouldRespond = decision.respond;
+          replyReason = decision.reason;
+          if (!shouldRespond) {
+            console.log(
+              `[reply-policy] Staying quiet in "${jid}" (${decision.reason}, score ${decision.score.toFixed(2)} vs threshold ${decision.threshold.toFixed(2)}; signals: ${decision.signals.join(',') || 'none'}).`
+            );
+          } else if (decision.reason === 'voluntary') {
+            console.log(
+              `[reply-policy] Joining in voluntarily (score ${decision.score.toFixed(2)}; signals: ${decision.signals.join(',')}).`
+            );
           }
         } else {
-          // In DMs: Respond if general DM replies are enabled OR if message is from the authorized Master Admin
+          // DMs: respond if general DM replies are enabled OR if the message is
+          // from the authorized Master Admin.
           shouldRespond = isDmAllowed || isAdminSender;
+          replyReason = isAdminSender ? 'owner-dm' : 'dm';
         }
 
         if (!shouldRespond) {
@@ -1467,6 +1526,9 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           // Permanent owner profile — injected on EVERY reply so the bot always knows
           // its creator is male and to address him as "Boss"/"Sir".
           buildOwnerProfileContext({ isOwnerSender: isAdminSender }),
+          // Trained voice — measured from the owner's real WhatsApp history. Sits
+          // high in the stack so it outranks the provider's default register.
+          buildVoiceProfileContext(),
           // Owner-curated facts (RAG-style) and the member's language.
           knowledgeContext,
           buildLanguageInstruction(messageText),
@@ -1489,7 +1551,25 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
 
         if (!replyResult) continue;
 
-        const reply = typeof replyResult === 'string' ? replyResult : (replyResult.text || String(replyResult));
+        const rawReply = typeof replyResult === 'string' ? replyResult : (replyResult.text || String(replyResult));
+        const isAllQuotaExhausted = Boolean(replyResult?.isAllQuotaExhausted);
+
+        // Trained-voice enforcement: strip provider boilerplate ("As an AI...",
+        // "I hope this helps", markdown headings) and cap the length/emoji budget
+        // to what the owner's real history actually looks like. Skipped for the
+        // quota notice, which is a fixed operational message, not a chat reply.
+        let reply = rawReply;
+        if (!isAllQuotaExhausted && rawReply) {
+          const { profile } = loadVoiceProfile();
+          const enforced = enforceVoice(rawReply, profile);
+          if (enforced.changed) {
+            console.log(`[voice] Rewrote generic reply (${enforced.removed.join(', ') || 'length/emoji'}).`);
+          }
+          if (isGenericResponse(enforced.text)) {
+            console.warn('[voice] Reply still reads as provider-default after enforcement — sending the rewritten version only.');
+          }
+          reply = enforced.text;
+        }
 
         // No usable AI reply (model failed, and it is not the quota notice): stay
         // silent instead of sending a canned or empty message.
@@ -1497,8 +1577,6 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
           console.warn(`[main] No usable AI reply for ${jid} — staying silent (no canned fallback).`);
           continue;
         }
-
-        const isAllQuotaExhausted = Boolean(replyResult?.isAllQuotaExhausted);
 
         // If ALL model quotas have been exhausted for today:
         if (isAllQuotaExhausted) {
@@ -1559,6 +1637,31 @@ function isBotMentionedOrQuoted(sock, m, messageText = '') {
         }
         if (sentReply?.key?.id && sentReply?.message) {
           cacheMessage(sentReply.key.id, sentReply.message);
+        }
+
+        // Tell the reply-policy engine this chat has been spoken in, so the
+        // cooldowns and hourly caps apply. Voluntary interjections count;
+        // direct answers do not.
+        recordBotMessage(jid, { voluntary: replyReason === 'voluntary' });
+
+        // Occasionally follow the text with a sticker, the way a person does.
+        // Rate comes from the trained profile; a missing sticker folder simply
+        // means text only.
+        if (!isAllQuotaExhausted && reply) {
+          try {
+            const sticker = pickSticker({ text: reply, profile: loadVoiceProfile().profile });
+            if (sticker) {
+              await sleep(600 + Math.floor(Math.random() * 900));
+              await sock.sendMessage(
+                jid,
+                { sticker: sticker.buffer, mimetype: 'image/webp' },
+                { quoted: m }
+              );
+              console.log(`[sticker] Sent "${sticker.tag}" sticker in ${jid}.`);
+            }
+          } catch (stickerErr) {
+            console.warn('[sticker] Could not send sticker:', stickerErr?.message || stickerErr);
+          }
         }
 
         console.log(`[main] Sent response to ${senderName} (Jitter: ${presenceResult.jitterMs}ms, Typing: ${presenceResult.typingMs}ms)`);
@@ -2147,45 +2250,64 @@ async function postWhatsAppStatus(socketInstance, { imageBuffer, text, caption }
 }
 
 // ─── WhatsApp Status Meme Poster ───
+// Posts Nigerian campus humour and Christian encouragement to Status. The image
+// comes from a wholesome subreddit; the words — the part people actually
+// forward — come from src/meme-themes.js, in the owner's own register.
 async function fetchRandomMeme() {
-  const subreddits = ['wholesomememes', 'memes', 'ProgrammerHumor', 'me_irl', 'dankmemes'];
-  const randomSub = subreddits[Math.floor(Math.random() * subreddits.length)];
+  const plan = planStatusPost();
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(`https://meme-api.com/gimme/${randomSub}`, { signal: controller.signal });
+    const res = await fetch(`https://meme-api.com/gimme/${plan.subreddit}`, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!data.url || data.nsfw) {
-      // Retry once with wholesome
-      const backupRes = await fetch('https://meme-api.com/gimme/wholesomememes');
-      const backupData = await backupRes.json();
-      const imgRes = await fetch(backupData.url);
-      const buffer = Buffer.from(await imgRes.arrayBuffer());
-      return {
-        title: backupData.title,
-        url: backupData.url,
-        buffer,
-      };
-    }
-    const imgRes = await fetch(data.url);
+
+    // Anything NSFW or text-only is unusable as a Status image.
+    if (!data?.url || data.nsfw) throw new Error('meme API returned no usable image');
+
+    const imgRes = await fetch(data.url, { signal: AbortSignal.timeout(15000) });
+    if (!imgRes.ok) throw new Error(`image HTTP ${imgRes.status}`);
     const buffer = Buffer.from(await imgRes.arrayBuffer());
+    if (!buffer.length) throw new Error('empty image body');
+
+    console.log(`[status-meme] Theme "${plan.themeLabel}" (r/${plan.subreddit}) — "${plan.caption}"`);
     return {
-      title: data.title,
+      title: plan.caption,
+      caption: plan.caption,
+      theme: plan.themeKey,
       url: data.url,
       buffer,
     };
   } catch (err) {
-    console.warn('[status-meme] Failed to fetch random meme:', err.message);
-    return null;
+    console.warn('[status-meme] Failed to fetch meme image:', err.message);
+    // Still worth posting: the caption alone is encouragement people appreciate.
+    return {
+      title: plan.caption,
+      caption: plan.caption,
+      theme: plan.themeKey,
+      url: null,
+      buffer: null,
+    };
   }
 }
 
 async function postStatusMeme(socketInstance, memeObj) {
-  if (!socketInstance || !socketInstance.user || !memeObj?.buffer) return false;
-  const caption = memeObj.title ? `✨ ${memeObj.title}` : '✨ Have a wonderful day!';
-  return await postWhatsAppStatus(socketInstance, { imageBuffer: memeObj.buffer, caption });
+  if (!socketInstance || !socketInstance.user || !memeObj) return false;
+
+  // Text-only Status when no image could be fetched — the caption is the point.
+  if (!memeObj.buffer) {
+    if (!memeObj.caption) return false;
+    return await postWhatsAppStatus(socketInstance, {
+      text: memeObj.caption,
+      caption: memeObj.caption,
+    });
+  }
+
+  return await postWhatsAppStatus(socketInstance, {
+    imageBuffer: memeObj.buffer,
+    caption: memeObj.caption || memeObj.title || '✨ Have a wonderful day!',
+  });
 }
 
 // ─── Fast Action Queue Polling (Runs every 3 seconds for immediate UI response) ───
@@ -2302,12 +2424,12 @@ async function processPendingActions() {
             });
             actionSuccess = true;
           } else if (act.action_type === 'post_meme_status' || act.action_type === 'post_status_meme') {
-            console.log(`[action] Executing immediate status meme post...`);
+            console.log(`[action] Executing immediate themed status post...`);
             const meme = await fetchRandomMeme();
-            if (meme && meme.buffer) {
+            if (meme && (meme.buffer || meme.caption)) {
               actionSuccess = await postStatusMeme(sock, meme);
             } else {
-              console.warn('[action] Could not fetch meme for status post');
+              console.warn('[action] Could not build a status post');
               actionSuccess = false;
             }
           } else if (act.action_type === 'post_custom_status') {
@@ -2566,7 +2688,7 @@ setInterval(async () => {
             botConfig.last_status_post_key = postKey;
             console.log(`[status-meme] Scheduled status meme trigger at Lagos time: ${lagosHHmm}...`);
             const meme = await fetchRandomMeme();
-            if (meme && meme.buffer) {
+            if (meme && (meme.buffer || meme.caption)) {
               await postStatusMeme(sock, meme);
               if (supabase) {
                 await supabase.from('gods_virtue_config').update({

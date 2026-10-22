@@ -4,3 +4,16 @@ node_modules/
 session_auth/
 *.log
 .DS_Store
+__pycache__/
+*.pyc
+
+# ── WhatsApp training data (private) ──────────────────────────────────────────
+# Raw exports contain the other party's messages — never commit them.
+src/data/chat_export.txt
+src/data/parsed_chat.jsonl
+src/data/harvest.jsonl
+src/data/harvest_raw.jsonl
+*.crypt14
+*.db.crypt14
+key
+encrypted_backup.key
